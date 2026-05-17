@@ -23,12 +23,12 @@ export default defineConfig([
     rules: {
       'react-refresh/only-export-components': [
         'warn',
-        { allowConstantExport: true, allowExportNames: ['useTheme', 'buttonVariants'] },
+        { allowConstantExport: true, allowExportNames: ['Route', 'useTheme', 'useAuth', 'buttonVariants'] },
       ],
     },
   },
   {
-    files: ['src/test/**/*.{ts,tsx}'],
+    files: ['src/test/**/*.{ts,tsx}', 'src/app/routes/**/*.{ts,tsx}'],
     rules: {
       'react-refresh/only-export-components': 'off',
     },

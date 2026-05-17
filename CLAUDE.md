@@ -77,4 +77,16 @@ pnpm lint         # Run ESLint
 ## Current Progress
 
 See `IMPLEMENTATION-PLAN.md` for the full 36-step plan.
-Step 1 (Project Scaffolding + UI Foundation) is complete.
+- Step 1 (Project Scaffolding + UI Foundation) — complete
+- Step 2 (i18n Setup) — complete
+- Step 3 (Router + Route Structure + Suspense Boundaries) — complete
+
+### Router Setup (Step 3)
+- TanStack Router with file-based routing (`@tanstack/router-plugin` + `autoCodeSplitting`)
+- Route files in `src/app/routes/` using `createFileRoute`
+- Auto-generated `src/app/routeTree.gen.ts` (committed to git)
+- Pathless layout routes: `_public` (PublicLayout) and `_authenticated` (ProtectedLayout + auth guard)
+- Auth guards via `beforeLoad` with placeholder `AuthContext` (`isAuthenticated: false`)
+- Suspense boundaries at every route level with `PageSkeleton`, `AuthPageSkeleton`, `DashboardSkeleton`
+- Error boundary with `CryptoError`, `DecryptionError`, `CorruptedDataError` classes
+- Test setup includes i18n initialization with all locale resources

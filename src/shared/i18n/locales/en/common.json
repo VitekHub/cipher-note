@@ -9,7 +9,8 @@
     "delete": "Delete",
     "confirm": "Confirm",
     "close": "Close",
-    "copy": "Copy to clipboard"
+    "copy": "Copy to clipboard",
+    "retry": "Retry"
   },
   "status": {
     "loading": "Loading...",
@@ -20,6 +21,7 @@
     "settings": "Settings",
     "login": "Log in",
     "register": "Create account",
-    "logout": "Log out"
+    "logout": "Log out",
+    "recover": "Recover account"
   }
 }

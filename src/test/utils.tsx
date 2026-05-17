@@ -2,11 +2,14 @@ import { render } from '@testing-library/react'
 import type { ReactNode, ReactElement } from 'react'
 import { Suspense } from 'react'
 import { ThemeProvider } from '@/shared/lib/theme-provider'
+import { AuthProvider } from '@/shared/auth/auth-context'
 
 function AllProviders({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider defaultTheme="dark">
-      <Suspense fallback={null}>{children}</Suspense>
+      <AuthProvider>
+        <Suspense fallback={null}>{children}</Suspense>
+      </AuthProvider>
     </ThemeProvider>
   )
 }

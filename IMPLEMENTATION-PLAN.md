@@ -273,7 +273,7 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 
 ---
 
-### Step 3 — Router + Route Structure + Suspense Boundaries
+### Step 3 — Router + Route Structure + Suspense Boundaries ✅
 
 **Goal:** TanStack Router configured with all app routes, layouts, and Suspense boundaries.
 

@@ -9,7 +9,8 @@
     "delete": "Smazat",
     "confirm": "Potvrdit",
     "close": "Zavřít",
-    "copy": "Zkopírovat do schránky"
+    "copy": "Zkopírovat do schránky",
+    "retry": "Zkusit znovu"
   },
   "status": {
     "loading": "Načítání...",
@@ -20,6 +21,7 @@
     "settings": "Nastavení",
     "login": "Přihlásit se",
     "register": "Vytvořit účet",
-    "logout": "Odhlásit se"
+    "logout": "Odhlásit se",
+    "recover": "Obnovit účet"
   }
 }
