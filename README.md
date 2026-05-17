@@ -15,11 +15,23 @@ End-to-end encrypted note-taking app. The server never sees plaintext data.
 - **Backend**: Supabase (local Docker for dev)
 - **Testing**: Vitest + React Testing Library + Playwright (E2E)
 
+## Prerequisites
+
+- **Node.js** 20+ and **pnpm** 9+
+- **Docker** (required for local Supabase — runs Postgres, Auth, Realtime, and API containers)
+- **Git**
+
 ## Getting Started
 
 ```bash
 # Install dependencies
 pnpm install
+
+# Start local Supabase (Docker must be running)
+pnpm supabase:start
+
+# Copy env vars (then fill in the **Publishable** anon key from supabase status output)
+cp env.local.example .env.local
 
 # Start dev server
 pnpm dev
@@ -35,6 +47,18 @@ pnpm typecheck
 
 # Build for production
 pnpm build
+```
+
+`pnpm dev` runs `supabase start && vite` — it starts Supabase containers if needed, then launches the Vite dev server.
+
+### Supabase Commands
+
+```bash
+pnpm supabase:start    # Start local Supabase containers
+pnpm supabase:stop     # Stop containers (data preserved)
+pnpm supabase:reset    # Reset database (re-runs migrations + seed)
+pnpm supabase:status   # Show URLs and keys
+pnpm dev:reset         # Reset database then start Vite
 ```
 
 ## Architecture
@@ -65,6 +89,8 @@ Copy `env.local.example` to `.env.local` and fill in values:
 ```bash
 cp env.local.example .env.local
 ```
+
+After running `pnpm supabase:start`, copy the **Publishable** key from the output into `.env.local` as `VITE_SUPABASE_ANON_KEY`.
 
 ## License
 

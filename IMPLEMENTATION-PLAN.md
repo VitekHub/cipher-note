@@ -332,7 +332,7 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 
 ---
 
-### Step 5 — Supabase Local Setup + Database Schema
+### Step 5 — Supabase Local Setup + Database Schema ✅
 
 **Goal:** Local Supabase running via Docker with all tables created and seeded.
 
