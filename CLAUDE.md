@@ -80,6 +80,7 @@ See `IMPLEMENTATION-PLAN.md` for the full 36-step plan.
 - Step 1 (Project Scaffolding + UI Foundation) — complete
 - Step 2 (i18n Setup) — complete
 - Step 3 (Router + Route Structure + Suspense Boundaries) — complete
+- Step 4 (State Management + Adapter Interfaces) — complete
 
 ### Router Setup (Step 3)
 - TanStack Router with file-based routing (`@tanstack/router-plugin` + `autoCodeSplitting`)
@@ -90,3 +91,12 @@ See `IMPLEMENTATION-PLAN.md` for the full 36-step plan.
 - Suspense boundaries at every route level with `PageSkeleton`, `AuthPageSkeleton`, `DashboardSkeleton`
 - Error boundary with `CryptoError`, `DecryptionError`, `CorruptedDataError` classes
 - Test setup includes i18n initialization with all locale resources
+
+### State Management (Step 4)
+- Zustand stores: `useAuthStore` (auth state), `useCryptoStore` (in-memory keys, hex-encoded strings), `useUiStore` (sidebar, active field)
+- TanStack Query: `QueryClientProvider` in `src/app/providers.tsx`, exported `queryClient` for vault lock cache purging
+- Adapter interfaces: `IAuthAdapter`, `IApiAdapter`, `IRealtimeAdapter` in `shared/auth/`, `shared/api/`, `shared/realtime/`
+- Shared types: `crypto.types.ts`, `api.types.ts`, entity types (`user.types.ts`, `field.types.ts`, `key.types.ts`)
+- AuthContext reads from Zustand auth store (single source of truth) and bridges to TanStack Router context
+- Crypto store uses hex strings for keys (not Uint8Array/Map) for proper Zustand reactivity
+- UI store uses `persist` middleware for `sidebarOpen`; auth and crypto stores never persist

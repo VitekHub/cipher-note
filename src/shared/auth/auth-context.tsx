@@ -1,4 +1,5 @@
-import { createContext, useContext, type ReactNode } from 'react'
+import { createContext, useContext, useMemo, type ReactNode } from 'react'
+import { useAuthStore, isAuthenticated as isAuthenticatedGetter } from '@/features/auth/model/auth-store'
 
 export interface AuthContext {
   isAuthenticated: boolean
@@ -9,11 +10,11 @@ export interface AuthContext {
 const AuthContext = createContext<AuthContext | null>(null)
 
 function AuthProvider({ children }: { children: ReactNode }) {
-  const value: AuthContext = {
-    isAuthenticated: false,
-    user: null,
-    isLoading: false,
-  }
+  const user = useAuthStore((s) => s.user)
+  const isAuthenticated = useAuthStore(isAuthenticatedGetter)
+  const isLoading = useAuthStore((s) => s.isLoading)
+
+  const value = useMemo<AuthContext>(() => ({ isAuthenticated, user, isLoading }), [isAuthenticated, user, isLoading])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

@@ -23,7 +23,7 @@ export default defineConfig([
     rules: {
       'react-refresh/only-export-components': [
         'warn',
-        { allowConstantExport: true, allowExportNames: ['Route', 'useTheme', 'useAuth', 'buttonVariants'] },
+        { allowConstantExport: true, allowExportNames: ['Route', 'useTheme', 'useAuth', 'buttonVariants', 'queryClient'] },
       ],
     },
   },

@@ -1,7 +1,18 @@
 import { useMemo } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider, useAuth } from '@/shared/auth/auth-context'
 import { RouterProvider } from '@tanstack/react-router'
 import { createAppRouter } from './router'
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+})
 
 function InnerApp() {
   const auth = useAuth()
@@ -12,10 +23,12 @@ function InnerApp() {
 
 function AppProviders() {
   return (
-    <AuthProvider>
-      <InnerApp />
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <InnerApp />
+      </AuthProvider>
+    </QueryClientProvider>
   )
 }
 
-export { AppProviders }
+export { AppProviders, queryClient }
