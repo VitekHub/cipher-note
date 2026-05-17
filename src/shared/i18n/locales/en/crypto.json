@@ -1,0 +1,12 @@
+{
+  "vault": {
+    "locked": "Vault locked",
+    "unlocked": "Vault unlocked",
+    "lock": "Lock vault",
+    "unlock": "Unlock vault"
+  },
+  "errors": {
+    "decryptFailed": "Decryption failed. Your data may be corrupted.",
+    "wrongPassword": "Wrong password"
+  }
+}

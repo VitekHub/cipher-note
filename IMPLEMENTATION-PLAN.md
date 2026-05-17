@@ -221,7 +221,7 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 
 ## Phase 1: Project Foundation
 
-### Step 1 — Project Scaffolding + UI Foundation
+### Step 1 — Project Scaffolding + UI Foundation ✅
 
 **Goal:** Working Vite + React app with Tailwind, shadcn/ui, and dark mode.
 
@@ -245,14 +245,13 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 
 ---
 
-### Step 2 — i18n Setup
+### Step 2 — i18n Setup ✅
 
 **Goal:** react-i18next working with English (default) and Czech, namespace lazy loading.
 
 **Code:**
-- Install `react-i18next`, `i18next`, `i18next-browser-languagedetector`, `i18next-http-backend`
-- Create `src/shared/i18n/config.ts` — i18next init with `i18next-http-backend` for lazy namespace loading, language detector, fallback to `en`
-- Configure `i18next-http-backend` to load namespace JSON files on demand (e.g., `/locales/en/auth.json`) so that auth/crypto strings are not in the initial bundle
+- Install `react-i18next`, `i18next`, `i18next-browser-languagedetector`, `i18next-resources-to-backend` (instead of `i18next-http-backend` — `resources-to-backend` uses dynamic `import()` for Vite-native code splitting, keeping locale files in `src/` rather than `public/`)
+- Create `src/shared/i18n/config.ts` — i18next init with `i18next-resources-to-backend` for lazy namespace loading via dynamic `import()`, language detector (localStorage + navigator), fallback to `en`
 - Create `src/shared/i18n/locales/en/` and `src/shared/i18n/locales/cs/` directories
 - Create namespace JSON files:
   - `common.json` — shared strings (buttons, labels, errors)
@@ -260,14 +259,17 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
   - `fields.json` — note, website, email field labels
   - `settings.json` — settings page strings
   - `crypto.json` — key management, security strings
-- Create `useTranslation` wrapper hook in `src/shared/i18n/`
-- Add language switcher component in `src/shared/ui/LanguageSwitcher.tsx`
+- Wire i18n into app: import config in `src/main.tsx`, add `<Suspense>` boundary, update `src/App.tsx` to use `useTranslation()`
+- Update `src/test/utils.tsx` — add `<Suspense>` to test wrapper
+- Add language switcher component in `src/shared/ui/LanguageSwitcher.tsx` (toggles between EN/CS, persists to localStorage via i18next-browser-languagedetector)
+- No `useTranslation` wrapper hook — use `useTranslation` from `react-i18next` directly
 
 **Tests:**
 - Verify default language is `en`
 - Verify switching to `cs` renders Czech strings
-- Verify namespace lazy loading (check network requests or bundle split)
+- Verify namespace lazy loading (separate chunks per namespace per language in build output)
 - Verify fallback to `en` for missing `cs` keys
+- App renders with i18n-translated strings and LanguageSwitcher
 
 ---
 

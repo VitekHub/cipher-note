@@ -1,0 +1,25 @@
+{
+  "app": {
+    "name": "Cipher Note",
+    "tagline": "Your notes. Your privacy. Your control."
+  },
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "confirm": "Confirm",
+    "close": "Close",
+    "copy": "Copy to clipboard"
+  },
+  "status": {
+    "loading": "Loading...",
+    "error": "Something went wrong"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "settings": "Settings",
+    "login": "Log in",
+    "register": "Create account",
+    "logout": "Log out"
+  }
+}

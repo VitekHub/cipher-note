@@ -1,0 +1,25 @@
+{
+  "app": {
+    "name": "Cipher Note",
+    "tagline": "Vaše poznámky. Vaše soukromí. Vaše kontrola."
+  },
+  "actions": {
+    "save": "Uložit",
+    "cancel": "Zrušit",
+    "delete": "Smazat",
+    "confirm": "Potvrdit",
+    "close": "Zavřít",
+    "copy": "Zkopírovat do schránky"
+  },
+  "status": {
+    "loading": "Načítání...",
+    "error": "Něco se pokazilo"
+  },
+  "nav": {
+    "dashboard": "Nástěnka",
+    "settings": "Nastavení",
+    "login": "Přihlásit se",
+    "register": "Vytvořit účet",
+    "logout": "Odhlásit se"
+  }
+}

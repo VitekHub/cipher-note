@@ -1,0 +1,18 @@
+{
+  "title": "Nastavení",
+  "security": {
+    "title": "Zabezpečení",
+    "changePassword": "Změnit heslo",
+    "seedPhrase": "Zobrazit seed frázi",
+    "keyVersions": "Verze klíčů"
+  },
+  "preferences": {
+    "title": "Předvolby",
+    "language": "Jazyk"
+  },
+  "account": {
+    "title": "Účet",
+    "username": "Uživatelské jméno",
+    "deleteAccount": "Smazat účet"
+  }
+}

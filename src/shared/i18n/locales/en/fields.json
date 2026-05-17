@@ -1,0 +1,17 @@
+{
+  "note": {
+    "label": "Note",
+    "placeholder": "Write your note...",
+    "locked": "Unlock vault to view"
+  },
+  "website": {
+    "label": "Website",
+    "placeholder": "Enter website URL",
+    "locked": "Unlock vault to view"
+  },
+  "email": {
+    "label": "Email",
+    "placeholder": "Enter email address",
+    "locked": "Unlock vault to view"
+  }
+}

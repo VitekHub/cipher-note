@@ -1,0 +1,12 @@
+{
+  "vault": {
+    "locked": "Trezor uzamčen",
+    "unlocked": "Trezor odemčen",
+    "lock": "Uzamknout trezor",
+    "unlock": "Odemknout trezor"
+  },
+  "errors": {
+    "decryptFailed": "Dešifrování selhalo. Vaše data mohou být poškozena.",
+    "wrongPassword": "Špatné heslo"
+  }
+}

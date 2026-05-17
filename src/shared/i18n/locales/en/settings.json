@@ -1,0 +1,18 @@
+{
+  "title": "Settings",
+  "security": {
+    "title": "Security",
+    "changePassword": "Change password",
+    "seedPhrase": "View seed phrase",
+    "keyVersions": "Key versions"
+  },
+  "preferences": {
+    "title": "Preferences",
+    "language": "Language"
+  },
+  "account": {
+    "title": "Account",
+    "username": "Username",
+    "deleteAccount": "Delete account"
+  }
+}
