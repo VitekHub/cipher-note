@@ -229,12 +229,15 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 - `pnpm create vite` with React + TypeScript template
 - Install and configure Tailwind CSS v4
 - Initialize shadcn/ui (components.json, dark theme default, CSS variables)
-- Install base shadcn components: `Button`, `Input`, `Label`, `Card`, `Dialog`, `Toast`
+- Install base shadcn components: `Button`, `Input`, `Label`, `Card`, `Dialog`, `Sonner`
 - Set up `src/shared/ui/` as the component library location — **each shadcn component in its own file, NO `index.ts` barrel file** (import directly: `import { Button } from '@/shared/ui/button'`)
-- Configure dark mode as default in `:root` and `tailwind.config.ts`
-- Create `src/app/styles/globals.css` with Tailwind directives + shadcn CSS variables
+- Configure dark mode as default via `class="dark"` on `<html>` and ThemeProvider context
+- Create `src/app/styles/globals.css` with Tailwind v4 directives (`@import "tailwindcss"`, `@custom-variant dark`, `@theme inline`) + shadcn CSS variables
+- Create `ThemeProvider` component in `src/shared/lib/theme-provider.tsx` (defaults to dark, persists to localStorage)
 - Create base `AppLayout` component with dark theme
-- Configure Vite code splitting: ensure `argon2-browser` and `@scure/bip39` are in separate chunks via manual Vite config or dynamic imports
+- Configure Vite code splitting: `argon2-browser` → `crypto-argon2` chunk, `@scure/bip39` → `crypto-bip39` chunk via `manualChunks`
+- Set up ESLint with `eslint-config-prettier` to disable conflicting formatting rules; configure `react-refresh/only-export-components` rule to allow constant exports (`allowConstantExport: true`), named exports for `useTheme` and `buttonVariants` (`allowExportNames`), and disable the rule for `src/test/**` files
+- Set up Prettier with `prettier-plugin-tailwindcss` for deterministic class sorting, single quotes, trailing commas, no semicolons
 
 **Tests:**
 - Verify `render(<App />)` shows the app with dark background
