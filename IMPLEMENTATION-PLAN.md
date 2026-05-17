@@ -367,7 +367,7 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 
 ## Phase 2: Authentication
 
-### Step 6 — Supabase Auth Adapter + Username Auth
+### Step 6 — Supabase Auth Adapter + Username Auth ✅
 
 **Goal:** Working auth adapter that maps username → Supabase email.
 

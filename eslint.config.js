@@ -25,6 +25,7 @@ export default defineConfig([
         'warn',
         { allowConstantExport: true, allowExportNames: ['Route', 'useTheme', 'useAuth', 'buttonVariants', 'queryClient'] },
       ],
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
     },
   },
   {

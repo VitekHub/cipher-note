@@ -1,0 +1,161 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { mapSupabaseToAuthResult } from './supabase-adapter'
+
+function createMockSupabaseUser(
+  overrides: {
+    id?: string
+    email?: string | null
+    created_at?: string
+    user_metadata?: Record<string, unknown>
+  } = {},
+) {
+  return {
+    id: overrides.id ?? '123e4567-e89b-12d3-a456-426614174000',
+    email: overrides.email ?? 'testuser@ciphernote.internal',
+    created_at: overrides.created_at ?? '2024-01-01T00:00:00.000Z',
+    user_metadata: overrides.user_metadata ?? { username: 'testuser' },
+  }
+}
+
+function createMockSupabaseSession(
+  overrides: {
+    access_token?: string
+    expires_at?: number
+  } = {},
+) {
+  return {
+    access_token: overrides.access_token ?? 'mock-access-token',
+    expires_at: overrides.expires_at ?? 1700000000,
+  }
+}
+
+describe('mapSupabaseToAuthResult', () => {
+  it('maps Supabase user and session to AuthResult', () => {
+    const user = createMockSupabaseUser()
+    const session = createMockSupabaseSession()
+
+    const result = mapSupabaseToAuthResult(user, session)
+
+    expect(result.user.id).toBe('123e4567-e89b-12d3-a456-426614174000')
+    expect(result.user.username).toBe('testuser')
+    expect(result.user.createdAt).toBe('2024-01-01T00:00:00.000Z')
+    expect(result.session.accessToken).toBe('mock-access-token')
+    expect(result.session.expiresAt).toBe(1700000000)
+  })
+
+  it('extracts username from user_metadata when available', () => {
+    const user = createMockSupabaseUser({
+      user_metadata: { username: 'myuser' },
+      email: 'myuser@ciphernote.internal',
+    })
+    const session = createMockSupabaseSession()
+
+    const result = mapSupabaseToAuthResult(user, session)
+
+    expect(result.user.username).toBe('myuser')
+  })
+
+  it('falls back to email local part when user_metadata.username is missing', () => {
+    const user = createMockSupabaseUser({
+      email: 'alice@ciphernote.internal',
+      user_metadata: {},
+    })
+    const session = createMockSupabaseSession()
+
+    const result = mapSupabaseToAuthResult(user, session)
+
+    expect(result.user.username).toBe('alice')
+  })
+
+  it('handles missing expires_at by defaulting to 0', () => {
+    const user = createMockSupabaseUser()
+    const session = { access_token: 'mock-token' }
+
+    const result = mapSupabaseToAuthResult(user, session)
+
+    expect(result.session.expiresAt).toBe(0)
+  })
+
+  it('handles null email with no username in metadata', () => {
+    const user = {
+      id: '123e4567-e89b-12d3-a456-426614174000',
+      email: null as string | null,
+      created_at: '2024-01-01T00:00:00.000Z',
+      user_metadata: {},
+    }
+    const session = createMockSupabaseSession()
+
+    const result = mapSupabaseToAuthResult(user, session)
+
+    expect(result.user.username).toBe('')
+  })
+})
+
+const mockSignUp = vi.fn()
+const mockSignInWithPassword = vi.fn()
+const mockSignOut = vi.fn()
+const mockGetSession = vi.fn()
+
+vi.mock('@/shared/api/supabase-client', () => ({
+  getSupabase: () => ({
+    auth: {
+      signUp: mockSignUp,
+      signInWithPassword: mockSignInWithPassword,
+      signOut: mockSignOut,
+      getSession: mockGetSession,
+    },
+  }),
+}))
+
+describe('SupabaseAuthAdapter — signup', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('throws a clear error when session is null (email confirmation required)', async () => {
+    const { authAdapter } = await import('./supabase-adapter')
+
+    mockSignUp.mockResolvedValue({
+      data: {
+        user: { id: 'u1', email: 'alice@ciphernote.internal', created_at: '2024-01-01', user_metadata: {} },
+        session: null,
+      },
+      error: null,
+    })
+
+    await expect(authAdapter.signup('alice', 'hash', 'salt')).rejects.toThrow('email confirmation')
+  })
+
+  it('throws when user is null', async () => {
+    const { authAdapter } = await import('./supabase-adapter')
+
+    mockSignUp.mockResolvedValue({
+      data: { user: null, session: null },
+      error: null,
+    })
+
+    await expect(authAdapter.signup('alice', 'hash', 'salt')).rejects.toThrow('no user returned')
+  })
+
+  it('returns AuthResult on successful signup', async () => {
+    const { authAdapter } = await import('./supabase-adapter')
+
+    mockSignUp.mockResolvedValue({
+      data: {
+        user: {
+          id: 'u1',
+          email: 'alice@ciphernote.internal',
+          created_at: '2024-01-01T00:00:00.000Z',
+          user_metadata: { username: 'alice' },
+        },
+        session: { access_token: 'token', expires_at: 1700000000 },
+      },
+      error: null,
+    })
+
+    const result = await authAdapter.signup('alice', 'hash', 'salt')
+
+    expect(result.user.username).toBe('alice')
+    expect(result.session.accessToken).toBe('token')
+  })
+})

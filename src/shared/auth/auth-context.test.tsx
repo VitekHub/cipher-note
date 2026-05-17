@@ -1,8 +1,19 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { AuthProvider, useAuth } from './auth-context'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import type { ReactNode } from 'react'
+
+vi.mock('@/shared/api/supabase-client', () => ({
+  getSupabase: () => ({
+    auth: {
+      signInWithPassword: vi.fn(),
+      signUp: vi.fn(),
+      signOut: vi.fn(),
+      getSession: vi.fn(),
+    },
+  }),
+}))
 
 function wrapper({ children }: { children: ReactNode }) {
   return <AuthProvider>{children}</AuthProvider>
@@ -41,6 +52,17 @@ describe('auth-context', () => {
 
     const { result } = renderHook(() => useAuth(), { wrapper })
     expect(result.current.isLoading).toBe(true)
+  })
+
+  it('provides an adapter in context', () => {
+    const { result } = renderHook(() => useAuth(), { wrapper })
+
+    expect(result.current.adapter).toBeDefined()
+    expect(typeof result.current.adapter.login).toBe('function')
+    expect(typeof result.current.adapter.signup).toBe('function')
+    expect(typeof result.current.adapter.logout).toBe('function')
+    expect(typeof result.current.adapter.getSession).toBe('function')
+    expect(typeof result.current.adapter.recoverPassword).toBe('function')
   })
 
   it('throws when useAuth is used outside AuthProvider', () => {

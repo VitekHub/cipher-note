@@ -28,6 +28,7 @@ export default defineConfig({
           if (id.includes("node_modules")) {
             if (id.includes("argon2-browser")) return "crypto-argon2"
             if (id.includes("@scure/bip39")) return "crypto-bip39"
+            if (id.includes("@supabase/supabase-js")) return "supabase"
             if (id.includes("react") || id.includes("react-dom"))
               return "react-vendor"
             return "vendor"
