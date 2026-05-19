@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { LayoutDashboard, Lock, Unlock, Settings } from 'lucide-react'
 
 import { Button } from '@/shared/ui/button'
-import { NavLink } from '@/shared/ui/NavLink'
+import { NavLink } from '@/shared/ui/nav/NavLink'
 import { useCryptoStore } from '@/features/encryption/model/crypto-store'
 
 function MobileNav() {

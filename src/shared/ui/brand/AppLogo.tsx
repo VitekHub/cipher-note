@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 
-import { CipherNoteIcon } from '@/shared/ui/CipherNoteIcon'
+import { CipherNoteIcon } from '@/shared/ui/brand/CipherNoteIcon'
 import { cn } from '@/shared/lib/utils'
 
 function AppLogo({ className }: { className?: string }) {

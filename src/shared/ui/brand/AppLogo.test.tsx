@@ -8,7 +8,7 @@ describe('AppLogo', () => {
     expect(screen.getByText('Cipher Note')).toBeInTheDocument()
   })
 
-  it('renders zap icon', () => {
+  it('renders custom icon', () => {
     const { container } = render(<AppLogo />)
     const svg = container.querySelector('svg')
     expect(svg).toBeInTheDocument()

@@ -1,5 +1,5 @@
 import { Outlet } from '@tanstack/react-router'
-import { LanguageSwitcher } from '@/shared/ui/LanguageSwitcher'
+import { LanguageSwitcher } from '@/shared/ui/nav/LanguageSwitcher'
 
 function PublicLayout() {
   return (

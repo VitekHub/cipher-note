@@ -123,7 +123,7 @@ See `IMPLEMENTATION-PLAN.md` for the full 36-step plan.
 - Async auth operations in `src/features/auth/model/auth-credentials.ts` (registerUser, loginUser, logoutUser)
 - Error mapping in `src/features/auth/model/auth-errors.ts` maps Supabase errors to i18n keys
 - Temporary crypto placeholder in `src/shared/crypto/derive-placeholder.ts` (SHA-256, replaced by Argon2id in Step 14)
-- Shared UI: `AuthLayout` (Card wrapper), `FormField` (Label + children + error)
+- Shared UI: `AuthLayout` (Card wrapper), `FormField` (Label + children + error, in `shared/ui/form/`)
 - Username validation pattern exported from `src/shared/auth/username-utils.ts`
 - Test files prefixed with `-` in `src/app/routes/` to exclude from TanStack Router route tree
 
@@ -141,11 +141,11 @@ See `IMPLEMENTATION-PLAN.md` for the full 36-step plan.
 - ProtectedLayout uses `flex` container: resizable desktop sidebar + `ResizeHandle` + right column (header + main)
 - Desktop sidebar width is dynamic (default 240px, range 150–1000px), persisted to localStorage via `useUiStore.sidebarWidth`
 - `useResizable` hook (`src/shared/lib/use-resizable.ts`): manages drag resize with pointer events, local state for 60fps dragging, commits to store on release
-- `ResizeHandle` (`src/shared/ui/ResizeHandle.tsx`): 2×3 dot matrix grip indicator, hidden on mobile, hover/drag accent colors
+- `ResizeHandle` (`src/shared/ui/nav/ResizeHandle.tsx`): 2×3 dot matrix grip indicator, hidden on mobile, hover/drag accent colors
 - Mobile sidebar: fixed 240px Sheet overlay, not resizable
-- Sidebar component (`src/shared/ui/Sidebar.tsx`) is shared between desktop `<aside>` and mobile `Sheet` overlay
-- Mobile: hamburger menu opens Sheet from left, fixed bottom nav (`MobileNav.tsx`) with Dashboard/Settings + vault toggle
-- `AppLogo.tsx`: Zap icon + app name, uses `text-sidebar-primary` for accent color
+- Sidebar component (`src/shared/ui/nav/Sidebar.tsx`) is shared between desktop `<aside>` and mobile `Sheet` overlay
+- Mobile: hamburger menu opens Sheet from left, fixed bottom nav (`MobileNav.tsx` in `shared/ui/nav/`) with Dashboard/Settings + vault toggle
+- `AppLogo.tsx` (in `shared/ui/brand/`): custom icon + app name, uses `text-sidebar-primary` for accent color
 - `VaultIndicator.tsx` (in `features/encryption/ui/`): display-only header component, reads `isVaultLocked` from crypto store
 - Sheet open state bound to `useUiStore.sidebarOpen` / `setSidebarOpen`
 - Main content gets `pb-20 md:pb-6` to clear mobile bottom nav

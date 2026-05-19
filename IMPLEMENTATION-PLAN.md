@@ -127,10 +127,17 @@ cipher-note-react/
           KeyRotationSection.tsx
     shared/
       ui/
-        AppLogo.tsx
-        Sidebar.tsx
-        MobileNav.tsx
-        LanguageSwitcher.tsx
+        brand/
+          AppLogo.tsx
+          CipherNoteIcon.tsx
+        nav/
+          NavLink.tsx
+          LanguageSwitcher.tsx
+          MobileNav.tsx
+          Sidebar.tsx
+          ResizeHandle.tsx
+        form/
+          FormField.tsx
         button.tsx              # shadcn/ui components — NO index.ts barrel file
         input.tsx
         card.tsx
@@ -262,7 +269,7 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
   - `crypto.json` — key management, security strings
 - Wire i18n into app: import config in `src/main.tsx`, add `<Suspense>` boundary, update `src/App.tsx` to use `useTranslation()`
 - Update `src/test/utils.tsx` — add `<Suspense>` to test wrapper
-- Add language switcher component in `src/shared/ui/LanguageSwitcher.tsx` (toggles between EN/CS, persists to localStorage via i18next-browser-languagedetector)
+- Add language switcher component in `src/shared/ui/nav/LanguageSwitcher.tsx` (toggles between EN/CS, persists to localStorage via i18next-browser-languagedetector)
 - No `useTranslation` wrapper hook — use `useTranslation` from `react-i18next` directly
 
 **Tests:**
@@ -472,10 +479,10 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
   - Mobile: bottom navigation bar, collapsible hamburger menu (fixed 240px Sheet, not resizable)
   - Sidebar: app logo, nav links (Dashboard, Settings), user info, lock vault button, language switcher
   - Header: page title, vault lock/unlock indicator
-- `src/shared/ui/AppLogo.tsx`
-- `src/shared/ui/Sidebar.tsx` — responsive sidebar component, shared between desktop aside and mobile Sheet overlay, with optional `onClose` prop for closing the Sheet on navigation
-- `src/shared/ui/MobileNav.tsx` — bottom navigation for mobile with vault toggle center button
-- `src/shared/ui/ResizeHandle.tsx` — thin drag handle between sidebar and main content on desktop, 2×3 dot matrix grip indicator with hover/drag accent colors, hidden on mobile
+- `src/shared/ui/brand/AppLogo.tsx`
+- `src/shared/ui/nav/Sidebar.tsx` — responsive sidebar component, shared between desktop aside and mobile Sheet overlay, with optional `onClose` prop for closing the Sheet on navigation
+- `src/shared/ui/nav/MobileNav.tsx` — bottom navigation for mobile with vault toggle center button
+- `src/shared/ui/nav/ResizeHandle.tsx` — thin drag handle between sidebar and main content on desktop, 2×3 dot matrix grip indicator with hover/drag accent colors, hidden on mobile
 - `src/shared/lib/use-resizable.ts` — custom hook managing drag resize logic: local state for smooth 60fps dragging, commits final width to Zustand store on release, pointer events for unified mouse+touch support
 - `src/features/settings/model/ui-store.ts` — added `sidebarWidth: number` (default 240) and `setSidebarWidth` action, persisted to localStorage via `partialize`
 - `src/features/encryption/ui/VaultIndicator.tsx` — shows locked/unlocked state in header
