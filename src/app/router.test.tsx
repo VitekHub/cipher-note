@@ -9,6 +9,7 @@ function renderWithRouter(authOverrides: Partial<AuthContext> = {}, initialPath 
     isAuthenticated: false,
     user: null,
     isLoading: false,
+    isInitializing: false,
     ...authOverrides,
   }
 

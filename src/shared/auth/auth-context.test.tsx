@@ -11,6 +11,9 @@ vi.mock('@/shared/api/supabase-client', () => ({
       signUp: vi.fn(),
       signOut: vi.fn(),
       getSession: vi.fn(),
+      onAuthStateChange: vi.fn().mockReturnValue({
+        data: { subscription: { unsubscribe: vi.fn() } },
+      }),
     },
   }),
 }))
@@ -21,7 +24,12 @@ function wrapper({ children }: { children: ReactNode }) {
 
 describe('auth-context', () => {
   beforeEach(() => {
-    useAuthStore.getState().reset()
+    useAuthStore.setState({
+      user: null,
+      session: null,
+      isLoading: false,
+      isInitializing: false,
+    })
   })
 
   it('provides default unauthenticated context', () => {
@@ -30,6 +38,7 @@ describe('auth-context', () => {
     expect(result.current.isAuthenticated).toBe(false)
     expect(result.current.user).toBeNull()
     expect(result.current.isLoading).toBe(false)
+    expect(result.current.isInitializing).toBe(false)
   })
 
   it('reflects Zustand auth store state', () => {
@@ -54,6 +63,15 @@ describe('auth-context', () => {
     expect(result.current.isLoading).toBe(true)
   })
 
+  it('reflects isInitializing state from store', () => {
+    act(() => {
+      useAuthStore.getState().setInitializing(true)
+    })
+
+    const { result } = renderHook(() => useAuth(), { wrapper })
+    expect(result.current.isInitializing).toBe(true)
+  })
+
   it('provides an adapter in context', () => {
     const { result } = renderHook(() => useAuth(), { wrapper })
 
@@ -63,6 +81,7 @@ describe('auth-context', () => {
     expect(typeof result.current.adapter.logout).toBe('function')
     expect(typeof result.current.adapter.getSession).toBe('function')
     expect(typeof result.current.adapter.recoverPassword).toBe('function')
+    expect(typeof result.current.adapter.onAuthStateChange).toBe('function')
   })
 
   it('throws when useAuth is used outside AuthProvider', () => {

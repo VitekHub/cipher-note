@@ -6,6 +6,12 @@ export interface AuthResult {
   session: UserSession
 }
 
+/** Callback invoked when auth state changes. */
+export type AuthStateChangeCallback = (result: AuthResult | null) => void
+
+/** Unsubscribe function returned by onAuthStateChange. */
+export type AuthUnsubscribe = () => void
+
 /** Adapter for authentication providers (e.g. Supabase). */
 export interface IAuthAdapter {
   login(username: string, authHash: string): Promise<AuthResult>
@@ -13,6 +19,7 @@ export interface IAuthAdapter {
   getSession(): Promise<AuthResult | null>
   signup(username: string, authHash: string, keySalt: string): Promise<AuthResult>
   recoverPassword(username: string, recoveryData: RecoveryCredentials): Promise<void>
+  onAuthStateChange(callback: AuthStateChangeCallback): AuthUnsubscribe
 }
 
 /** Credentials needed to recover a forgotten password. */

@@ -1,5 +1,11 @@
 import type { User, UserSession } from '@/shared/types/entities/user.types'
-import type { AuthResult, IAuthAdapter, RecoveryCredentials } from '@/shared/auth/auth.types'
+import type {
+  AuthResult,
+  AuthStateChangeCallback,
+  AuthUnsubscribe,
+  IAuthAdapter,
+  RecoveryCredentials,
+} from '@/shared/auth/auth.types'
 import { getSupabase } from '@/shared/api/supabase-client'
 import { toSupabaseEmail, fromSupabaseEmail } from '@/shared/auth/username-utils'
 
@@ -54,6 +60,17 @@ class SupabaseAuthAdapter implements IAuthAdapter {
 
   async recoverPassword(_username: string, _recoveryData: RecoveryCredentials): Promise<void> {
     throw new Error('Password recovery is not yet implemented')
+  }
+
+  onAuthStateChange(callback: AuthStateChangeCallback): AuthUnsubscribe {
+    const { data } = getSupabase().auth.onAuthStateChange((_event, supabaseSession) => {
+      if (!supabaseSession) {
+        callback(null)
+        return
+      }
+      callback(mapSupabaseToAuthResult(supabaseSession.user, supabaseSession))
+    })
+    return data.subscription.unsubscribe
   }
 }
 

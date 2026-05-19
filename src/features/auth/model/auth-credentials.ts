@@ -41,3 +41,28 @@ export async function logoutUser() {
     store.setLoading(false)
   }
 }
+
+export async function initializeAuth(): Promise<() => void> {
+  const { isInitializing } = useAuthStore.getState()
+  if (!isInitializing) return () => {}
+
+  try {
+    const result = await authAdapter.getSession()
+    if (result) {
+      useAuthStore.getState().setAuth(result.user, result.session)
+    }
+  } catch {
+    // getSession failed — proceed as unauthenticated
+  }
+
+  const unsubscribe = authAdapter.onAuthStateChange((result) => {
+    if (result) {
+      useAuthStore.getState().setAuth(result.user, result.session)
+    } else {
+      useAuthStore.getState().reset()
+    }
+  })
+
+  useAuthStore.getState().setInitializing(false)
+  return unsubscribe
+}
