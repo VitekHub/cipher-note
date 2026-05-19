@@ -1,6 +1,13 @@
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
-import { useForm, type FieldValues, type Path } from 'react-hook-form'
+import {
+  useForm,
+  type FieldValues,
+  type Path,
+  type Resolver,
+  type SubmitHandler,
+  type DefaultValues,
+} from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import type { ZodType } from 'zod'
 import { Button } from '@/shared/ui/button'
@@ -53,11 +60,11 @@ function AuthForm<T extends FieldValues>({
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<T>({
-    resolver: zodResolver(schema),
-    defaultValues,
+    resolver: zodResolver(schema) as Resolver<T>,
+    defaultValues: defaultValues as DefaultValues<T>,
   })
 
-  async function onFormSubmit(data: T) {
+  const onFormSubmit = async (data: T) => {
     try {
       const { username, password } = data as unknown as Record<string, string>
       await onSubmit(username, password)
@@ -81,7 +88,7 @@ function AuthForm<T extends FieldValues>({
         </>
       }
     >
-      <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4" noValidate>
+      <form onSubmit={handleSubmit(onFormSubmit as SubmitHandler<FieldValues>)} className="space-y-4" noValidate>
         {fields.map((field) => {
           const errorKey = errors[field.name as keyof T]?.message as string | undefined
           return (

@@ -1,4 +1,4 @@
-import { Skeleton } from "@/shared/ui/skeleton"
+import { Skeleton } from '@/shared/ui/skeleton'
 
 function CenteredPage({ children }: { children: React.ReactNode }) {
   return (

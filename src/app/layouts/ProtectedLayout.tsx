@@ -22,12 +22,8 @@ function ProtectedLayout() {
             <h2 className="text-lg font-semibold">{t('app.name')}</h2>
           </div>
           <nav className="flex-1 space-y-1 p-2">
-            <NavLink to="/dashboard">
-              {t('common:nav.dashboard')}
-            </NavLink>
-            <NavLink to="/settings">
-              {t('common:nav.settings')}
-            </NavLink>
+            <NavLink to="/dashboard">{t('common:nav.dashboard')}</NavLink>
+            <NavLink to="/settings">{t('common:nav.settings')}</NavLink>
           </nav>
           <div className="border-t p-4">
             <Button variant="outline" className="w-full" size="sm" onClick={handleLogout}>
