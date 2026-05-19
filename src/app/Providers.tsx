@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider, useAuth } from '@/shared/auth/auth-context'
 import { RouterProvider } from '@tanstack/react-router'
@@ -19,16 +19,24 @@ const queryClient = new QueryClient({
 function InnerApp() {
   const auth = useAuth()
   const [router] = useState(() => createAppRouter(auth))
-  const unsubscribeRef = useRef<(() => void) | null>(null)
 
   router.update({ context: { auth } })
 
   useEffect(() => {
+    let unsubscribe: (() => void) | undefined
+    let cancelled = false
+
     initializeAuth().then((unsub) => {
-      unsubscribeRef.current = unsub
+      if (cancelled) {
+        unsub()
+        return
+      }
+      unsubscribe = unsub
     })
+
     return () => {
-      unsubscribeRef.current?.()
+      cancelled = true
+      unsubscribe?.()
     }
   }, [])
 

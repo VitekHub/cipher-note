@@ -36,6 +36,7 @@ const useAuthStore = create<AuthState & AuthActions>()(
       setAuth: (user, session) => set({ user, session }, false, 'auth/setAuth'),
       setLoading: (isLoading) => set({ isLoading }, false, 'auth/setLoading'),
       setInitializing: (isInitializing) => set({ isInitializing }, false, 'auth/setInitializing'),
+      // reset clears auth data but preserves isInitializing — logout doesn't re-trigger initialization
       reset: () => set({ user: null, session: null, isLoading: false }, false, 'auth/reset'),
     }),
     { name: 'AuthStore' },

@@ -8,17 +8,21 @@ interface RequireAuthProps {
 
 function RequireAuth({ children }: RequireAuthProps) {
   const { isAuthenticated, isInitializing } = useAuth()
-  const location = useLocation()
 
   if (isInitializing) {
     return <PageSkeleton />
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" search={{ redirect: location.href }} />
+    return <RequireAuthRedirect />
   }
 
   return <>{children}</>
+}
+
+function RequireAuthRedirect() {
+  const location = useLocation()
+  return <Navigate to="/login" search={{ redirect: location.href }} />
 }
 
 export { RequireAuth }
