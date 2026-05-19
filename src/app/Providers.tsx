@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider, useAuth } from '@/shared/auth/auth-context'
 import { RouterProvider } from '@tanstack/react-router'
@@ -16,7 +16,8 @@ const queryClient = new QueryClient({
 
 function InnerApp() {
   const auth = useAuth()
-  const router = useMemo(() => createAppRouter(auth), [auth])
+  const [router] = useState(() => createAppRouter(auth))
+  router.update({ context: { auth } })
 
   return <RouterProvider router={router} />
 }

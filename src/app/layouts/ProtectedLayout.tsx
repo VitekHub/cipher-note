@@ -1,10 +1,17 @@
-import { Link, Outlet } from '@tanstack/react-router'
+import { Link, useNavigate, Outlet } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/shared/ui/button'
 import { LanguageSwitcher } from '@/shared/ui/LanguageSwitcher'
+import { logoutUser } from '@/features/auth/model/auth-credentials'
 
 function ProtectedLayout() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
+
+  async function handleLogout() {
+    await logoutUser()
+    navigate({ to: '/login' })
+  }
 
   return (
     <div className="bg-background text-foreground min-h-screen">
@@ -28,7 +35,7 @@ function ProtectedLayout() {
             </Link>
           </nav>
           <div className="border-t p-4">
-            <Button variant="outline" className="w-full" size="sm">
+            <Button variant="outline" className="w-full" size="sm" onClick={handleLogout}>
               {t('common:nav.logout')}
             </Button>
           </div>

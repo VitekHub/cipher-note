@@ -11,6 +11,7 @@ interface AuthState {
 interface AuthActions {
   setUser: (user: User | null) => void
   setSession: (session: UserSession | null) => void
+  setAuth: (user: User, session: UserSession) => void
   setLoading: (isLoading: boolean) => void
   reset: () => void
 }
@@ -29,6 +30,7 @@ const useAuthStore = create<AuthState & AuthActions>()(
       ...initialState,
       setUser: (user) => set({ user }, false, 'auth/setUser'),
       setSession: (session) => set({ session }, false, 'auth/setSession'),
+      setAuth: (user, session) => set({ user, session }, false, 'auth/setAuth'),
       setLoading: (isLoading) => set({ isLoading }, false, 'auth/setLoading'),
       reset: () => set(initialState, false, 'auth/reset'),
     }),

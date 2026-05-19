@@ -51,6 +51,17 @@ describe('auth-store', () => {
     expect(useAuthStore.getState().isLoading).toBe(false)
   })
 
+  it('setAuth updates user and session together', () => {
+    const user = { id: '1', username: 'testuser', createdAt: '2024-01-01' }
+    const session = { accessToken: 'token-123', expiresAt: 1234567890 }
+    useAuthStore.getState().setAuth(user, session)
+
+    const state = useAuthStore.getState()
+    expect(state.user).toEqual(user)
+    expect(state.session).toEqual(session)
+    expect(isAuthenticated(state)).toBe(true)
+  })
+
   it('reset clears all state to defaults', () => {
     const user = { id: '1', username: 'testuser', createdAt: '2024-01-01' }
     const session = { accessToken: 'token-123', expiresAt: 1234567890 }

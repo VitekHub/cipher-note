@@ -60,9 +60,9 @@ All backend-specific code lives behind interfaces in `shared/`. Features import 
 cipher-note-react/
   src/
     app/
-      providers.tsx            # QueryClientProvider, i18n, AuthProvider
+      Providers.tsx            # QueryClientProvider, i18n, AuthProvider
       router.tsx               # TanStack Router route tree
-      error-boundary.tsx       # Root error boundary with crypto error handling
+      ErrorBoundary.tsx       # Root error boundary with crypto error handling
       styles/
         globals.css            # Tailwind directives + shadcn CSS variables
       layouts/
@@ -87,8 +87,8 @@ cipher-note-react/
           MnemonicInput.tsx    # 12-word input with BIP-39 validation
           PasswordStrength.tsx # Password strength indicator
         lib/
-          require-auth.tsx      # Redirect to /login if not authenticated
-          guest-only.tsx        # Redirect to /dashboard if authenticated
+          RequireAuth.tsx      # Redirect to /login if not authenticated
+          GuestOnly.tsx        # Redirect to /dashboard if authenticated
       fields/
         model/
           field-crypto.ts      # encrypt/decrypt field content
@@ -215,6 +215,7 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 - **Types in separate `.types.ts` files.** Keep type definitions separate from implementation. A consumer should import types without pulling in crypto dependencies.
 - **Each test file mirrors its source.** `aes-gcm.ts` → `aes-gcm.test.ts` in the same directory. No separate `__tests__` folders — colocate tests with the code they test.
 - **No barrel files (index.ts).** Import components directly by path: `import { Button } from '@/shared/ui/button'` not `import { Button } from '@/shared/ui'`. Barrel files defeat tree-shaking and cause the entire module graph to be analyzed even when only one export is needed. This applies to all directories — `shared/ui/`, `shared/crypto/`, `shared/auth/`, etc.
+- **File naming convention.** Component files (`.tsx` exporting a React component) use PascalCase: `LoginPage.tsx`, `FormField.tsx`. Non-component files use kebab-case: `auth-store.ts`, `login-schema.ts`. Exceptions: shadcn/ui primitives stay kebab-case (`button.tsx`, `input.tsx`), context/provider modules that export both component and hook stay kebab-case (`auth-context.tsx`, `theme-provider.tsx`), and route files follow TanStack Router convention.
 - **Lazy-load heavy crypto modules.** `argon2-browser` (WASM, ~200KB+) and `@scure/bip39` (2048-word dictionary) must be dynamically imported via `await import(...)` only when the user is actually authenticating or recovering. Never import them at the top level of a module that loads on app startup.
 
 ---
@@ -290,12 +291,12 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 - Create `PublicLayout` component (centered card, no sidebar)
 - Create `ProtectedLayout` component (sidebar + header + main content)
 - Create `src/app/router.tsx` with route tree and type-safe routes
-- Set up `RouterProvider` in `src/app/providers.tsx`
+- Set up `RouterProvider` in `src/app/Providers.tsx`
 - **Add Suspense boundaries at every route level** in the route tree. Each route wraps its component in `<Suspense fallback={<PageSkeleton />}>` so that:
   - Lazy-loaded route chunks show a skeleton while loading
   - Async data fetching (field decryption, key unwrapping) shows appropriate loading states
   - Crypto operations (Argon2id derivation) never leave the user staring at a blank screen
-- Create `src/app/error-boundary.tsx` — root error boundary that catches rendering errors and crypto-specific errors (decryption failure, corrupted data) with user-friendly messages
+- Create `src/app/ErrorBoundary.tsx` — root error boundary that catches rendering errors and crypto-specific errors (decryption failure, corrupted data) with user-friendly messages
 - **Lazy-load all route components** using TanStack Router's `lazyRouteComponent` or dynamic imports so the initial bundle only contains the root layout + auth redirect logic
 
 **Tests:**
@@ -313,7 +314,7 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 
 **Code:**
 - Install `zustand`, `@tanstack/react-query`
-- Create `src/app/providers.tsx` — QueryClientProvider + i18n provider
+- Create `src/app/Providers.tsx` — QueryClientProvider + i18n provider
 - Create Zustand stores:
   - `src/features/auth/model/auth-store.ts` — session, user, isAuthenticated
   - `src/features/encryption/model/crypto-store.ts` — masterKey, KEK, fieldKeys, isVaultLocked (memory only, no persist). **Use plain `Record<string, string>` (hex-encoded) for fieldKeys instead of `Map<string, Uint8Array>`** — Zustand uses `Object.is` for shallow comparison, which fails on Map mutations and Uint8Array references. Hex strings are comparable by value and trigger correct re-renders.
@@ -392,33 +393,39 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 
 ---
 
-### Step 7 — Auth UI: Register + Login Pages
+### Step 7 — Auth UI: Register + Login Pages ✅
 
 **Goal:** Working register and login pages with form validation and i18n.
 
 **Code:**
-- `src/pages/register/RegisterPage.tsx`:
+- Register page (in `features/auth/ui/`):
   - Username input + password input + confirm password
-  - Client-side validation (username length, password strength)
-  - On submit: derive `auth_hash` and `password_key` via Argon2id (placeholder for now — use simple hash until crypto module is ready)
-  - Show loading state during Argon2id derivation (it's slow)
-  - Error handling and display (i18n strings)
-- `src/pages/login/LoginPage.tsx`:
+  - react-hook-form + Zod schema validation (username pattern/length, password min length, confirm match)
+  - On submit: call auth operations module to derive credentials and register
+  - Show loading state during credential derivation
+  - Error handling via error mapping module with toast notifications
+- Login page (in `features/auth/ui/`):
   - Username input + password input
-  - On submit: derive `auth_hash`, call `login(username, authHash)`
+  - react-hook-form + Zod schema validation
+  - On submit: call auth operations module to derive credentials and login
   - Redirect to `/dashboard` on success
-  - Error handling for wrong password, network errors
-- `src/features/auth/ui/AuthLayout.tsx` — shared layout for auth pages (centered card)
-- `src/features/auth/model/register-schema.ts` — Zod schema for registration form
-- `src/features/auth/model/login-schema.ts` — Zod schema for login form
+  - Error handling via error mapping module with toast notifications
+- Auth operations module (in `features/auth/model/`) — extracted async functions for register, login, logout: derive credentials via temporary placeholder, call auth adapter, update auth store
+- Error mapping module (in `features/auth/model/`) — map Supabase error messages to i18n keys (invalid credentials, username taken, network error)
+- Shared form field component (in `features/auth/ui/`) — Label + children + error message
+- AuthLayout — shared layout for auth pages (centered card)
+- Zod schemas for registration and login forms
+- Temporary crypto placeholder (in `shared/crypto/`) — SHA-256 derivation producing same output format as Argon2id (replace in Step 14)
 - Add i18n strings to `auth.json` for both languages
 
 **Tests:**
-- Component tests: RegisterPage renders with all fields
-- Component tests: LoginPage renders with all fields
-- Component tests: Validation errors shown for invalid input
-- Component tests: Submit button disabled during loading
-- E2E test: register a new user, then login
+- Component tests: register and login pages render with all fields
+- Component tests: validation errors shown for invalid input
+- Component tests: submit button disabled during loading
+- Component tests: error toast shown on auth failure
+- Unit tests: auth operations module (register, login, logout)
+- Unit tests: error mapping (Supabase errors → correct i18n keys)
+- Unit tests: credential derivation placeholder
 
 ---
 
@@ -433,11 +440,11 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
   - `logout()` — clear store, call adapter
   - `initializeAuth()` — check existing session on app load
   - `subscribeToAuthChanges()` — listen to Supabase Auth state changes
-- `src/features/auth/lib/require-auth.tsx` — `<RequireAuth>` component:
+- `src/features/auth/lib/RequireAuth.tsx` — `<RequireAuth>` component:
   - If not authenticated → redirect to `/login`
   - If authenticated → render children
   - If loading → show spinner
-- `src/features/auth/lib/guest-only.tsx` — `<GuestOnly>` component:
+- `src/features/auth/lib/GuestOnly.tsx` — `<GuestOnly>` component:
   - If authenticated → redirect to `/dashboard`
   - If not authenticated → render children
 - Wire auth state into router guards

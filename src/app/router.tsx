@@ -1,7 +1,7 @@
 import { createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
-import { PageSkeleton } from '@/app/pending'
-import { RootErrorBoundary } from '@/app/error-boundary'
+import { PageSkeleton } from '@/app/Pending'
+import { RootErrorBoundary } from '@/app/ErrorBoundary'
 import type { AuthContext } from '@/shared/auth/auth-context'
 
 function createAppRouter(auth: AuthContext) {

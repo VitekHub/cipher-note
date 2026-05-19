@@ -1,5 +1,5 @@
 const CIPHERNOTE_INTERNAL_DOMAIN = '@ciphernote.internal'
-const USERNAME_PATTERN = /^[a-z0-9_]{3,32}$/
+export const USERNAME_PATTERN = /^[a-z0-9_]{3,32}$/
 
 export function toSupabaseEmail(username: string): string {
   const normalized = username.toLowerCase()

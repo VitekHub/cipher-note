@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { ProtectedLayout } from '@/app/layouts/ProtectedLayout'
-import { DashboardSkeleton } from '@/app/pending'
+import { DashboardSkeleton } from '@/app/Pending'
 
 const Route = createFileRoute('/_authenticated')({
   beforeLoad: ({ context, location }) => {
