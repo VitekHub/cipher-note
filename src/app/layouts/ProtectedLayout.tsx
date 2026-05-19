@@ -1,48 +1,72 @@
-import { useNavigate, Outlet } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
+import { Menu } from 'lucide-react'
+import { Outlet } from '@tanstack/react-router'
+
 import { Button } from '@/shared/ui/button'
-import { LanguageSwitcher } from '@/shared/ui/LanguageSwitcher'
-import { NavLink } from '@/shared/ui/NavLink'
-import { logoutUser } from '@/features/auth/model/auth-credentials'
+import { Sheet, SheetTrigger, SheetContent, SheetTitle } from '@/shared/ui/sheet'
+import { Sidebar } from '@/shared/ui/nav/Sidebar'
+import { MobileNav } from '@/shared/ui/nav/MobileNav'
+import { ResizeHandle } from '@/shared/ui/nav/ResizeHandle'
+import { VaultIndicator } from '@/features/encryption/ui/VaultIndicator'
+import { useUiStore } from '@/features/settings/model/ui-store'
+import { useResizable } from '@/shared/lib/use-resizable'
 
 function ProtectedLayout() {
-  const { t } = useTranslation()
-  const navigate = useNavigate()
-
-  async function handleLogout() {
-    await logoutUser()
-    navigate({ to: '/login' })
-  }
+  const { t } = useTranslation('common')
+  const sidebarOpen = useUiStore((s) => s.sidebarOpen)
+  const setSidebarOpen = useUiStore((s) => s.setSidebarOpen)
+  const sidebarWidth = useUiStore((s) => s.sidebarWidth)
+  const setSidebarWidth = useUiStore((s) => s.setSidebarWidth)
+  const {
+    width: currentSidebarWidth,
+    isDragging,
+    handleProps,
+  } = useResizable({
+    storedWidth: sidebarWidth,
+    onWidthChange: setSidebarWidth,
+  })
 
   return (
-    <div className="bg-background text-foreground min-h-screen">
-      <aside className="hidden border-r md:block md:w-60">
-        <div className="flex h-full flex-col">
-          <div className="border-b p-4">
-            <h2 className="text-lg font-semibold">{t('app.name')}</h2>
-          </div>
-          <nav className="flex-1 space-y-1 p-2">
-            <NavLink to="/dashboard">{t('common:nav.dashboard')}</NavLink>
-            <NavLink to="/settings">{t('common:nav.settings')}</NavLink>
-          </nav>
-          <div className="border-t p-4">
-            <Button variant="outline" className="w-full" size="sm" onClick={handleLogout}>
-              {t('common:nav.logout')}
-            </Button>
-          </div>
-        </div>
+    <div className="text-foreground bg-background flex min-h-screen">
+      {/* Desktop sidebar */}
+      <aside
+        className="bg-sidebar text-sidebar-foreground border-sidebar-border hidden flex-shrink-0 flex-col border-r md:flex"
+        style={{ width: `${currentSidebarWidth}px` }}
+      >
+        <Sidebar />
       </aside>
+      <ResizeHandle isDragging={isDragging} handleProps={handleProps} />
 
-      <header className="border-b md:hidden">
-        <div className="flex items-center justify-between p-4">
-          <h2 className="text-lg font-semibold">{t('app.name')}</h2>
-          <LanguageSwitcher />
-        </div>
-      </header>
+      {/* Right column: header + main */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* Header */}
+        <header className="flex h-14 items-center justify-between border-b px-4">
+          <div className="flex items-center gap-2">
+            {/* Mobile hamburger menu */}
+            <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+              <SheetTrigger
+                render={<Button variant="ghost" size="icon" className="md:hidden" aria-label={t('nav.menu')} />}
+              >
+                <Menu className="size-5" />
+              </SheetTrigger>
+              <SheetContent side="left" showCloseButton={false} className="bg-sidebar text-sidebar-foreground w-60 p-0">
+                <SheetTitle className="sr-only">{t('nav.menu')}</SheetTitle>
+                <Sidebar onClose={() => setSidebarOpen(false)} />
+              </SheetContent>
+            </Sheet>
+            <span className="text-lg font-semibold md:hidden">{t('app.name')}</span>
+          </div>
+          <VaultIndicator />
+        </header>
 
-      <main className="p-6">
-        <Outlet />
-      </main>
+        {/* Main content */}
+        <main className="flex-1 overflow-y-auto p-6 pb-20 md:pb-6">
+          <Outlet />
+        </main>
+      </div>
+
+      {/* Mobile bottom navigation */}
+      <MobileNav />
     </div>
   )
 }

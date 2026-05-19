@@ -15,6 +15,7 @@ dist-ssr
 
 .claude/commands/*
 .claude/settings.local.json
+.tanstack
 
 # Editor directories and files
 .vscode/*

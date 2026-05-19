@@ -36,9 +36,10 @@ export async function logoutUser() {
 
   try {
     await authAdapter.logout()
-    store.reset()
+  } catch {
+    // Server signOut may fail (no session, network error) — clear local state regardless
   } finally {
-    store.setLoading(false)
+    store.reset()
   }
 }
 

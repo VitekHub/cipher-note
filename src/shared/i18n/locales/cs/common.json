@@ -22,6 +22,9 @@
     "login": "Přihlásit se",
     "register": "Vytvořit účet",
     "logout": "Odhlásit se",
-    "recover": "Obnovit účet"
+    "recover": "Obnovit účet",
+    "menu": "Menu",
+    "closeMenu": "Zavřít menu",
+    "mainNav": "Hlavní navigace"
   }
 }

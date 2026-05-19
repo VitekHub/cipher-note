@@ -117,7 +117,7 @@ Dependency direction: `routes -> features -> shared`. No cross-feature imports.
 - **Target 100-200 lines per file, max 300**. Split large files into focused modules.
 - **Dark theme is the default**. The `<html>` element has `class="dark"`.
 - **Lazy-load heavy crypto modules**. `argon2-browser` and `@scure/bip39` are dynamically imported, never top-level.
-- **Each shadcn component in its own file**. No index.ts in shared/ui.
+- **Each shadcn component in its own file**. No index.ts in shared/ui. Custom components are organized into subdirectories: `brand/`, `nav/`, `form/`.
 - **Types in separate `.types.ts` files**. Keep type definitions separate from implementation.
 - **Tests are colocated with code**. `button.tsx` -> `button.test.tsx` in the same directory.
 - **File naming**. React components use PascalCase (`LoginPage.tsx`, `FormField.tsx`). Utilities, hooks, schemas, and types use kebab-case (`auth-store.ts`, `login-schema.ts`). shadcn/ui primitives stay kebab-case as generated (`button.tsx`, `card.tsx`, `skeleton.tsx`).

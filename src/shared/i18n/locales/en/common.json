@@ -22,6 +22,9 @@
     "login": "Log in",
     "register": "Create account",
     "logout": "Log out",
-    "recover": "Recover account"
+    "recover": "Recover account",
+    "menu": "Menu",
+    "closeMenu": "Close menu",
+    "mainNav": "Main navigation"
   }
 }

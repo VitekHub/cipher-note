@@ -1,0 +1,97 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import React from 'react'
+import { render, screen } from '@/test/utils'
+import { useAuthStore } from '@/features/auth/model/auth-store'
+import { useCryptoStore } from '@/features/encryption/model/crypto-store'
+
+const { mockNavigate, mockLogoutUser } = vi.hoisted(() => ({
+  mockNavigate: vi.fn(),
+  mockLogoutUser: vi.fn(),
+}))
+
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ children, ...props }: Record<string, unknown> & { children?: React.ReactNode }) =>
+    React.createElement('a', props, children),
+  useNavigate: () => mockNavigate,
+}))
+
+vi.mock('@/features/auth/model/auth-credentials', () => ({
+  logoutUser: mockLogoutUser,
+}))
+
+import { Sidebar } from './Sidebar'
+
+describe('Sidebar', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('renders nav items', () => {
+    render(<Sidebar />)
+    expect(screen.getByText('Dashboard')).toBeInTheDocument()
+    expect(screen.getByText('Settings')).toBeInTheDocument()
+  })
+
+  it('renders app logo', () => {
+    render(<Sidebar />)
+    expect(screen.getByText('Cipher Note')).toBeInTheDocument()
+  })
+
+  it('renders language switcher', () => {
+    render(<Sidebar />)
+    expect(screen.getByRole('button', { name: /en/i })).toBeInTheDocument()
+  })
+
+  it('renders logout button', () => {
+    render(<Sidebar />)
+    expect(screen.getByRole('button', { name: /log out/i })).toBeInTheDocument()
+  })
+
+  it('renders vault lock button when vault is unlocked', () => {
+    useCryptoStore.setState({ isVaultLocked: false })
+    render(<Sidebar />)
+    expect(screen.getByRole('button', { name: /lock vault/i })).toBeInTheDocument()
+  })
+
+  it('renders vault unlock button when vault is locked', () => {
+    useCryptoStore.setState({ isVaultLocked: true })
+    render(<Sidebar />)
+    expect(screen.getByRole('button', { name: /unlock vault/i })).toBeInTheDocument()
+  })
+
+  it('renders user info when user is set', () => {
+    useAuthStore.setState({
+      user: { id: '1', username: 'testuser', createdAt: '2024-01-01' },
+    })
+    render(<Sidebar />)
+    expect(screen.getByText('testuser')).toBeInTheDocument()
+  })
+
+  it('renders close button when onClose is provided', () => {
+    const onClose = vi.fn()
+    render(<Sidebar onClose={onClose} />)
+    expect(screen.getByRole('button', { name: /close menu/i })).toBeInTheDocument()
+  })
+
+  it('does not render close button when onClose is not provided', () => {
+    render(<Sidebar />)
+    expect(screen.queryByRole('button', { name: /close menu/i })).not.toBeInTheDocument()
+  })
+
+  it('calls onClose when close button is clicked', async () => {
+    const onClose = vi.fn()
+    const user = userEvent.setup()
+    render(<Sidebar onClose={onClose} />)
+    await user.click(screen.getByRole('button', { name: /close menu/i }))
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  it('navigates to /login after logout', async () => {
+    const user = userEvent.setup()
+    render(<Sidebar />)
+    await user.click(screen.getByRole('button', { name: /log out/i }))
+    expect(mockLogoutUser).toHaveBeenCalledOnce()
+    expect(mockNavigate).toHaveBeenCalledWith({ to: '/login' })
+  })
+})

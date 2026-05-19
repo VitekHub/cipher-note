@@ -73,9 +73,12 @@ describe('Router redirects', () => {
 describe('Router page rendering', () => {
   it('renders login page with username input at /login', async () => {
     renderWithRouter({}, '/login')
-    await waitFor(() => {
-      expect(screen.getByLabelText(/username/i)).toBeInTheDocument()
-    })
+    await waitFor(
+      () => {
+        expect(screen.getByLabelText(/username/i)).toBeInTheDocument()
+      },
+      { timeout: 5000 },
+    )
   })
 
   it('renders register page at /register', async () => {

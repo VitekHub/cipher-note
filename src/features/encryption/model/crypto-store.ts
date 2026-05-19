@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
+import type { QueryClient } from '@tanstack/react-query'
 
 interface CryptoState {
   masterKey: string | null
@@ -25,6 +26,12 @@ const initialState: CryptoState = {
   lastActivity: 0,
 }
 
+let queryClientRef: QueryClient | null = null
+
+function setQueryClient(client: QueryClient) {
+  queryClientRef = client
+}
+
 const useCryptoStore = create<CryptoState & CryptoActions>()(
   devtools(
     (set) => ({
@@ -41,12 +48,15 @@ const useCryptoStore = create<CryptoState & CryptoActions>()(
           false,
           'crypto/setKeys',
         ),
-      lockVault: () => set(initialState, false, 'crypto/lockVault'),
+      lockVault: () => {
+        set(initialState, false, 'crypto/lockVault')
+        queryClientRef?.removeQueries({ queryKey: ['field'] })
+      },
       updateActivity: () => set({ lastActivity: Date.now() }, false, 'crypto/updateActivity'),
     }),
     { name: 'CryptoStore' },
   ),
 )
 
-export { useCryptoStore, selectFieldKey }
+export { useCryptoStore, selectFieldKey, setQueryClient }
 export type { CryptoState, CryptoActions }
