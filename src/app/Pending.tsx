@@ -1,42 +1,53 @@
-function PageSkeleton() {
+import { Skeleton } from "@/shared/ui/skeleton"
+
+function CenteredPage({ children }: { children: React.ReactNode }) {
   return (
     <div className="bg-background flex min-h-screen items-center justify-center">
-      <div className="w-full max-w-md space-y-6 p-4">
-        <div className="bg-muted h-8 w-3/4 animate-pulse rounded" />
-        <div className="bg-muted h-4 w-1/2 animate-pulse rounded" />
+      <div className="w-full max-w-md">{children}</div>
+    </div>
+  )
+}
+
+function PageSkeleton() {
+  return (
+    <CenteredPage>
+      <div className="space-y-6 p-4">
+        <Skeleton className="h-8 w-3/4" />
+        <Skeleton className="h-4 w-1/2" />
         <div className="space-y-3">
-          <div className="bg-muted h-10 animate-pulse rounded" />
-          <div className="bg-muted h-10 animate-pulse rounded" />
-          <div className="bg-muted h-10 w-1/3 animate-pulse rounded" />
+          <Skeleton className="h-10" />
+          <Skeleton className="h-10" />
+          <Skeleton className="h-10 w-1/3" />
         </div>
       </div>
+    </CenteredPage>
+  )
+}
+
+function FormFieldSkeleton({ labelWidth }: { labelWidth: string }) {
+  return (
+    <div className="space-y-2">
+      <Skeleton className={`h-4 ${labelWidth}`} />
+      <Skeleton className="h-10" />
     </div>
   )
 }
 
 function AuthPageSkeleton() {
   return (
-    <div className="bg-background flex min-h-screen items-center justify-center">
-      <div className="w-full max-w-md">
-        <div className="rounded-lg border p-6 shadow-sm">
-          <div className="space-y-2">
-            <div className="bg-muted h-7 w-1/2 animate-pulse rounded" />
-            <div className="bg-muted h-4 w-3/4 animate-pulse rounded" />
-          </div>
-          <div className="mt-6 space-y-4">
-            <div className="space-y-2">
-              <div className="bg-muted h-4 w-1/4 animate-pulse rounded" />
-              <div className="bg-muted h-10 animate-pulse rounded" />
-            </div>
-            <div className="space-y-2">
-              <div className="bg-muted h-4 w-1/3 animate-pulse rounded" />
-              <div className="bg-muted h-10 animate-pulse rounded" />
-            </div>
-            <div className="bg-muted h-10 w-full animate-pulse rounded" />
-          </div>
+    <CenteredPage>
+      <div className="rounded-lg border p-6 shadow-sm">
+        <div className="space-y-2">
+          <Skeleton className="h-7 w-1/2" />
+          <Skeleton className="h-4 w-3/4" />
+        </div>
+        <div className="mt-6 space-y-4">
+          <FormFieldSkeleton labelWidth="w-1/4" />
+          <FormFieldSkeleton labelWidth="w-1/3" />
+          <Skeleton className="h-10 w-full" />
         </div>
       </div>
-    </div>
+    </CenteredPage>
   )
 }
 
@@ -45,20 +56,21 @@ function DashboardSkeleton() {
     <div className="bg-background flex min-h-screen">
       <aside className="hidden w-60 border-r md:block">
         <div className="p-4">
-          <div className="bg-muted h-6 w-2/3 animate-pulse rounded" />
+          <Skeleton className="h-6 w-2/3" />
         </div>
         <div className="mt-6 space-y-2 px-4">
-          <div className="bg-muted h-8 animate-pulse rounded" />
-          <div className="bg-muted h-8 animate-pulse rounded" />
+          {Array.from({ length: 2 }, (_, i) => (
+            <Skeleton key={i} className="h-8" />
+          ))}
         </div>
       </aside>
       <main className="flex-1 p-6">
         <div className="space-y-4">
-          <div className="bg-muted h-6 w-1/4 animate-pulse rounded" />
+          <Skeleton className="h-6 w-1/4" />
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="bg-muted h-40 animate-pulse rounded-lg" />
-            <div className="bg-muted h-40 animate-pulse rounded-lg" />
-            <div className="bg-muted h-40 animate-pulse rounded-lg" />
+            {Array.from({ length: 3 }, (_, i) => (
+              <Skeleton key={i} className="h-40 rounded-lg" />
+            ))}
           </div>
         </div>
       </main>
