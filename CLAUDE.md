@@ -93,13 +93,14 @@ See `IMPLEMENTATION-PLAN.md` for the full 36-step plan.
 - Step 5 (Supabase Local Setup + Database Schema) — complete
 - Step 6 (Supabase Auth Adapter + Username Auth) — complete
 - Step 7 (Auth UI: Register + Login Pages) — complete
+- Step 8 (Auth State + Protected Routes) — complete
 
 ### Router Setup (Step 3)
 - TanStack Router with file-based routing (`@tanstack/router-plugin` + `autoCodeSplitting`)
 - Route files in `src/app/routes/` using `createFileRoute`
 - Auto-generated `src/app/routeTree.gen.ts` (committed to git)
 - Pathless layout routes: `_public` (PublicLayout) and `_authenticated` (ProtectedLayout + auth guard)
-- Auth guards via `beforeLoad` with placeholder `AuthContext` (`isAuthenticated: false`)
+- Auth guards via `beforeLoad` with `AuthContext` (`isAuthenticated`, `isRestoringSession`)
 - Suspense boundaries at every route level with `PageSkeleton`, `AuthPageSkeleton`, `DashboardSkeleton`
 - Error boundary with `CryptoError`, `DecryptionError`, `CorruptedDataError` classes
 - Test setup includes i18n initialization with all locale resources
@@ -124,3 +125,13 @@ See `IMPLEMENTATION-PLAN.md` for the full 36-step plan.
 - Shared UI: `AuthLayout` (Card wrapper), `FormField` (Label + children + error)
 - Username validation pattern exported from `src/shared/auth/username-utils.ts`
 - Test files prefixed with `-` in `src/app/routes/` to exclude from TanStack Router route tree
+
+### Auth State + Protected Routes (Step 8)
+- Auth store has `isRestoringSession` (defaults `true`) — tracks app boot session restoration
+- `restoreSession()` in `auth-credentials.ts`: calls `getSession()` then subscribes to `onAuthStateChange`, sets `isRestoringSession = false` when done
+- `onAuthStateChange` on `IAuthAdapter`: Supabase adapter delegates to `supabase.auth.onAuthStateChange` (synchronous)
+- `InnerApp` blocks router mount with `PageSkeleton` while `isRestoringSession` is true
+- `RequireAuth` component: redirects to `/login` if not authenticated, shows skeleton if initializing
+- `GuestOnly` component: redirects to `/dashboard` if authenticated, shows skeleton if initializing
+- `reset()` does NOT touch `isRestoringSession` (logout doesn't re-trigger initialization)
+- Test setup resets auth store with `isRestoringSession: false` in `afterEach`

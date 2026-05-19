@@ -429,31 +429,34 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 
 ---
 
-### Step 8 — Auth State + Protected Routes
+### Step 8 — Auth State + Protected Routes ✅
 
-**Goal:** Zustand auth store wired to Supabase Auth session. Protected routes redirect to login.
+**Goal:** Zustand auth store wired to Supabase Auth session. Protected routes redirect to login. Session survives page refresh.
 
 **Code:**
-- `src/features/auth/model/auth-store.ts` — full implementation:
-  - `user`, `session`, `isAuthenticated`, `isLoading`
-  - `login(username, password)` — derive authHash, call adapter, update store
-  - `logout()` — clear store, call adapter
-  - `initializeAuth()` — check existing session on app load
-  - `subscribeToAuthChanges()` — listen to Supabase Auth state changes
-- `src/features/auth/lib/RequireAuth.tsx` — `<RequireAuth>` component:
+- Auth store — add `isRestoringSession` state (defaults `true` on app boot), `setInitializing` action. `reset()` clears user/session/isLoading but does NOT touch `isRestoringSession` (logout should not re-trigger initialization)
+- Auth adapter — add `onAuthStateChange(callback)` method to `IAuthAdapter`. Supabase adapter delegates to `supabase.auth.onAuthStateChange` (synchronous). Callback receives `AuthResult | null`
+- Auth operations module — add `restoreSession()`: idempotent function that checks for existing session via `getSession()`, subscribes to auth state changes via `onAuthStateChange`, then sets `isRestoringSession = false`. The `onAuthStateChange` callback updates the store on auth events (token refresh, sign-out from other tabs). Returns unsubscribe function for cleanup
+- App providers — block router mount with `PageSkeleton` while `isRestoringSession` is true. Call `restoreSession()` on mount and manage unsubscribe cleanup
+- Auth context — expose `isRestoringSession` to React context and router guards
+- `<RequireAuth>` component:
+  - If initializing → show skeleton
   - If not authenticated → redirect to `/login`
   - If authenticated → render children
-  - If loading → show spinner
-- `src/features/auth/lib/GuestOnly.tsx` — `<GuestOnly>` component:
+- `<GuestOnly>` component:
+  - If initializing → show skeleton
   - If authenticated → redirect to `/dashboard`
   - If not authenticated → render children
-- Wire auth state into router guards
+- Wire auth state into router guards (route-level `beforeLoad` already handles redirects; components are defense-in-depth)
 
 **Tests:**
 - Unit tests: auth store transitions (unauthenticated → authenticated → unauthenticated)
+- Unit tests: `isRestoringSession` state, `reset()` does not revert it
+- Unit tests: `restoreSession` restores session, subscribes to changes, is idempotent
+- Unit tests: `onAuthStateChange` callback updates store on auth result and null
 - Unit tests: `requireAuth` redirects to `/login` when not authenticated
 - Unit tests: `guestOnly` redirects to `/dashboard` when authenticated
-- Integration test: full auth flow (register → redirect to dashboard → logout → redirect to login)
+- Unit tests: both components show skeleton when initializing
 
 ---
 

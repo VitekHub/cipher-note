@@ -13,9 +13,16 @@ import authCs from '@/shared/i18n/locales/cs/auth.json'
 import fieldsCs from '@/shared/i18n/locales/cs/fields.json'
 import settingsCs from '@/shared/i18n/locales/cs/settings.json'
 import cryptoCs from '@/shared/i18n/locales/cs/crypto.json'
+import { useAuthStore } from '@/features/auth/model/auth-store'
 
 afterEach(() => {
   cleanup()
+  useAuthStore.setState({
+    user: null,
+    session: null,
+    isLoading: false,
+    isRestoringSession: false,
+  })
 })
 
 beforeAll(async () => {

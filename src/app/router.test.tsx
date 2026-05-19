@@ -3,12 +3,15 @@ import { render, screen, waitFor } from '@/test/utils'
 import { createMemoryHistory, createRouter, RouterProvider } from '@tanstack/react-router'
 import { routeTree } from '@/app/routeTree.gen'
 import type { AuthContext } from '@/shared/auth/auth-context'
+import { authAdapter } from '@/shared/auth/supabase-adapter'
 
 function renderWithRouter(authOverrides: Partial<AuthContext> = {}, initialPath = '/') {
   const auth: AuthContext = {
     isAuthenticated: false,
     user: null,
     isLoading: false,
+    isRestoringSession: false,
+    adapter: authAdapter,
     ...authOverrides,
   }
 

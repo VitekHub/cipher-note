@@ -95,6 +95,7 @@ const mockSignUp = vi.fn()
 const mockSignInWithPassword = vi.fn()
 const mockSignOut = vi.fn()
 const mockGetSession = vi.fn()
+const mockOnAuthStateChange = vi.fn()
 
 vi.mock('@/shared/api/supabase-client', () => ({
   getSupabase: () => ({
@@ -103,6 +104,7 @@ vi.mock('@/shared/api/supabase-client', () => ({
       signInWithPassword: mockSignInWithPassword,
       signOut: mockSignOut,
       getSession: mockGetSession,
+      onAuthStateChange: mockOnAuthStateChange,
     },
   }),
 }))
@@ -157,5 +159,81 @@ describe('SupabaseAuthAdapter — signup', () => {
 
     expect(result.user.username).toBe('alice')
     expect(result.session.accessToken).toBe('token')
+  })
+})
+
+describe('SupabaseAuthAdapter — onAuthStateChange', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('subscribes and returns unsubscribe function', async () => {
+    const mockUnsubscribe = vi.fn()
+    mockOnAuthStateChange.mockReturnValue({
+      data: { subscription: { unsubscribe: mockUnsubscribe } },
+    })
+
+    const { authAdapter } = await import('./supabase-adapter')
+
+    const unsubscribe = authAdapter.onAuthStateChange(() => {})
+    unsubscribe()
+    expect(mockUnsubscribe).toHaveBeenCalled()
+  })
+
+  it('callback maps session to AuthResult', async () => {
+    let capturedCallback: ((event: string, session: unknown) => void) | undefined
+
+    mockOnAuthStateChange.mockImplementation((callback: (event: string, session: unknown) => void) => {
+      capturedCallback = callback
+      return {
+        data: { subscription: { unsubscribe: vi.fn() } },
+      }
+    })
+
+    const { authAdapter } = await import('./supabase-adapter')
+
+    const receivedResults: unknown[] = []
+    authAdapter.onAuthStateChange((result) => {
+      receivedResults.push(result)
+    })
+
+    const mockSession = {
+      access_token: 'refreshed-token',
+      expires_at: 1700001000,
+      user: {
+        id: 'u1',
+        email: 'testuser@ciphernote.internal',
+        created_at: '2024-01-01T00:00:00.000Z',
+        user_metadata: { username: 'testuser' },
+      },
+    }
+    capturedCallback!('TOKEN_REFRESHED', mockSession)
+
+    expect(receivedResults).toHaveLength(1)
+    expect((receivedResults[0] as { user: { username: string } }).user.username).toBe('testuser')
+    expect((receivedResults[0] as { session: { accessToken: string } }).session.accessToken).toBe('refreshed-token')
+  })
+
+  it('callback calls with null when session is null', async () => {
+    let capturedCallback: ((event: string, session: unknown) => void) | undefined
+
+    mockOnAuthStateChange.mockImplementation((callback: (event: string, session: unknown) => void) => {
+      capturedCallback = callback
+      return {
+        data: { subscription: { unsubscribe: vi.fn() } },
+      }
+    })
+
+    const { authAdapter } = await import('./supabase-adapter')
+
+    const receivedResults: unknown[] = []
+    authAdapter.onAuthStateChange((result) => {
+      receivedResults.push(result)
+    })
+
+    capturedCallback!('SIGNED_OUT', null)
+
+    expect(receivedResults).toHaveLength(1)
+    expect(receivedResults[0]).toBeNull()
   })
 })
