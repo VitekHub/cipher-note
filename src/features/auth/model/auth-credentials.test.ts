@@ -28,7 +28,13 @@ vi.mock('@/shared/auth/supabase-adapter', () => ({
 import { authAdapter } from '@/shared/auth/supabase-adapter'
 import { deriveCredentials } from '@/shared/crypto/derive-placeholder'
 import { useAuthStore } from '@/features/auth/model/auth-store'
-import { registerUser, loginUser, logoutUser, initializeAuth } from '@/features/auth/model/auth-credentials'
+import {
+  registerUser,
+  loginUser,
+  logoutUser,
+  initializeAuth,
+  subscribeToAuthChanges,
+} from '@/features/auth/model/auth-credentials'
 
 describe('auth-credentials', () => {
   beforeEach(() => {
@@ -89,7 +95,6 @@ describe('auth-credentials', () => {
   describe('initializeAuth', () => {
     beforeEach(() => {
       vi.mocked(authAdapter.getSession).mockResolvedValue(null)
-      vi.mocked(authAdapter.onAuthStateChange).mockReturnValue(vi.fn())
     })
 
     it('sets isInitializing to false after completion', async () => {
@@ -125,27 +130,50 @@ describe('auth-credentials', () => {
 
     it('is idempotent — no-op when isInitializing is false', async () => {
       useAuthStore.setState({ isInitializing: false })
-      const unsub = await initializeAuth()
-
-      expect(authAdapter.getSession).not.toHaveBeenCalled()
-      expect(typeof unsub).toBe('function')
-    })
-
-    it('subscribes to auth state changes after getSession', async () => {
-      useAuthStore.setState({ isInitializing: true })
       await initializeAuth()
 
-      expect(authAdapter.onAuthStateChange).toHaveBeenCalled()
+      expect(authAdapter.getSession).not.toHaveBeenCalled()
     })
 
-    it('onAuthStateChange callback calls setAuth on auth result', async () => {
+    it('deduplicates concurrent calls — second call returns early', async () => {
+      let resolveGetSession!: (value: unknown) => void
+      vi.mocked(authAdapter.getSession).mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveGetSession = resolve
+          }),
+      )
+      useAuthStore.setState({ isInitializing: true })
+
+      const promise1 = initializeAuth()
+      await initializeAuth() // second call returns early
+
+      expect(authAdapter.getSession).toHaveBeenCalledTimes(1)
+
+      resolveGetSession(null)
+      await promise1
+    })
+  })
+
+  describe('subscribeToAuthChanges', () => {
+    it('subscribes and returns unsubscribe function', () => {
+      const mockUnsubscribe = vi.fn()
+      vi.mocked(authAdapter.onAuthStateChange).mockReturnValue(mockUnsubscribe)
+
+      const unsubscribe = subscribeToAuthChanges()
+      expect(authAdapter.onAuthStateChange).toHaveBeenCalled()
+      unsubscribe()
+      expect(mockUnsubscribe).toHaveBeenCalled()
+    })
+
+    it('callback calls setAuth on auth result', () => {
       let capturedCallback: ((result: unknown) => void) | undefined
       vi.mocked(authAdapter.onAuthStateChange).mockImplementation((cb) => {
         capturedCallback = cb as (result: unknown) => void
         return vi.fn()
       })
-      useAuthStore.setState({ isInitializing: true })
-      await initializeAuth()
+
+      subscribeToAuthChanges()
 
       const authResult = {
         user: { id: '2', username: 'callbackuser', createdAt: '' },
@@ -157,35 +185,23 @@ describe('auth-credentials', () => {
       expect(state.user).toEqual({ id: '2', username: 'callbackuser', createdAt: '' })
     })
 
-    it('onAuthStateChange callback calls reset on null result', async () => {
+    it('callback calls reset on null result', () => {
       let capturedCallback: ((result: unknown) => void) | undefined
       vi.mocked(authAdapter.onAuthStateChange).mockImplementation((cb) => {
         capturedCallback = cb as (result: unknown) => void
         return vi.fn()
       })
-      useAuthStore.setState({ isInitializing: true })
-      await initializeAuth()
 
       useAuthStore.setState({
         user: { id: '1', username: 'test', createdAt: '' },
         session: { accessToken: 'tok', expiresAt: 0 },
       })
 
+      subscribeToAuthChanges()
       capturedCallback!(null)
 
       expect(useAuthStore.getState().user).toBeNull()
       expect(useAuthStore.getState().session).toBeNull()
-    })
-
-    it('returns unsubscribe function', async () => {
-      const mockUnsubscribe = vi.fn()
-      vi.mocked(authAdapter.onAuthStateChange).mockReturnValue(mockUnsubscribe)
-      useAuthStore.setState({ isInitializing: true })
-
-      const unsubscribe = await initializeAuth()
-      unsubscribe()
-
-      expect(mockUnsubscribe).toHaveBeenCalled()
     })
   })
 })
