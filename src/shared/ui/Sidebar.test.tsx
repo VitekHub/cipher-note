@@ -5,14 +5,19 @@ import { render, screen } from '@/test/utils'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { useCryptoStore } from '@/features/encryption/model/crypto-store'
 
+const { mockNavigate, mockLogoutUser } = vi.hoisted(() => ({
+  mockNavigate: vi.fn(),
+  mockLogoutUser: vi.fn(),
+}))
+
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children, ...props }: Record<string, unknown> & { children?: React.ReactNode }) =>
     React.createElement('a', props, children),
-  useNavigate: () => vi.fn(),
+  useNavigate: () => mockNavigate,
 }))
 
 vi.mock('@/features/auth/model/auth-credentials', () => ({
-  logoutUser: vi.fn(),
+  logoutUser: mockLogoutUser,
 }))
 
 import { Sidebar } from './Sidebar'
@@ -80,5 +85,13 @@ describe('Sidebar', () => {
     render(<Sidebar onClose={onClose} />)
     await user.click(screen.getByRole('button', { name: /close menu/i }))
     expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  it('navigates to /login after logout', async () => {
+    const user = userEvent.setup()
+    render(<Sidebar />)
+    await user.click(screen.getByRole('button', { name: /log out/i }))
+    expect(mockLogoutUser).toHaveBeenCalledOnce()
+    expect(mockNavigate).toHaveBeenCalledWith({ to: '/login' })
   })
 })

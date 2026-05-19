@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { LayoutDashboard, Settings, Lock, Unlock, LogOut, User, X } from 'lucide-react'
+import { useNavigate } from '@tanstack/react-router'
 
 import { cn } from '@/shared/lib/utils'
 import { Button } from '@/shared/ui/button'
@@ -18,6 +19,7 @@ interface SidebarProps {
 
 function Sidebar({ onClose, className }: SidebarProps) {
   const { t } = useTranslation(['common', 'crypto'])
+  const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
   const isVaultLocked = useCryptoStore((s) => s.isVaultLocked)
   const lockVault = useCryptoStore((s) => s.lockVault)
@@ -29,6 +31,7 @@ function Sidebar({ onClose, className }: SidebarProps) {
   async function handleLogout() {
     onClose?.()
     await logoutUser()
+    navigate({ to: '/login' })
   }
 
   function handleVaultLock() {

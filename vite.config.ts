@@ -1,9 +1,12 @@
 /// <reference types="vitest/config" />
+import { readFileSync } from "node:fs"
 import path from "path"
 import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react"
 import { tanstackRouter } from "@tanstack/router-plugin/vite"
 import { defineConfig } from "vite"
+
+const cipherNoteIconPath = path.resolve(__dirname, "src/shared/assets/cipher-note-icon.svg")
 
 export default defineConfig({
   plugins: [
@@ -15,6 +18,26 @@ export default defineConfig({
     }),
     react(),
     tailwindcss(),
+    {
+      name: "favicon-serve",
+      configureServer(server) {
+        server.middlewares.use((req, res, next) => {
+          if (req.url === "/favicon.svg") {
+            res.setHeader("Content-Type", "image/svg+xml")
+            res.end(readFileSync(cipherNoteIconPath))
+            return
+          }
+          next()
+        })
+      },
+      generateBundle() {
+        this.emitFile({
+          type: "asset",
+          fileName: "favicon.svg",
+          source: readFileSync(cipherNoteIconPath, "utf-8"),
+        })
+      },
+    },
   ],
   resolve: {
     alias: {

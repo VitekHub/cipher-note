@@ -33,7 +33,7 @@ afterEach(() => {
     lastActivity: 0,
   })
   useUiStore.setState({
-    sidebarOpen: true,
+    sidebarOpen: false,
     activeField: null,
   })
 })

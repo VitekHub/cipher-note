@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
-import { Zap } from 'lucide-react'
 
+import { CipherNoteIcon } from '@/shared/ui/CipherNoteIcon'
 import { cn } from '@/shared/lib/utils'
 
 function AppLogo({ className }: { className?: string }) {
@@ -8,7 +8,7 @@ function AppLogo({ className }: { className?: string }) {
 
   return (
     <div className={cn('flex items-center gap-2', className)}>
-      <Zap className="text-sidebar-primary size-5" />
+      <CipherNoteIcon className="size-8" />
       <span className="text-lg font-semibold">{t('app.name')}</span>
     </div>
   )

@@ -16,7 +16,7 @@ const useUiStore = create<UiState & UiActions>()(
   devtools(
     persist(
       (set) => ({
-        sidebarOpen: true,
+        sidebarOpen: false,
         activeField: null,
         toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen }), false, 'ui/toggleSidebar'),
         setSidebarOpen: (open) => set({ sidebarOpen: open }, false, 'ui/setSidebarOpen'),
