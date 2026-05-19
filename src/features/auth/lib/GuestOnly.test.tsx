@@ -28,7 +28,7 @@ describe('GuestOnly', () => {
       user: null,
       session: null,
       isLoading: false,
-      isInitializing: false,
+      isRestoringSession: false,
     })
   })
 
@@ -60,8 +60,8 @@ describe('GuestOnly', () => {
     expect(screen.queryByTestId('guest-content')).not.toBeInTheDocument()
   })
 
-  it('shows loading skeleton when isInitializing is true', () => {
-    useAuthStore.setState({ isInitializing: true })
+  it('shows loading skeleton when isRestoringSession is true', () => {
+    useAuthStore.setState({ isRestoringSession: true })
 
     render(
       <GuestOnly>

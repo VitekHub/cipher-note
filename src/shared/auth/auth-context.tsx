@@ -7,7 +7,7 @@ export interface AuthContext {
   isAuthenticated: boolean
   user: { id: string; username: string } | null
   isLoading: boolean
-  isInitializing: boolean
+  isRestoringSession: boolean
   adapter: IAuthAdapter
 }
 
@@ -17,12 +17,12 @@ function AuthProvider({ children }: { children: ReactNode }) {
   const user = useAuthStore((s) => s.user)
   const isAuthenticated = useAuthStore(isAuthenticatedGetter)
   const isLoading = useAuthStore((s) => s.isLoading)
-  const isInitializing = useAuthStore((s) => s.isInitializing)
+  const isRestoringSession = useAuthStore((s) => s.isRestoringSession)
 
   const value = useMemo<AuthContext>(
-    () => ({ isAuthenticated, user, isLoading, isInitializing, adapter: authAdapter }),
+    () => ({ isAuthenticated, user, isLoading, isRestoringSession, adapter: authAdapter }),
     // authAdapter is a module-level singleton — stable reference, no need in deps
-    [isAuthenticated, user, isLoading, isInitializing],
+    [isAuthenticated, user, isLoading, isRestoringSession],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

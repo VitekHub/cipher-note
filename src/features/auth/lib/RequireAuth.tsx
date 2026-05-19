@@ -7,9 +7,9 @@ interface RequireAuthProps {
 }
 
 function RequireAuth({ children }: RequireAuthProps) {
-  const { isAuthenticated, isInitializing } = useAuth()
+  const { isAuthenticated, isRestoringSession } = useAuth()
 
-  if (isInitializing) {
+  if (isRestoringSession) {
     return <PageSkeleton />
   }
 

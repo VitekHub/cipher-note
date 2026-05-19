@@ -21,7 +21,7 @@ afterEach(() => {
     user: null,
     session: null,
     isLoading: false,
-    isInitializing: false,
+    isRestoringSession: false,
   })
 })
 

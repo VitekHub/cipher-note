@@ -6,7 +6,7 @@ interface AuthState {
   user: User | null
   session: UserSession | null
   isLoading: boolean
-  isInitializing: boolean
+  isRestoringSession: boolean
 }
 
 interface AuthActions {
@@ -14,7 +14,7 @@ interface AuthActions {
   setSession: (session: UserSession | null) => void
   setAuth: (user: User, session: UserSession) => void
   setLoading: (isLoading: boolean) => void
-  setInitializing: (isInitializing: boolean) => void
+  setRestoringSession: (isRestoringSession: boolean) => void
   reset: () => void
 }
 
@@ -24,7 +24,7 @@ const initialState: AuthState = {
   user: null,
   session: null,
   isLoading: false,
-  isInitializing: true,
+  isRestoringSession: true,
 }
 
 const useAuthStore = create<AuthState & AuthActions>()(
@@ -35,8 +35,8 @@ const useAuthStore = create<AuthState & AuthActions>()(
       setSession: (session) => set({ session }, false, 'auth/setSession'),
       setAuth: (user, session) => set({ user, session }, false, 'auth/setAuth'),
       setLoading: (isLoading) => set({ isLoading }, false, 'auth/setLoading'),
-      setInitializing: (isInitializing) => set({ isInitializing }, false, 'auth/setInitializing'),
-      // reset clears auth data but preserves isInitializing — logout doesn't re-trigger initialization
+      setRestoringSession: (isRestoringSession) => set({ isRestoringSession }, false, 'auth/setRestoringSession'),
+      // reset clears auth data but preserves isRestoringSession — logout doesn't re-trigger session restoration
       reset: () => set({ user: null, session: null, isLoading: false }, false, 'auth/reset'),
     }),
     { name: 'AuthStore' },

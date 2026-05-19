@@ -42,14 +42,18 @@ export async function logoutUser() {
   }
 }
 
-let initializing = false
+let restoring = false
 
-export async function initializeAuth(): Promise<void> {
-  if (initializing) return
-  const { isInitializing } = useAuthStore.getState()
-  if (!isInitializing) return
+/**
+ * Restores the existing user session on app boot, guards against concurrent calls,
+ * and marks session restoration as complete.
+ */
+export async function restoreSession(): Promise<void> {
+  if (restoring) return
+  const { isRestoringSession } = useAuthStore.getState()
+  if (!isRestoringSession) return
 
-  initializing = true
+  restoring = true
 
   try {
     const result = await authAdapter.getSession()
@@ -59,11 +63,20 @@ export async function initializeAuth(): Promise<void> {
   } catch {
     // getSession failed — proceed as unauthenticated
   } finally {
-    useAuthStore.getState().setInitializing(false)
-    initializing = false
+    useAuthStore.getState().setRestoringSession(false)
+    restoring = false
   }
 }
 
+/**
+ * Subscribes to auth state changes from the adapter and syncs the
+ * current user/session into the auth store.
+ *
+ * @remarks The underlying Supabase listener broadcasts auth events across
+ * browser tabs, so a logout (or login) in one tab is reflected in all others.
+ *
+ * @returns A function to unsubscribe from auth state changes.
+ */
 export function subscribeToAuthChanges(): () => void {
   return authAdapter.onAuthStateChange((result) => {
     if (result) {

@@ -32,7 +32,7 @@ import {
   registerUser,
   loginUser,
   logoutUser,
-  initializeAuth,
+  restoreSession,
   subscribeToAuthChanges,
 } from '@/features/auth/model/auth-credentials'
 
@@ -43,7 +43,7 @@ describe('auth-credentials', () => {
       user: null,
       session: null,
       isLoading: false,
-      isInitializing: false,
+      isRestoringSession: false,
     })
   })
 
@@ -92,15 +92,15 @@ describe('auth-credentials', () => {
     })
   })
 
-  describe('initializeAuth', () => {
+  describe('restoreSession', () => {
     beforeEach(() => {
       vi.mocked(authAdapter.getSession).mockResolvedValue(null)
     })
 
-    it('sets isInitializing to false after completion', async () => {
-      useAuthStore.setState({ isInitializing: true })
-      await initializeAuth()
-      expect(useAuthStore.getState().isInitializing).toBe(false)
+    it('sets isRestoringSession to false after completion', async () => {
+      useAuthStore.setState({ isRestoringSession: true })
+      await restoreSession()
+      expect(useAuthStore.getState().isRestoringSession).toBe(false)
     })
 
     it('calls getSession and sets auth on success', async () => {
@@ -108,9 +108,9 @@ describe('auth-credentials', () => {
         user: { id: '1', username: 'test', createdAt: '' },
         session: { accessToken: 'tok', expiresAt: 0 },
       })
-      useAuthStore.setState({ isInitializing: true })
+      useAuthStore.setState({ isRestoringSession: true })
 
-      await initializeAuth()
+      await restoreSession()
 
       expect(authAdapter.getSession).toHaveBeenCalled()
       const state = useAuthStore.getState()
@@ -118,19 +118,19 @@ describe('auth-credentials', () => {
       expect(state.session).toEqual({ accessToken: 'tok', expiresAt: 0 })
     })
 
-    it('sets isInitializing to false even when getSession fails', async () => {
+    it('sets isRestoringSession to false even when getSession fails', async () => {
       vi.mocked(authAdapter.getSession).mockRejectedValue(new Error('Network error'))
-      useAuthStore.setState({ isInitializing: true })
+      useAuthStore.setState({ isRestoringSession: true })
 
-      await initializeAuth()
+      await restoreSession()
 
-      expect(useAuthStore.getState().isInitializing).toBe(false)
+      expect(useAuthStore.getState().isRestoringSession).toBe(false)
       expect(useAuthStore.getState().user).toBeNull()
     })
 
-    it('is idempotent — no-op when isInitializing is false', async () => {
-      useAuthStore.setState({ isInitializing: false })
-      await initializeAuth()
+    it('is idempotent — no-op when isRestoringSession is false', async () => {
+      useAuthStore.setState({ isRestoringSession: false })
+      await restoreSession()
 
       expect(authAdapter.getSession).not.toHaveBeenCalled()
     })
@@ -143,10 +143,10 @@ describe('auth-credentials', () => {
             resolveGetSession = resolve
           }),
       )
-      useAuthStore.setState({ isInitializing: true })
+      useAuthStore.setState({ isRestoringSession: true })
 
-      const promise1 = initializeAuth()
-      await initializeAuth() // second call returns early
+      const promise1 = restoreSession()
+      await restoreSession() // second call returns early
 
       expect(authAdapter.getSession).toHaveBeenCalledTimes(1)
 

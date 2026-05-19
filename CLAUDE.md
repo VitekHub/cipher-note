@@ -100,7 +100,7 @@ See `IMPLEMENTATION-PLAN.md` for the full 36-step plan.
 - Route files in `src/app/routes/` using `createFileRoute`
 - Auto-generated `src/app/routeTree.gen.ts` (committed to git)
 - Pathless layout routes: `_public` (PublicLayout) and `_authenticated` (ProtectedLayout + auth guard)
-- Auth guards via `beforeLoad` with `AuthContext` (`isAuthenticated`, `isInitializing`)
+- Auth guards via `beforeLoad` with `AuthContext` (`isAuthenticated`, `isRestoringSession`)
 - Suspense boundaries at every route level with `PageSkeleton`, `AuthPageSkeleton`, `DashboardSkeleton`
 - Error boundary with `CryptoError`, `DecryptionError`, `CorruptedDataError` classes
 - Test setup includes i18n initialization with all locale resources
@@ -127,11 +127,11 @@ See `IMPLEMENTATION-PLAN.md` for the full 36-step plan.
 - Test files prefixed with `-` in `src/app/routes/` to exclude from TanStack Router route tree
 
 ### Auth State + Protected Routes (Step 8)
-- Auth store has `isInitializing` (defaults `true`) — tracks app boot session restoration
-- `initializeAuth()` in `auth-credentials.ts`: calls `getSession()` then subscribes to `onAuthStateChange`, sets `isInitializing = false` when done
+- Auth store has `isRestoringSession` (defaults `true`) — tracks app boot session restoration
+- `restoreSession()` in `auth-credentials.ts`: calls `getSession()` then subscribes to `onAuthStateChange`, sets `isRestoringSession = false` when done
 - `onAuthStateChange` on `IAuthAdapter`: Supabase adapter delegates to `supabase.auth.onAuthStateChange` (synchronous)
-- `InnerApp` blocks router mount with `PageSkeleton` while `isInitializing` is true
+- `InnerApp` blocks router mount with `PageSkeleton` while `isRestoringSession` is true
 - `RequireAuth` component: redirects to `/login` if not authenticated, shows skeleton if initializing
 - `GuestOnly` component: redirects to `/dashboard` if authenticated, shows skeleton if initializing
-- `reset()` does NOT touch `isInitializing` (logout doesn't re-trigger initialization)
-- Test setup resets auth store with `isInitializing: false` in `afterEach`
+- `reset()` does NOT touch `isRestoringSession` (logout doesn't re-trigger initialization)
+- Test setup resets auth store with `isRestoringSession: false` in `afterEach`

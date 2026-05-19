@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider, useAuth } from '@/shared/auth/auth-context'
 import { RouterProvider } from '@tanstack/react-router'
 import { createAppRouter } from './router'
-import { initializeAuth, subscribeToAuthChanges } from '@/features/auth/model/auth-credentials'
+import { restoreSession, subscribeToAuthChanges } from '@/features/auth/model/auth-credentials'
 import { PageSkeleton } from '@/app/Pending'
 
 const queryClient = new QueryClient({
@@ -23,14 +23,14 @@ function InnerApp() {
   router.update({ context: { auth } })
 
   useEffect(() => {
-    initializeAuth()
+    restoreSession()
     const unsubscribe = subscribeToAuthChanges()
     return () => {
       unsubscribe()
     }
   }, [])
 
-  if (auth.isInitializing) {
+  if (auth.isRestoringSession) {
     return <PageSkeleton />
   }
 

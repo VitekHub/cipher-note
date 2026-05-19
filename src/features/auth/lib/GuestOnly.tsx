@@ -7,9 +7,9 @@ interface GuestOnlyProps {
 }
 
 function GuestOnly({ children }: GuestOnlyProps) {
-  const { isAuthenticated, isInitializing } = useAuth()
+  const { isAuthenticated, isRestoringSession } = useAuth()
 
-  if (isInitializing) {
+  if (isRestoringSession) {
     return <PageSkeleton />
   }
 

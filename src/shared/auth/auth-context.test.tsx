@@ -28,7 +28,7 @@ describe('auth-context', () => {
       user: null,
       session: null,
       isLoading: false,
-      isInitializing: false,
+      isRestoringSession: false,
     })
   })
 
@@ -38,7 +38,7 @@ describe('auth-context', () => {
     expect(result.current.isAuthenticated).toBe(false)
     expect(result.current.user).toBeNull()
     expect(result.current.isLoading).toBe(false)
-    expect(result.current.isInitializing).toBe(false)
+    expect(result.current.isRestoringSession).toBe(false)
   })
 
   it('reflects Zustand auth store state', () => {
@@ -63,13 +63,13 @@ describe('auth-context', () => {
     expect(result.current.isLoading).toBe(true)
   })
 
-  it('reflects isInitializing state from store', () => {
+  it('reflects isRestoringSession state from store', () => {
     act(() => {
-      useAuthStore.getState().setInitializing(true)
+      useAuthStore.getState().setRestoringSession(true)
     })
 
     const { result } = renderHook(() => useAuth(), { wrapper })
-    expect(result.current.isInitializing).toBe(true)
+    expect(result.current.isRestoringSession).toBe(true)
   })
 
   it('provides an adapter in context', () => {

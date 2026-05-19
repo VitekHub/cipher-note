@@ -434,11 +434,11 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 **Goal:** Zustand auth store wired to Supabase Auth session. Protected routes redirect to login. Session survives page refresh.
 
 **Code:**
-- Auth store — add `isInitializing` state (defaults `true` on app boot), `setInitializing` action. `reset()` clears user/session/isLoading but does NOT touch `isInitializing` (logout should not re-trigger initialization)
+- Auth store — add `isRestoringSession` state (defaults `true` on app boot), `setInitializing` action. `reset()` clears user/session/isLoading but does NOT touch `isRestoringSession` (logout should not re-trigger initialization)
 - Auth adapter — add `onAuthStateChange(callback)` method to `IAuthAdapter`. Supabase adapter delegates to `supabase.auth.onAuthStateChange` (synchronous). Callback receives `AuthResult | null`
-- Auth operations module — add `initializeAuth()`: idempotent function that checks for existing session via `getSession()`, subscribes to auth state changes via `onAuthStateChange`, then sets `isInitializing = false`. The `onAuthStateChange` callback updates the store on auth events (token refresh, sign-out from other tabs). Returns unsubscribe function for cleanup
-- App providers — block router mount with `PageSkeleton` while `isInitializing` is true. Call `initializeAuth()` on mount and manage unsubscribe cleanup
-- Auth context — expose `isInitializing` to React context and router guards
+- Auth operations module — add `restoreSession()`: idempotent function that checks for existing session via `getSession()`, subscribes to auth state changes via `onAuthStateChange`, then sets `isRestoringSession = false`. The `onAuthStateChange` callback updates the store on auth events (token refresh, sign-out from other tabs). Returns unsubscribe function for cleanup
+- App providers — block router mount with `PageSkeleton` while `isRestoringSession` is true. Call `restoreSession()` on mount and manage unsubscribe cleanup
+- Auth context — expose `isRestoringSession` to React context and router guards
 - `<RequireAuth>` component:
   - If initializing → show skeleton
   - If not authenticated → redirect to `/login`
@@ -451,8 +451,8 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 
 **Tests:**
 - Unit tests: auth store transitions (unauthenticated → authenticated → unauthenticated)
-- Unit tests: `isInitializing` state, `reset()` does not revert it
-- Unit tests: `initializeAuth` restores session, subscribes to changes, is idempotent
+- Unit tests: `isRestoringSession` state, `reset()` does not revert it
+- Unit tests: `restoreSession` restores session, subscribes to changes, is idempotent
 - Unit tests: `onAuthStateChange` callback updates store on auth result and null
 - Unit tests: `requireAuth` redirects to `/login` when not authenticated
 - Unit tests: `guestOnly` redirects to `/dashboard` when authenticated
