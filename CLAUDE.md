@@ -94,6 +94,7 @@ See `IMPLEMENTATION-PLAN.md` for the full 36-step plan.
 - Step 6 (Supabase Auth Adapter + Username Auth) — complete
 - Step 7 (Auth UI: Register + Login Pages) — complete
 - Step 8 (Auth State + Protected Routes) — complete
+- Step 9 (Dashboard Layout — Responsive) — complete
 
 ### Router Setup (Step 3)
 - TanStack Router with file-based routing (`@tanstack/router-plugin` + `autoCodeSplitting`)
@@ -135,3 +136,14 @@ See `IMPLEMENTATION-PLAN.md` for the full 36-step plan.
 - `GuestOnly` component: redirects to `/dashboard` if authenticated, shows skeleton if initializing
 - `reset()` does NOT touch `isRestoringSession` (logout doesn't re-trigger initialization)
 - Test setup resets auth store with `isRestoringSession: false` in `afterEach`
+
+### Dashboard Layout (Step 9)
+- ProtectedLayout uses `flex` container: desktop sidebar (240px) + right column (header + main)
+- Sidebar component (`src/shared/ui/Sidebar.tsx`) is shared between desktop `<aside>` and mobile `Sheet` overlay
+- Mobile: hamburger menu opens Sheet from left, fixed bottom nav (`MobileNav.tsx`) with Dashboard/Settings + vault toggle
+- `AppLogo.tsx`: Zap icon + app name, uses `text-sidebar-primary` for accent color
+- `VaultIndicator.tsx` (in `features/encryption/ui/`): display-only header component, reads `isVaultLocked` from crypto store
+- Sheet open state bound to `useUiStore.sidebarOpen` / `setSidebarOpen`
+- Main content gets `pb-20 md:pb-6` to clear mobile bottom nav
+- Test setup also resets `useCryptoStore` and `useUiStore` in `afterEach`
+- Tests mock `@tanstack/react-router` for components using `NavLink`/`Link`

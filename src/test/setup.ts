@@ -14,6 +14,8 @@ import fieldsCs from '@/shared/i18n/locales/cs/fields.json'
 import settingsCs from '@/shared/i18n/locales/cs/settings.json'
 import cryptoCs from '@/shared/i18n/locales/cs/crypto.json'
 import { useAuthStore } from '@/features/auth/model/auth-store'
+import { useCryptoStore } from '@/features/encryption/model/crypto-store'
+import { useUiStore } from '@/features/settings/model/ui-store'
 
 afterEach(() => {
   cleanup()
@@ -22,6 +24,17 @@ afterEach(() => {
     session: null,
     isLoading: false,
     isRestoringSession: false,
+  })
+  useCryptoStore.setState({
+    masterKey: null,
+    kek: null,
+    fieldKeys: {},
+    isVaultLocked: true,
+    lastActivity: 0,
+  })
+  useUiStore.setState({
+    sidebarOpen: true,
+    activeField: null,
   })
 })
 

@@ -462,7 +462,7 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 
 ## Phase 3: Dashboard & Layout
 
-### Step 9 — Dashboard Layout (Responsive)
+### Step 9 — Dashboard Layout (Responsive) ✅
 
 **Goal:** Responsive dashboard layout with sidebar, header, and main content area.
 
@@ -473,17 +473,18 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
   - Sidebar: app logo, nav links (Dashboard, Settings), user info, lock vault button, language switcher
   - Header: page title, vault lock/unlock indicator
 - `src/shared/ui/AppLogo.tsx`
-- `src/shared/ui/Sidebar.tsx` — responsive sidebar component
-- `src/shared/ui/MobileNav.tsx` — bottom navigation for mobile
+- `src/shared/ui/Sidebar.tsx` — responsive sidebar component, shared between desktop aside and mobile Sheet overlay, with optional `onClose` prop for closing the Sheet on navigation
+- `src/shared/ui/MobileNav.tsx` — bottom navigation for mobile with vault toggle center button
 - `src/features/encryption/ui/VaultIndicator.tsx` — shows locked/unlocked state in header
-- Use shadcn `Sheet` for mobile sidebar overlay, `NavigationMenu` for nav items
+- Use shadcn `Sheet` for mobile sidebar overlay and `Separator` for sidebar section dividers
+- Use existing `NavLink` component with lucide icons for nav items (not `NavigationMenu` — only 2 nav items, simpler approach)
 - Add i18n strings to `common.json`
 
 **Tests:**
-- Component test: sidebar renders with all nav items
-- Component test: mobile nav renders on narrow viewports
-- Component test: vault indicator shows "locked" state by default
-- Visual test: responsive breakpoints (desktop vs mobile layout)
+- Component test: sidebar renders with all nav items, user info, lock button, language switcher
+- Component test: mobile nav renders dashboard/settings items and vault toggle
+- Component test: vault indicator shows "locked" state by default and "unlocked" when store changes
+- Component test: layout renders vault indicator and hamburger menu button
 
 ---
 
