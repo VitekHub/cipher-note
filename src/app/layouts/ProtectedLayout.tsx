@@ -3,23 +3,39 @@ import { Menu } from 'lucide-react'
 import { Outlet } from '@tanstack/react-router'
 
 import { Button } from '@/shared/ui/button'
-import { Sheet, SheetTrigger, SheetContent } from '@/shared/ui/sheet'
+import { Sheet, SheetTrigger, SheetContent, SheetTitle } from '@/shared/ui/sheet'
 import { Sidebar } from '@/shared/ui/Sidebar'
 import { MobileNav } from '@/shared/ui/MobileNav'
+import { ResizeHandle } from '@/shared/ui/ResizeHandle'
 import { VaultIndicator } from '@/features/encryption/ui/VaultIndicator'
 import { useUiStore } from '@/features/settings/model/ui-store'
+import { useResizable } from '@/shared/lib/use-resizable'
 
 function ProtectedLayout() {
   const { t } = useTranslation('common')
   const sidebarOpen = useUiStore((s) => s.sidebarOpen)
   const setSidebarOpen = useUiStore((s) => s.setSidebarOpen)
+  const sidebarWidth = useUiStore((s) => s.sidebarWidth)
+  const setSidebarWidth = useUiStore((s) => s.setSidebarWidth)
+  const {
+    width: currentSidebarWidth,
+    isDragging,
+    handleProps,
+  } = useResizable({
+    storedWidth: sidebarWidth,
+    onWidthChange: setSidebarWidth,
+  })
 
   return (
     <div className="text-foreground bg-background flex min-h-screen">
       {/* Desktop sidebar */}
-      <aside className="bg-sidebar text-sidebar-foreground border-sidebar-border hidden w-60 flex-shrink-0 flex-col border-r md:flex">
+      <aside
+        className="bg-sidebar text-sidebar-foreground border-sidebar-border hidden flex-shrink-0 flex-col border-r md:flex"
+        style={{ width: `${currentSidebarWidth}px` }}
+      >
         <Sidebar />
       </aside>
+      <ResizeHandle isDragging={isDragging} handleProps={handleProps} />
 
       {/* Right column: header + main */}
       <div className="flex min-w-0 flex-1 flex-col">
@@ -34,6 +50,7 @@ function ProtectedLayout() {
                 <Menu className="size-5" />
               </SheetTrigger>
               <SheetContent side="left" showCloseButton={false} className="bg-sidebar text-sidebar-foreground w-60 p-0">
+                <SheetTitle className="sr-only">{t('nav.menu')}</SheetTitle>
                 <Sidebar onClose={() => setSidebarOpen(false)} />
               </SheetContent>
             </Sheet>

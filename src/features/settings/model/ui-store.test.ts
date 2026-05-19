@@ -3,13 +3,14 @@ import { useUiStore } from './ui-store'
 
 describe('ui-store', () => {
   beforeEach(() => {
-    useUiStore.setState({ sidebarOpen: false, activeField: null })
+    useUiStore.setState({ sidebarOpen: false, activeField: null, sidebarWidth: 240 })
   })
 
-  it('initializes with sidebarOpen false and activeField null', () => {
+  it('initializes with sidebarOpen false, activeField null, sidebarWidth 240', () => {
     const state = useUiStore.getState()
     expect(state.sidebarOpen).toBe(false)
     expect(state.activeField).toBeNull()
+    expect(state.sidebarWidth).toBe(240)
   })
 
   it('toggleSidebar flips sidebarOpen', () => {
@@ -37,5 +38,13 @@ describe('ui-store', () => {
 
     useUiStore.getState().setActiveField(null)
     expect(useUiStore.getState().activeField).toBeNull()
+  })
+
+  it('setSidebarWidth updates sidebarWidth', () => {
+    useUiStore.getState().setSidebarWidth(300)
+    expect(useUiStore.getState().sidebarWidth).toBe(300)
+
+    useUiStore.getState().setSidebarWidth(200)
+    expect(useUiStore.getState().sidebarWidth).toBe(200)
   })
 })

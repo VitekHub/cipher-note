@@ -35,6 +35,7 @@ afterEach(() => {
   useUiStore.setState({
     sidebarOpen: false,
     activeField: null,
+    sidebarWidth: 240,
   })
 })
 
