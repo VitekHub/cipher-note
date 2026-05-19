@@ -468,13 +468,16 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 
 **Code:**
 - `src/app/layouts/ProtectedLayout.tsx`:
-  - Desktop: fixed sidebar (240px) + header + scrollable main content
-  - Mobile: bottom navigation bar, collapsible hamburger menu
+  - Desktop: resizable sidebar (default 240px, range 150–1000px, persisted to localStorage) + header + scrollable main content
+  - Mobile: bottom navigation bar, collapsible hamburger menu (fixed 240px Sheet, not resizable)
   - Sidebar: app logo, nav links (Dashboard, Settings), user info, lock vault button, language switcher
   - Header: page title, vault lock/unlock indicator
 - `src/shared/ui/AppLogo.tsx`
 - `src/shared/ui/Sidebar.tsx` — responsive sidebar component, shared between desktop aside and mobile Sheet overlay, with optional `onClose` prop for closing the Sheet on navigation
 - `src/shared/ui/MobileNav.tsx` — bottom navigation for mobile with vault toggle center button
+- `src/shared/ui/ResizeHandle.tsx` — thin drag handle between sidebar and main content on desktop, 2×3 dot matrix grip indicator with hover/drag accent colors, hidden on mobile
+- `src/shared/lib/use-resizable.ts` — custom hook managing drag resize logic: local state for smooth 60fps dragging, commits final width to Zustand store on release, pointer events for unified mouse+touch support
+- `src/features/settings/model/ui-store.ts` — added `sidebarWidth: number` (default 240) and `setSidebarWidth` action, persisted to localStorage via `partialize`
 - `src/features/encryption/ui/VaultIndicator.tsx` — shows locked/unlocked state in header
 - Use shadcn `Sheet` for mobile sidebar overlay and `Separator` for sidebar section dividers
 - Use existing `NavLink` component with lucide icons for nav items (not `NavigationMenu` — only 2 nav items, simpler approach)
@@ -485,6 +488,10 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 - Component test: mobile nav renders dashboard/settings items and vault toggle
 - Component test: vault indicator shows "locked" state by default and "unlocked" when store changes
 - Component test: layout renders vault indicator and hamburger menu button
+- Component test: desktop sidebar uses dynamic width from store
+- Component test: resize handle renders with role="separator"
+- Unit test: useResizable hook — initial width, clamping, drag state, commit on release, cleanup
+- Unit test: UI store — sidebarWidth state and setSidebarWidth action
 
 ---
 

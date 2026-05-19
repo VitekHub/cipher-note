@@ -138,12 +138,16 @@ See `IMPLEMENTATION-PLAN.md` for the full 36-step plan.
 - Test setup resets auth store with `isRestoringSession: false` in `afterEach`
 
 ### Dashboard Layout (Step 9)
-- ProtectedLayout uses `flex` container: desktop sidebar (240px) + right column (header + main)
+- ProtectedLayout uses `flex` container: resizable desktop sidebar + `ResizeHandle` + right column (header + main)
+- Desktop sidebar width is dynamic (default 240px, range 150–1000px), persisted to localStorage via `useUiStore.sidebarWidth`
+- `useResizable` hook (`src/shared/lib/use-resizable.ts`): manages drag resize with pointer events, local state for 60fps dragging, commits to store on release
+- `ResizeHandle` (`src/shared/ui/ResizeHandle.tsx`): 2×3 dot matrix grip indicator, hidden on mobile, hover/drag accent colors
+- Mobile sidebar: fixed 240px Sheet overlay, not resizable
 - Sidebar component (`src/shared/ui/Sidebar.tsx`) is shared between desktop `<aside>` and mobile `Sheet` overlay
 - Mobile: hamburger menu opens Sheet from left, fixed bottom nav (`MobileNav.tsx`) with Dashboard/Settings + vault toggle
 - `AppLogo.tsx`: Zap icon + app name, uses `text-sidebar-primary` for accent color
 - `VaultIndicator.tsx` (in `features/encryption/ui/`): display-only header component, reads `isVaultLocked` from crypto store
 - Sheet open state bound to `useUiStore.sidebarOpen` / `setSidebarOpen`
 - Main content gets `pb-20 md:pb-6` to clear mobile bottom nav
-- Test setup also resets `useCryptoStore` and `useUiStore` in `afterEach`
+- Test setup also resets `useCryptoStore` and `useUiStore` (including `sidebarWidth: 240`) in `afterEach`
 - Tests mock `@tanstack/react-router` for components using `NavLink`/`Link`
