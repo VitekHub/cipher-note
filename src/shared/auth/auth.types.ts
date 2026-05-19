@@ -1,10 +1,12 @@
 import type { User, UserSession } from '@/shared/types/entities/user.types'
 
+/** Result of a successful authentication operation. */
 export interface AuthResult {
   user: User
   session: UserSession
 }
 
+/** Adapter for authentication providers (e.g. Supabase). */
 export interface IAuthAdapter {
   login(username: string, authHash: string): Promise<AuthResult>
   logout(): Promise<void>
@@ -13,8 +15,12 @@ export interface IAuthAdapter {
   recoverPassword(username: string, recoveryData: RecoveryCredentials): Promise<void>
 }
 
+/** Credentials needed to recover a forgotten password. */
 export interface RecoveryCredentials {
+  /** BIP-39 mnemonic used to re-derive the original key salt. */
   mnemonic: string
+  /** New argon2id hash of the user's new password. */
   newPasswordAuthHash: string
+  /** New salt for re-deriving the master key. */
   newKeySalt: string
 }

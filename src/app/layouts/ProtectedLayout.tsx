@@ -1,7 +1,8 @@
-import { Link, useNavigate, Outlet } from '@tanstack/react-router'
+import { useNavigate, Outlet } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/shared/ui/button'
 import { LanguageSwitcher } from '@/shared/ui/LanguageSwitcher'
+import { NavLink } from '@/shared/ui/NavLink'
 import { logoutUser } from '@/features/auth/model/auth-credentials'
 
 function ProtectedLayout() {
@@ -21,18 +22,8 @@ function ProtectedLayout() {
             <h2 className="text-lg font-semibold">{t('app.name')}</h2>
           </div>
           <nav className="flex-1 space-y-1 p-2">
-            <Link
-              to="/dashboard"
-              className="hover:bg-muted [&.active]:bg-muted flex items-center rounded-md px-3 py-2 text-sm font-medium"
-            >
-              {t('common:nav.dashboard')}
-            </Link>
-            <Link
-              to="/settings"
-              className="hover:bg-muted [&.active]:bg-muted flex items-center rounded-md px-3 py-2 text-sm font-medium"
-            >
-              {t('common:nav.settings')}
-            </Link>
+            <NavLink to="/dashboard">{t('common:nav.dashboard')}</NavLink>
+            <NavLink to="/settings">{t('common:nav.settings')}</NavLink>
           </nav>
           <div className="border-t p-4">
             <Button variant="outline" className="w-full" size="sm" onClick={handleLogout}>

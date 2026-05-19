@@ -72,6 +72,45 @@ src/
 
 Dependency direction: `routes -> features -> shared`. No cross-feature imports.
 
+### App Hierarchy
+
+```
+┌────────────┐
+│ index.html │
+└─────┬──────┘
+      ▼
+┌───────────┐
+│  main.tsx │──▶ i18n init
+│           │──▶ Tailwind CSS
+└─────┬─────┘
+      ▼
+┌───────────────────┐
+│  AppProviders     │
+│  ┌──────────────┐ │
+│  │ QueryClient  │ │
+│  │ ┌──────────┐ │ │
+│  │ │  Auth    │ │ │
+│  │ │ ┌──────┐ │ │ │
+│  │ │ │Router│ │ │ │
+│  │ │ └──┬───┘ │ │ │
+│  │ └────┬─────┘ │ │
+│  └──────┼───────┘ │
+└─────────┼─────────┘
+          ▼
+    ┌────────────┐
+    │  __root    │──▶ ThemeProvider + Toaster
+    └─────┬──────┘
+      ┌───┴───┐
+      ▼       ▼
+  _public   _authenticated
+  (guest)   (logged in)
+      │       │
+      ▼       ▼
+  /login    /dashboard
+  /register /settings
+  /recover
+```
+
 ## Project Conventions
 
 - **No barrel files (index.ts)**. Import directly by path: `import { Button } from '@/shared/ui/button'`
@@ -81,6 +120,7 @@ Dependency direction: `routes -> features -> shared`. No cross-feature imports.
 - **Each shadcn component in its own file**. No index.ts in shared/ui.
 - **Types in separate `.types.ts` files**. Keep type definitions separate from implementation.
 - **Tests are colocated with code**. `button.tsx` -> `button.test.tsx` in the same directory.
+- **File naming**. React components use PascalCase (`LoginPage.tsx`, `FormField.tsx`). Utilities, hooks, schemas, and types use kebab-case (`auth-store.ts`, `login-schema.ts`). shadcn/ui primitives stay kebab-case as generated (`button.tsx`, `card.tsx`, `skeleton.tsx`).
 
 ## Environment Variables
 
