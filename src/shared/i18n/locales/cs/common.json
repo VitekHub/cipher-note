@@ -24,6 +24,7 @@
     "logout": "Odhlásit se",
     "recover": "Obnovit účet",
     "menu": "Menu",
-    "closeMenu": "Zavřít menu"
+    "closeMenu": "Zavřít menu",
+    "mainNav": "Hlavní navigace"
   }
 }

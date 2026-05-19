@@ -11,7 +11,10 @@ function MobileNav() {
   const lockVault = useCryptoStore((s) => s.lockVault)
 
   return (
-    <nav className="border-sidebar-border bg-sidebar text-sidebar-foreground fixed right-0 bottom-0 left-0 z-40 border-t md:hidden">
+    <nav
+      aria-label={t('common:nav.mainNav')}
+      className="border-sidebar-border bg-sidebar text-sidebar-foreground fixed right-0 bottom-0 left-0 z-40 border-t md:hidden"
+    >
       <div className="flex items-center justify-around pb-[env(safe-area-inset-bottom)]">
         <NavLink
           to="/dashboard"

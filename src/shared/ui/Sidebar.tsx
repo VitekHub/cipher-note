@@ -53,7 +53,7 @@ function Sidebar({ onClose, className }: SidebarProps) {
       <Separator />
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-1 p-2">
+      <nav aria-label={t('common:nav.mainNav')} className="flex-1 space-y-1 p-2">
         <NavLink to="/dashboard" onClick={handleNavClick} className="flex items-center gap-3">
           <LayoutDashboard className="size-4" />
           <span>{t('common:nav.dashboard')}</span>

@@ -7,6 +7,7 @@ import { tanstackRouter } from "@tanstack/router-plugin/vite"
 import { defineConfig } from "vite"
 
 const cipherNoteIconPath = path.resolve(__dirname, "src/shared/assets/cipher-note-icon.svg")
+const cipherNoteIconSource = readFileSync(cipherNoteIconPath, "utf-8")
 
 export default defineConfig({
   plugins: [
@@ -24,7 +25,7 @@ export default defineConfig({
         server.middlewares.use((req, res, next) => {
           if (req.url === "/favicon.svg") {
             res.setHeader("Content-Type", "image/svg+xml")
-            res.end(readFileSync(cipherNoteIconPath))
+            res.end(cipherNoteIconSource)
             return
           }
           next()
@@ -34,7 +35,7 @@ export default defineConfig({
         this.emitFile({
           type: "asset",
           fileName: "favicon.svg",
-          source: readFileSync(cipherNoteIconPath, "utf-8"),
+          source: cipherNoteIconSource,
         })
       },
     },

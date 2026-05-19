@@ -1,5 +1,5 @@
-import { cn } from '@/shared/lib/utils'
 import iconRaw from '@/shared/assets/cipher-note-icon.svg?raw'
+import { cn } from '@/shared/lib/utils'
 
 function CipherNoteIcon({ className }: { className?: string }) {
   return (

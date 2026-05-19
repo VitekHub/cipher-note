@@ -24,6 +24,7 @@
     "logout": "Log out",
     "recover": "Recover account",
     "menu": "Menu",
-    "closeMenu": "Close menu"
+    "closeMenu": "Close menu",
+    "mainNav": "Main navigation"
   }
 }

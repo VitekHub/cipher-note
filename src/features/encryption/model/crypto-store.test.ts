@@ -1,8 +1,14 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import { useCryptoStore, selectFieldKey } from './crypto-store'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { useCryptoStore, selectFieldKey, setQueryClient } from './crypto-store'
+
+const mockRemoveQueries = vi.fn()
+const mockQueryClient = { removeQueries: mockRemoveQueries } as unknown as import('@tanstack/react-query').QueryClient
+
+setQueryClient(mockQueryClient)
 
 describe('crypto-store', () => {
   beforeEach(() => {
+    mockRemoveQueries.mockClear()
     useCryptoStore.getState().lockVault()
   })
 
@@ -80,5 +86,10 @@ describe('crypto-store', () => {
     const time1 = useCryptoStore.getState().lastActivity
 
     expect(time1).toBeGreaterThan(0)
+  })
+
+  it('lockVault purges field query cache', () => {
+    useCryptoStore.getState().lockVault()
+    expect(mockRemoveQueries).toHaveBeenCalledWith({ queryKey: ['field'] })
   })
 })
