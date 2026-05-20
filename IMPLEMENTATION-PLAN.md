@@ -4,6 +4,10 @@
 
 Cipher Note is an end-to-end encrypted (E2EE) note-taking app where the server never sees plaintext data. Each user has three encrypted fields — note, website, email — protected by a layered key hierarchy. The password never leaves the client; instead, an Argon2id-derived hash authenticates with Supabase Auth. A 12-word BIP-39 seed phrase allows account recovery if the password is lost. The app is built as a responsive SPA with dark theme default.
 
+## No Backward Compatibility
+
+This app will never need backward compatibility with previous versions. The database is always reset on changes. Do not add migration paths, version checks, or compatibility shims for old data formats.
+
 ## Decisions Summary
 
 | Decision | Choice |
@@ -559,51 +563,55 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 
 ## Phase 4: Crypto Foundation
 
-### Step 12 — AES-256-GCM Encrypt/Decrypt
+### Step 12 — AES-256-GCM Encrypt/Decrypt ✅
 
 **Goal:** Web Crypto API wrapper for AES-256-GCM encryption and decryption of field content.
 
 **Code:**
 - `src/shared/crypto/aes-gcm.ts`:
-  - `generateIV(): Uint8Array` — generate 12-byte random IV using `crypto.getRandomValues`
-  - `encrypt(plaintext: Uint8Array, key: CryptoKey, iv?: Uint8Array): Promise<{ciphertext: Uint8Array, iv: Uint8Array}>`
-  - `decrypt(ciphertext: Uint8Array, key: CryptoKey, iv: Uint8Array): Promise<Uint8Array>`
-  - `importKey(rawKey: Uint8Array): Promise<CryptoKey>` — import raw 256-bit key as AES-GCM CryptoKey
-  - `exportKey(key: CryptoKey): Promise<Uint8Array>` — export CryptoKey to raw bytes
-  - `generateKey(): Promise<CryptoKey>` — generate random 256-bit AES-GCM key
+  - `generateIV(): Uint8Array<ArrayBuffer>` — generate 12-byte random IV using `crypto.getRandomValues`
+  - `encrypt(plaintext: Uint8Array<ArrayBuffer>, key: CryptoKey, iv?: Uint8Array<ArrayBuffer>): Promise<{ciphertext: Uint8Array<ArrayBuffer>, iv: Uint8Array<ArrayBuffer>}>`
+  - `decrypt(ciphertext: Uint8Array<ArrayBuffer>, key: CryptoKey, iv: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>>` — wraps all `crypto.subtle.decrypt` failures in `DecryptionError` (from `shared/crypto/errors`), preserving original error as `cause`
+  - `importKey(rawKey: Uint8Array<ArrayBuffer>): Promise<CryptoKey>` — validates 32-byte key length, then import as AES-GCM CryptoKey with `extractable: true`
+  - `exportKey(key: CryptoKey): Promise<Uint8Array<ArrayBuffer>>` — export CryptoKey to raw bytes
+  - `generateKey(): Promise<CryptoKey>` — generate random 256-bit AES-GCM key with `extractable: true`
 - All operations use Web Crypto API (`crypto.subtle`)
 - IV is always 12 bytes (96 bits)
 - Use `crypto.subtle.encrypt` with `{ name: 'AES-GCM', iv }` and `crypto.subtle.decrypt` similarly
+- **TypeScript 6.0 note:** All `Uint8Array` type annotations in Web Crypto function signatures must use `Uint8Array<ArrayBuffer>` (not bare `Uint8Array` which expands to `Uint8Array<ArrayBufferLike>`). The Web Crypto API expects `BufferSource` which requires `ArrayBufferView<ArrayBuffer>`, excluding `SharedArrayBuffer`. This applies to all future crypto modules that pass `Uint8Array` to `crypto.subtle` methods.
+- **Error handling:** `decrypt` wraps all failures (wrong key, wrong IV, tampered data) in `DecryptionError` from `shared/crypto/errors.ts`, passing `undefined` for the message (uses default `'crypto:errors.decryptFailed'`) and preserving the original `OperationError` as `cause`. The `DecryptionError` constructor accepts `ErrorOptions` as a second parameter to support this.
+- **`importKey` validation:** Explicitly checks `rawKey.length !== 32` and throws a descriptive error, because the Web Crypto API accepts 128-bit keys for AES-GCM (which is valid AES but wrong for our AES-256 use case).
 
 **Tests:**
 - Encrypt then decrypt returns original plaintext
 - Different IVs produce different ciphertexts for same plaintext
-- Decrypt with wrong key throws error
-- Decrypt with wrong IV throws error
-- Tampered ciphertext (modified byte) causes decrypt to throw
+- Decrypt with wrong key throws `DecryptionError`
+- Decrypt with wrong IV throws `DecryptionError`
+- Tampered ciphertext (modified byte) causes decrypt to throw `DecryptionError`
+- `DecryptionError` preserves original error as `cause`
 - Round-trip with Uint8Array of various sizes (0 bytes, 1 byte, 100 bytes, 10000 bytes)
-- `generateKey()` produces 256-bit key
+- `generateKey()` produces 256-bit (32-byte) key
 - `importKey` / `exportKey` round-trip preserves key bytes
+- `importKey` with non-32-byte key throws error
 
 ---
 
-### Step 13 — Key Wrapping/Unwrapping
+### Step 13 — Key Wrapping/Unwrapping ✅
 
 **Goal:** AES-256-GCM key wrapping with AAD for version protection and rollback detection.
 
 **Code:**
+- Extend `encrypt` and `decrypt` in the AES-GCM module with optional `aad?: Uint8Array<ArrayBuffer>` parameter (backward-compatible: callers without AAD work identically). Use `AesGcmParams` type for the algorithm object so `additionalData` is allowed. When AAD is provided, set `algorithm.additionalData = aad`
 - `src/shared/crypto/key-wrap.ts`:
-  - `wrapKey(plaintextKey: Uint8Array, wrappingKey: CryptoKey, aad: Uint8Array): Promise<WrappedKey>`
+  - `wrapKey(plaintextKey: Uint8Array<ArrayBuffer>, wrappingKey: CryptoKey, aad: Uint8Array<ArrayBuffer>): Promise<WrappedKey>`
     - Generate random 12-byte IV
-    - Encrypt `plaintextKey` with `wrappingKey` using AES-256-GCM
-    - Include `aad` in the GCM authentication (for rollback protection: aad = field_name + version)
-    - Return `{ wrappedKey: Uint8Array, iv: Uint8Array }`
-  - `unwrapKey(wrappedKey: Uint8Array, wrappingKey: CryptoKey, iv: Uint8Array, aad: Uint8Array): Promise<Uint8Array>`
-    - Decrypt `wrappedKey` with `wrappingKey` using AES-256-GCM
-    - Verify authentication tag (includes aad) — throws if version was rolled back
+    - Encrypt `plaintextKey` with `wrappingKey` using AES-256-GCM with AAD
+    - Return `{ wrappedKey, iv }`
+  - `unwrapKey(wrappedKey: Uint8Array<ArrayBuffer>, wrappingKey: CryptoKey, iv: Uint8Array<ArrayBuffer>, aad: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>>`
+    - Decrypt `wrappedKey` with `wrappingKey` using AES-256-GCM with AAD — throws `DecryptionError` on wrong key, wrong IV, wrong AAD, or tampered data
     - Return raw key bytes
-  - `encodeAAD(fieldName: string, version: number): Uint8Array` — encode field name + version as AAD bytes
-- `WrappedKey` type defined in `src/shared/types/crypto.types.ts`
+  - `encodeAAD(fieldName: string, version: number): Uint8Array<ArrayBuffer>` — length-prefixed binary encoding: `[2-byte name length BE][name UTF-8 bytes][4-byte version BE]`. Collision-free regardless of field name characters
+- `WrappedKey` type in `crypto.types.ts` uses `Uint8Array<ArrayBuffer>` (not bare `Uint8Array`) for Web Crypto compatibility
 
 **Tests:**
 - Wrap then unwrap returns original key

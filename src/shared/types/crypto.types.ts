@@ -1,6 +1,6 @@
 export interface WrappedKey {
-  wrappedKey: Uint8Array
-  iv: Uint8Array
+  wrappedKey: Uint8Array<ArrayBuffer>
+  iv: Uint8Array<ArrayBuffer>
 }
 
 export interface WrappedFieldKey extends WrappedKey {
@@ -9,14 +9,14 @@ export interface WrappedFieldKey extends WrappedKey {
 }
 
 export interface EncryptedFieldData {
-  ciphertext: Uint8Array
-  iv: Uint8Array
+  ciphertext: Uint8Array<ArrayBuffer>
+  iv: Uint8Array<ArrayBuffer>
 }
 
 export interface KeyHierarchy {
-  masterKey: Uint8Array
+  masterKey: Uint8Array<ArrayBuffer>
   kek: CryptoKey
-  signingKeySeed: Uint8Array
+  signingKeySeed: Uint8Array<ArrayBuffer>
 }
 
 export interface Argon2Params {
@@ -35,26 +35,26 @@ export const DEFAULT_ARGON2_PARAMS: Argon2Params = {
 
 export interface AuthCredentials {
   authHash: string
-  passwordKey: Uint8Array
-  authSalt: Uint8Array
-  keySalt: Uint8Array
+  passwordKey: Uint8Array<ArrayBuffer>
+  authSalt: Uint8Array<ArrayBuffer>
+  keySalt: Uint8Array<ArrayBuffer>
 }
 
 export interface LoginCredentials {
   authHash: string
-  passwordKey: Uint8Array
+  passwordKey: Uint8Array<ArrayBuffer>
 }
 
 export interface PasswordChangeResult {
   newAuthHash: string
-  newAuthSalt: Uint8Array
-  newKeySalt: Uint8Array
-  newWrappedMasterKey: Uint8Array
-  newMasterKeyIV: Uint8Array
+  newAuthSalt: Uint8Array<ArrayBuffer>
+  newKeySalt: Uint8Array<ArrayBuffer>
+  newWrappedMasterKey: Uint8Array<ArrayBuffer>
+  newMasterKeyIV: Uint8Array<ArrayBuffer>
 }
 
 export interface RecoveryData {
-  wrappedMasterKey: Uint8Array
-  recoveryIV: Uint8Array
-  recoverySalt: Uint8Array
+  wrappedMasterKey: Uint8Array<ArrayBuffer>
+  recoveryIV: Uint8Array<ArrayBuffer>
+  recoverySalt: Uint8Array<ArrayBuffer>
 }
