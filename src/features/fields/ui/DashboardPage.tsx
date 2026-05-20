@@ -6,10 +6,11 @@ import { NoteField } from '@/features/fields/ui/NoteField'
 import { WebsiteField } from '@/features/fields/ui/WebsiteField'
 import { EmailField } from '@/features/fields/ui/EmailField'
 import type { FieldName } from '@/shared/types/entities/field.types'
+import type { ReactNode } from 'react'
 
 const FIELD_NAMES: FieldName[] = ['note', 'website', 'email']
 
-function getFieldEditor(fieldName: FieldName) {
+function getFieldEditor(fieldName: FieldName): ReactNode {
   switch (fieldName) {
     case 'note':
       return <NoteField />
@@ -30,7 +31,7 @@ function DashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {FIELD_NAMES.map((fieldName) => (
           <FieldCard key={fieldName} fieldName={fieldName} isLocked={isVaultLocked}>
-            {getFieldEditor(fieldName)}
+            {() => getFieldEditor(fieldName)}
           </FieldCard>
         ))}
       </div>

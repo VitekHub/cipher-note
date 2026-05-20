@@ -1,21 +1,24 @@
-import { type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Lock } from 'lucide-react'
 
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from '@/shared/ui/card'
 import type { FieldName } from '@/shared/types/entities/field.types'
+import type { ReactNode } from 'react'
 
+// Render function avoids creating editor components when vault is locked
 interface FieldCardProps {
   fieldName: FieldName
   isLocked: boolean
-  children: ReactNode
+  children: () => ReactNode
   onUnlock?: () => void
 }
 
 function FieldCard({ fieldName, isLocked, children, onUnlock }: FieldCardProps) {
   const { t } = useTranslation('fields')
 
+  // Dynamic keys (fieldName.label, fieldName.locked, fieldName.unlock) are not
+  // discoverable by i18next-parser - managed manually in fields.json
   return (
     <Card size="sm">
       <CardHeader>
@@ -38,7 +41,7 @@ function FieldCard({ fieldName, isLocked, children, onUnlock }: FieldCardProps) 
             )}
           </div>
         ) : (
-          children
+          children()
         )}
       </CardContent>
     </Card>

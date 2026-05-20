@@ -7,7 +7,7 @@ describe('FieldCard', () => {
   it('renders locked state with lock icon and locked message', () => {
     render(
       <FieldCard fieldName="note" isLocked={true}>
-        <div>unlocked content</div>
+        {() => <div>unlocked content</div>}
       </FieldCard>,
     )
     expect(screen.getByText('Note')).toBeInTheDocument()
@@ -18,7 +18,7 @@ describe('FieldCard', () => {
   it('renders unlock button in locked state when onUnlock is provided', () => {
     render(
       <FieldCard fieldName="note" isLocked={true} onUnlock={() => {}}>
-        <div>unlocked content</div>
+        {() => <div>unlocked content</div>}
       </FieldCard>,
     )
     expect(screen.getByRole('button', { name: 'Unlock' })).toBeInTheDocument()
@@ -27,7 +27,7 @@ describe('FieldCard', () => {
   it('does not render unlock button when onUnlock is not provided', () => {
     render(
       <FieldCard fieldName="note" isLocked={true}>
-        <div>unlocked content</div>
+        {() => <div>unlocked content</div>}
       </FieldCard>,
     )
     expect(screen.queryByRole('button', { name: 'Unlock' })).not.toBeInTheDocument()
@@ -36,7 +36,7 @@ describe('FieldCard', () => {
   it('renders unlocked state with children', () => {
     render(
       <FieldCard fieldName="note" isLocked={false}>
-        <div>unlocked content</div>
+        {() => <div>unlocked content</div>}
       </FieldCard>,
     )
     expect(screen.getByText('unlocked content')).toBeInTheDocument()
@@ -46,21 +46,21 @@ describe('FieldCard', () => {
   it('renders correct i18n labels for each field name', () => {
     const { rerender } = render(
       <FieldCard fieldName="note" isLocked={true}>
-        <div>content</div>
+        {() => <div>content</div>}
       </FieldCard>,
     )
     expect(screen.getByText('Note')).toBeInTheDocument()
 
     rerender(
       <FieldCard fieldName="website" isLocked={true}>
-        <div>content</div>
+        {() => <div>content</div>}
       </FieldCard>,
     )
     expect(screen.getByText('Website')).toBeInTheDocument()
 
     rerender(
       <FieldCard fieldName="email" isLocked={true}>
-        <div>content</div>
+        {() => <div>content</div>}
       </FieldCard>,
     )
     expect(screen.getByText('Email')).toBeInTheDocument()

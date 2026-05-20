@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 function autoResize(textarea: HTMLTextAreaElement) {
@@ -16,9 +16,17 @@ function NoteField() {
     }
   }, [])
 
+  // Resize on mount so pre-filled content (edit mode) gets correct height
+  useEffect(() => {
+    if (textareaRef.current) {
+      autoResize(textareaRef.current)
+    }
+  }, [])
+
   return (
     <textarea
       ref={textareaRef}
+      aria-label={t('note.label')}
       className="bg-muted/50 border-border focus:border-ring focus:ring-ring/20 w-full resize-none rounded-md border px-3 py-2 text-sm outline-none focus:ring-2"
       placeholder={t('note.placeholder')}
       rows={6}
