@@ -4,6 +4,10 @@
 
 Cipher Note is an end-to-end encrypted note-taking app built with Vite + React + TypeScript. Each user has three encrypted fields (note, website, email) protected by a layered key hierarchy. The server never sees plaintext data.
 
+## No Backward Compatibility
+
+This app will never need backward compatibility with previous versions. The database is always reset on changes. Do not add migration paths, version checks, or compatibility shims for old data formats.
+
 ## Key Conventions
 
 ### File Organization
@@ -98,6 +102,7 @@ See `IMPLEMENTATION-PLAN.md` for the full 36-step plan.
 - Step 10 (Dashboard Page Shell + Field Components) — complete
 - Step 11 (Settings Page Shell) — complete
 - Step 12 (AES-256-GCM Encrypt/Decrypt) — complete
+- Step 13 (Key Wrapping/Unwrapping) — complete
 
 ### Implementation Notes
 

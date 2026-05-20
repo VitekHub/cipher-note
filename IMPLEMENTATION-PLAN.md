@@ -4,6 +4,10 @@
 
 Cipher Note is an end-to-end encrypted (E2EE) note-taking app where the server never sees plaintext data. Each user has three encrypted fields — note, website, email — protected by a layered key hierarchy. The password never leaves the client; instead, an Argon2id-derived hash authenticates with Supabase Auth. A 12-word BIP-39 seed phrase allows account recovery if the password is lost. The app is built as a responsive SPA with dark theme default.
 
+## No Backward Compatibility
+
+This app will never need backward compatibility with previous versions. The database is always reset on changes. Do not add migration paths, version checks, or compatibility shims for old data formats.
+
 ## Decisions Summary
 
 | Decision | Choice |
@@ -592,23 +596,22 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 
 ---
 
-### Step 13 — Key Wrapping/Unwrapping
+### Step 13 — Key Wrapping/Unwrapping ✅
 
 **Goal:** AES-256-GCM key wrapping with AAD for version protection and rollback detection.
 
 **Code:**
+- Extend `encrypt` and `decrypt` in the AES-GCM module with optional `aad?: Uint8Array<ArrayBuffer>` parameter (backward-compatible: callers without AAD work identically). Use `AesGcmParams` type for the algorithm object so `additionalData` is allowed. When AAD is provided, set `algorithm.additionalData = aad`
 - `src/shared/crypto/key-wrap.ts`:
-  - `wrapKey(plaintextKey: Uint8Array, wrappingKey: CryptoKey, aad: Uint8Array): Promise<WrappedKey>`
+  - `wrapKey(plaintextKey: Uint8Array<ArrayBuffer>, wrappingKey: CryptoKey, aad: Uint8Array<ArrayBuffer>): Promise<WrappedKey>`
     - Generate random 12-byte IV
-    - Encrypt `plaintextKey` with `wrappingKey` using AES-256-GCM
-    - Include `aad` in the GCM authentication (for rollback protection: aad = field_name + version)
-    - Return `{ wrappedKey: Uint8Array, iv: Uint8Array }`
-  - `unwrapKey(wrappedKey: Uint8Array, wrappingKey: CryptoKey, iv: Uint8Array, aad: Uint8Array): Promise<Uint8Array>`
-    - Decrypt `wrappedKey` with `wrappingKey` using AES-256-GCM
-    - Verify authentication tag (includes aad) — throws if version was rolled back
+    - Encrypt `plaintextKey` with `wrappingKey` using AES-256-GCM with AAD
+    - Return `{ wrappedKey, iv }`
+  - `unwrapKey(wrappedKey: Uint8Array<ArrayBuffer>, wrappingKey: CryptoKey, iv: Uint8Array<ArrayBuffer>, aad: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>>`
+    - Decrypt `wrappedKey` with `wrappingKey` using AES-256-GCM with AAD — throws `DecryptionError` on wrong key, wrong IV, wrong AAD, or tampered data
     - Return raw key bytes
-  - `encodeAAD(fieldName: string, version: number): Uint8Array` — encode field name + version as AAD bytes
-- `WrappedKey` type defined in `src/shared/types/crypto.types.ts`
+  - `encodeAAD(fieldName: string, version: number): Uint8Array<ArrayBuffer>` — length-prefixed binary encoding: `[2-byte name length BE][name UTF-8 bytes][4-byte version BE]`. Collision-free regardless of field name characters
+- `WrappedKey` type in `crypto.types.ts` uses `Uint8Array<ArrayBuffer>` (not bare `Uint8Array`) for Web Crypto compatibility
 
 **Tests:**
 - Wrap then unwrap returns original key

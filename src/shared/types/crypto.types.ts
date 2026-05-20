@@ -1,6 +1,6 @@
 export interface WrappedKey {
-  wrappedKey: Uint8Array
-  iv: Uint8Array
+  wrappedKey: Uint8Array<ArrayBuffer>
+  iv: Uint8Array<ArrayBuffer>
 }
 
 export interface WrappedFieldKey extends WrappedKey {

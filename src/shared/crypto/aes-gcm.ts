@@ -12,9 +12,11 @@ export async function encrypt(
   plaintext: Uint8Array<ArrayBuffer>,
   key: CryptoKey,
   iv?: Uint8Array<ArrayBuffer>,
+  aad?: Uint8Array<ArrayBuffer>,
 ): Promise<{ ciphertext: Uint8Array<ArrayBuffer>; iv: Uint8Array<ArrayBuffer> }> {
   const usedIV = iv ?? generateIV()
-  const algorithm = { name: AES_GCM_ALGORITHM, iv: usedIV }
+  const algorithm: AesGcmParams = { name: AES_GCM_ALGORITHM, iv: usedIV }
+  if (aad) algorithm.additionalData = aad
   const buffer = await crypto.subtle.encrypt(algorithm, key, plaintext)
   return { ciphertext: new Uint8Array(buffer), iv: usedIV }
 }
@@ -23,9 +25,11 @@ export async function decrypt(
   ciphertext: Uint8Array<ArrayBuffer>,
   key: CryptoKey,
   iv: Uint8Array<ArrayBuffer>,
+  aad?: Uint8Array<ArrayBuffer>,
 ): Promise<Uint8Array<ArrayBuffer>> {
   try {
-    const algorithm = { name: AES_GCM_ALGORITHM, iv }
+    const algorithm: AesGcmParams = { name: AES_GCM_ALGORITHM, iv }
+    if (aad) algorithm.additionalData = aad
     const buffer = await crypto.subtle.decrypt(algorithm, key, ciphertext)
     return new Uint8Array(buffer)
   } catch (error) {
