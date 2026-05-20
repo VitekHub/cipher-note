@@ -507,25 +507,29 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 **Goal:** Dashboard page with three encrypted field sections (UI only, no crypto yet).
 
 **Code:**
-- `src/pages/dashboard/DashboardPage.tsx`:
+- Dashboard page component (in `features/fields/ui/`):
   - Three card sections: Note, Website, Email
-  - Each card shows field name, encrypted/decrypted indicator, and last updated timestamp
-  - "Locked" state: shows placeholder text (e.g., "Unlock vault to view")
-  - "Unlocked" state: shows editable content (placeholder data for now)
+  - Each card shows field name and encrypted/decrypted indicator
+  - "Locked" state: shows lock icon + placeholder text (from i18n) + unlock button
+  - "Unlocked" state: renders the appropriate field editor via children pattern
 - `src/features/fields/ui/FieldCard.tsx`:
-  - Props: `fieldName`, `isLocked`, `lastUpdated`, `onUnlock`
-  - Locked: shows lock icon + "Unlock to view" text
-  - Unlocked: shows editable textarea (for note) or input (for website/email)
-- `src/features/fields/ui/NoteField.tsx` — textarea for note content
-- `src/features/fields/ui/WebsiteField.tsx` — input with URL validation
-- `src/features/fields/ui/EmailField.tsx` — input with email validation
-- Add i18n strings to `fields.json`
+  - Props: `fieldName`, `isLocked`, `onUnlock`, `children`
+  - Locked: shows lock icon + i18n locked message + unlock button
+  - Unlocked: renders `children` (composition pattern — parent decides which editor to show)
+- `src/features/fields/ui/NoteField.tsx` — textarea for note content with auto-resize rows
+- `src/features/fields/ui/WebsiteField.tsx` — input with type="url" and autocomplete="url"
+- `src/features/fields/ui/EmailField.tsx` — input with type="email" and autocomplete="email"
+- Route file (`src/app/routes/_authenticated.dashboard.tsx`) — thin wrapper importing DashboardPage from features
+- Add i18n strings to `fields.json` (including `unlock` key per field and `lastUpdated` with interpolation)
+- `lastUpdated` timestamp display deferred to when the data layer is wired (no data yet)
 
 **Tests:**
-- Component tests: FieldCard renders locked state
-- Component tests: FieldCard renders unlocked state with mock data
-- Component tests: each field type renders correctly
+- Component tests: FieldCard renders locked state with lock icon, locked message, and unlock button
+- Component tests: FieldCard renders unlocked state with children content
+- Component tests: FieldCard uses correct i18n labels for each field name
+- Component tests: each field type renders correctly (textarea for note, url input, email input)
 - Component test: DashboardPage renders all three field cards
+- Component test: DashboardPage shows locked state when vault is locked, unlocked state with editors when vault is unlocked
 
 ---
 

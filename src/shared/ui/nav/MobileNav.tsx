@@ -8,7 +8,12 @@ import { useCryptoStore } from '@/features/encryption/model/crypto-store'
 function MobileNav() {
   const { t } = useTranslation(['common', 'crypto'])
   const isVaultLocked = useCryptoStore((s) => s.isVaultLocked)
-  const lockVault = useCryptoStore((s) => s.lockVault)
+  const toggleVaultLock = useCryptoStore((s) => s.toggleVaultLock)
+
+  function handleVaultLock() {
+    // TEMP: flip vault locked state for manual testing (fix in Step 22)
+    toggleVaultLock()
+  }
 
   return (
     <nav
@@ -28,7 +33,7 @@ function MobileNav() {
           variant="ghost"
           size="icon"
           className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground mt-1"
-          onClick={lockVault}
+          onClick={handleVaultLock}
           aria-label={isVaultLocked ? t('crypto:vault.unlock') : t('crypto:vault.lock')}
         >
           {isVaultLocked ? <Unlock className="size-5" /> : <Lock className="size-5" />}

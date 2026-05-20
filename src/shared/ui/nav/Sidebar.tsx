@@ -22,7 +22,7 @@ function Sidebar({ onClose, className }: SidebarProps) {
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
   const isVaultLocked = useCryptoStore((s) => s.isVaultLocked)
-  const lockVault = useCryptoStore((s) => s.lockVault)
+  const toggleVaultLock = useCryptoStore((s) => s.toggleVaultLock)
 
   function handleNavClick() {
     onClose?.()
@@ -35,7 +35,8 @@ function Sidebar({ onClose, className }: SidebarProps) {
   }
 
   function handleVaultLock() {
-    lockVault()
+    // TEMP: flip vault locked state for manual testing (fix in Step 22)
+    toggleVaultLock()
   }
 
   return (

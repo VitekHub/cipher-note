@@ -14,6 +14,8 @@ interface CryptoActions {
   setKeys: (masterKey: string, kek: string, fieldKeys: Record<string, string>) => void
   lockVault: () => void
   updateActivity: () => void
+  // TEMP: flip vault locked state for manual testing (remove after Step 22)
+  toggleVaultLock: () => void
 }
 
 const selectFieldKey = (fieldName: string) => (state: CryptoState) => state.fieldKeys[fieldName] ?? null
@@ -53,6 +55,13 @@ const useCryptoStore = create<CryptoState & CryptoActions>()(
         queryClientRef?.removeQueries({ queryKey: ['field'] })
       },
       updateActivity: () => set({ lastActivity: Date.now() }, false, 'crypto/updateActivity'),
+      // TEMP: flip vault locked state for manual testing (remove after Step 22)
+      toggleVaultLock: () =>
+        set(
+          (state) => ({ isVaultLocked: !state.isVaultLocked, lastActivity: Date.now() }),
+          false,
+          'crypto/toggleVaultLock',
+        ),
     }),
     { name: 'CryptoStore' },
   ),

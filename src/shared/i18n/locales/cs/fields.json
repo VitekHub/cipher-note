@@ -2,16 +2,20 @@
   "note": {
     "label": "Poznámka",
     "placeholder": "Napište svou poznámku...",
-    "locked": "Odemkněte trezor pro zobrazení"
+    "locked": "Odemkněte trezor pro zobrazení",
+    "unlock": "Odemknout"
   },
   "website": {
     "label": "Webová stránka",
     "placeholder": "Zadejte URL webové stránky",
-    "locked": "Odemkněte trezor pro zobrazení"
+    "locked": "Odemkněte trezor pro zobrazení",
+    "unlock": "Odemknout"
   },
   "email": {
     "label": "E-mail",
     "placeholder": "Zadejte e-mailovou adresu",
-    "locked": "Odemkněte trezor pro zobrazení"
-  }
+    "locked": "Odemkněte trezor pro zobrazení",
+    "unlock": "Odemknout"
+  },
+  "lastUpdated": "Poslední aktualizace: {{date}}"
 }
