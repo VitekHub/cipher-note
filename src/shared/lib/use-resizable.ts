@@ -10,7 +10,10 @@ interface UseResizableOptions {
 interface UseResizableReturn {
   width: number
   isDragging: boolean
-  handleProps: { onPointerDown: (e: React.PointerEvent) => void }
+  handleProps: {
+    onPointerDown: (e: React.PointerEvent) => void
+    onKeyDown: (e: React.KeyboardEvent) => void
+  }
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -62,7 +65,21 @@ function useResizable({
     [width, minWidth, maxWidth, onWidthChange],
   )
 
-  return { width, isDragging, handleProps: { onPointerDown: handlePointerDown } }
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      const step = e.shiftKey ? 50 : 10
+      const delta = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : null
+      if (delta === null) return
+
+      e.preventDefault()
+      const next = clamp(width + delta, minWidth, maxWidth)
+      onWidthChange(next)
+      setLocalWidth(next)
+    },
+    [width, minWidth, maxWidth, onWidthChange],
+  )
+
+  return { width, isDragging, handleProps: { onPointerDown: handlePointerDown, onKeyDown: handleKeyDown } }
 }
 
 export { useResizable }

@@ -2,7 +2,10 @@ import { cn } from '@/shared/lib/utils'
 
 interface ResizeHandleProps {
   isDragging: boolean
-  handleProps: { onPointerDown: (e: React.PointerEvent) => void }
+  handleProps: {
+    onPointerDown: (e: React.PointerEvent) => void
+    onKeyDown: (e: React.KeyboardEvent) => void
+  }
 }
 
 function ResizeHandle({ isDragging, handleProps }: ResizeHandleProps) {
@@ -12,13 +15,13 @@ function ResizeHandle({ isDragging, handleProps }: ResizeHandleProps) {
       data-slot="resize-handle"
       className={cn(
         'group relative hidden cursor-col-resize select-none md:flex',
-        'hover:bg-sidebar-primary/20 active:bg-sidebar-primary/30',
+        'hover:bg-sidebar-primary/20 active:bg-sidebar-primary/30 focus-visible:ring-ring/50 focus-visible:ring-2 focus-visible:outline-none',
         'transition-colors duration-150',
         isDragging && 'bg-sidebar-primary/30',
       )}
       role="separator"
       aria-orientation="vertical"
-      tabIndex={-1}
+      tabIndex={0}
     >
       <div className="absolute inset-y-0 -left-1 w-3" />
       <div className="mx-[2px] flex flex-col items-center justify-center gap-[3px] self-center">

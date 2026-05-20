@@ -64,12 +64,15 @@ function DashboardSkeleton() {
           ))}
         </div>
       </aside>
-      <main className="flex-1 p-6">
-        <div className="space-y-4">
-          <Skeleton className="h-6 w-1/4" />
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <main className="flex-1 p-6 pb-20 md:pb-6">
+        <div className="space-y-6">
+          <Skeleton className="h-8 w-1/4" />
+          <div className="grid gap-4 *:min-w-0 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 3 }, (_, i) => (
-              <Skeleton key={i} className="h-40 rounded-lg" />
+              <div key={i} className="ring-foreground/10 rounded-xl p-4 ring-1">
+                <Skeleton className="mb-3 h-4 w-1/3" />
+                <Skeleton className="h-32" />
+              </div>
             ))}
           </div>
         </div>

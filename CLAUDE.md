@@ -95,59 +95,16 @@ See `IMPLEMENTATION-PLAN.md` for the full 36-step plan.
 - Step 7 (Auth UI: Register + Login Pages) — complete
 - Step 8 (Auth State + Protected Routes) — complete
 - Step 9 (Dashboard Layout — Responsive) — complete
+- Step 10 (Dashboard Page Shell + Field Components) — complete
 
-### Router Setup (Step 3)
-- TanStack Router with file-based routing (`@tanstack/router-plugin` + `autoCodeSplitting`)
-- Route files in `src/app/routes/` using `createFileRoute`
-- Auto-generated `src/app/routeTree.gen.ts` (committed to git)
-- Pathless layout routes: `_public` (PublicLayout) and `_authenticated` (ProtectedLayout + auth guard)
-- Auth guards via `beforeLoad` with `AuthContext` (`isAuthenticated`, `isRestoringSession`)
-- Suspense boundaries at every route level with `PageSkeleton`, `AuthPageSkeleton`, `DashboardSkeleton`
-- Error boundary with `CryptoError`, `DecryptionError`, `CorruptedDataError` classes
-- Test setup includes i18n initialization with all locale resources
+### Implementation Notes
 
-### State Management (Step 4)
-- Zustand stores: `useAuthStore` (auth state), `useCryptoStore` (in-memory keys, hex-encoded strings), `useUiStore` (sidebar, active field)
-- TanStack Query: `QueryClientProvider` in `src/app/Providers.tsx`, exported `queryClient` for vault lock cache purging
-- Adapter interfaces: `IAuthAdapter`, `IApiAdapter`, `IRealtimeAdapter` in `shared/auth/`, `shared/api/`, `shared/realtime/`
-- Shared types: `crypto.types.ts`, `api.types.ts`, entity types (`user.types.ts`, `field.types.ts`, `key.types.ts`)
-- AuthContext reads from Zustand auth store (single source of truth) and bridges to TanStack Router context
-- Crypto store uses hex strings for keys (not Uint8Array/Map) for proper Zustand reactivity
-- UI store uses `persist` middleware for `sidebarOpen`; auth and crypto stores never persist
+Non-obvious decisions not visible from code alone:
 
-### Auth UI (Step 7)
-- Login and Register pages with react-hook-form + Zod validation + i18n
-- Page components live in `src/features/auth/ui/` (LoginPage.tsx, RegisterPage.tsx)
-- Route files in `src/app/routes/` are thin wrappers that import feature components
-- Zod schemas in `src/features/auth/model/` (register-schema.ts, login-schema.ts) use i18n keys as error messages
-- Async auth operations in `src/features/auth/model/auth-credentials.ts` (registerUser, loginUser, logoutUser)
-- Error mapping in `src/features/auth/model/auth-errors.ts` maps Supabase errors to i18n keys
-- Temporary crypto placeholder in `src/shared/crypto/derive-placeholder.ts` (SHA-256, replaced by Argon2id in Step 14)
-- Shared UI: `AuthLayout` (Card wrapper), `FormField` (Label + children + error, in `shared/ui/form/`)
-- Username validation pattern exported from `src/shared/auth/username-utils.ts`
-- Test files prefixed with `-` in `src/app/routes/` to exclude from TanStack Router route tree
-
-### Auth State + Protected Routes (Step 8)
-- Auth store has `isRestoringSession` (defaults `true`) — tracks app boot session restoration
-- `restoreSession()` in `auth-credentials.ts`: calls `getSession()` then subscribes to `onAuthStateChange`, sets `isRestoringSession = false` when done
-- `onAuthStateChange` on `IAuthAdapter`: Supabase adapter delegates to `supabase.auth.onAuthStateChange` (synchronous)
-- `InnerApp` blocks router mount with `PageSkeleton` while `isRestoringSession` is true
-- `RequireAuth` component: redirects to `/login` if not authenticated, shows skeleton if initializing
-- `GuestOnly` component: redirects to `/dashboard` if authenticated, shows skeleton if initializing
-- `reset()` does NOT touch `isRestoringSession` (logout doesn't re-trigger initialization)
-- Test setup resets auth store with `isRestoringSession: false` in `afterEach`
-
-### Dashboard Layout (Step 9)
-- ProtectedLayout uses `flex` container: resizable desktop sidebar + `ResizeHandle` + right column (header + main)
-- Desktop sidebar width is dynamic (default 240px, range 150–1000px), persisted to localStorage via `useUiStore.sidebarWidth`
-- `useResizable` hook (`src/shared/lib/use-resizable.ts`): manages drag resize with pointer events, local state for 60fps dragging, commits to store on release
-- `ResizeHandle` (`src/shared/ui/nav/ResizeHandle.tsx`): 2×3 dot matrix grip indicator, hidden on mobile, hover/drag accent colors
-- Mobile sidebar: fixed 240px Sheet overlay, not resizable
-- Sidebar component (`src/shared/ui/nav/Sidebar.tsx`) is shared between desktop `<aside>` and mobile `Sheet` overlay
-- Mobile: hamburger menu opens Sheet from left, fixed bottom nav (`MobileNav.tsx` in `shared/ui/nav/`) with Dashboard/Settings + vault toggle
-- `AppLogo.tsx` (in `shared/ui/brand/`): custom icon + app name, uses `text-sidebar-primary` for accent color
-- `VaultIndicator.tsx` (in `features/encryption/ui/`): display-only header component, reads `isVaultLocked` from crypto store
-- Sheet open state bound to `useUiStore.sidebarOpen` / `setSidebarOpen`
-- Main content gets `pb-20 md:pb-6` to clear mobile bottom nav
-- Test setup also resets `useCryptoStore` and `useUiStore` (including `sidebarWidth: 240`) in `afterEach`
-- Tests mock `@tanstack/react-router` for components using `NavLink`/`Link`
+- **Auth store `isRestoringSession`**: defaults `true`; `reset()` does NOT touch it (logout doesn't re-trigger initialization)
+- **Crypto store `toggleVaultLock`**: TEMP action that flips `isVaultLocked` — remove after Step 22 when real vault unlock is wired
+- **Test file naming**: prefix with `-` in `src/app/routes/` to exclude from TanStack Router route tree generation
+- **Test setup**: resets `useAuthStore` (with `isRestoringSession: false`), `useCryptoStore`, and `useUiStore` (including `sidebarWidth: 240`) in `afterEach`; mocks `@tanstack/react-router` for components using `NavLink`/`Link`
+- **Crypto placeholder**: `derive-placeholder.ts` uses SHA-256 — replaced by Argon2id in Step 14
+- **FieldCard children pattern**: uses render function `() => ReactNode` so editors aren't mounted when vault is locked
+- **FieldCard i18n keys**: `FIELD_I18N_KEYS` is a static record (not template literals) so i18next-parser can discover them

@@ -10,6 +10,7 @@ import {
 } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import type { ZodType } from 'zod'
+import { Loader2 } from 'lucide-react'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { AuthLayout } from '@/features/auth/ui/AuthLayout'
@@ -110,6 +111,7 @@ function AuthForm<T extends FieldValues>({
           )
         })}
         <Button type="submit" className="w-full" disabled={isSubmitting}>
+          {isSubmitting && <Loader2 className="size-4 animate-spin" />}
           {isSubmitting ? t(`${i18nPrefix}.submitting`) : t(`${i18nPrefix}.submit`)}
         </Button>
       </form>
