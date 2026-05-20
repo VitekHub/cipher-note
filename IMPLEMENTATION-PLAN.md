@@ -624,25 +624,26 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 
 ---
 
-### Step 14 — Argon2id Key Derivation
+### Step 14 — Argon2id Key Derivation ✅
 
 **Goal:** Argon2id derivation with two salts (auth + key), producing auth_hash and password_key.
 
 **Code:**
 - `src/shared/crypto/argon2id.ts`:
-  - `deriveKey(password: string, salt: Uint8Array, params?: Argon2Params): Promise<Uint8Array>`
+  - `deriveKey(password: string, salt: Uint8Array, params?: Argon2Params): Promise<Uint8Array<ArrayBuffer>>`
     - Default params: `m=47104, t=3, p=1, outputLen=32`
-    - **Lazy-loads `argon2-browser` via dynamic `import()`** — the WASM module (~200KB+) is never imported at the top level. The function checks if the module is already loaded and caches the reference for subsequent calls.
-  - `deriveAuthHash(password: string, authSalt: Uint8Array): Promise<Uint8Array>`
+    - **Delegates all derivation to a Web Worker** via `postMessage` — the main module never loads argon2-browser. Sends a `DeriveRequest` message and receives a `Result` or `Error` response back.
+  - `deriveAuthHash(password: string, authSalt: Uint8Array<ArrayBuffer>): Promise<string>`
     - Derive auth hash for Supabase Auth verification
-    - Returns 32-byte hash, encoded as hex string for Supabase Auth "password"
-  - `derivePasswordKey(password: string, keySalt: Uint8Array): Promise<Uint8Array>`
+    - Returns 64-character hex string (32 bytes encoded as hex) for Supabase Auth "password"
+  - `derivePasswordKey(password: string, keySalt: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>>`
     - Derive password key for wrapping the master key
     - Returns 32-byte key
-  - `generateSalt(): Uint8Array` — generate 16-byte random salt
+  - `generateSalt(): Uint8Array<ArrayBuffer>` — generate 16-byte random salt
 - `Argon2Params` type in `src/shared/types/crypto.types.ts`
-- **Web Worker required** — Argon2id takes ~1-2 seconds and must run off the main thread. Wrap `argon2-browser` calls in a Web Worker to avoid freezing the UI. The main thread sends `{password, salt, params}` to the worker and receives the derived key back. The Web Worker also handles the dynamic import so the WASM module is only loaded when needed.
-- Show progress indicator (spinner or loading state) during Argon2id derivation
+- Worker message types (`Argon2DeriveRequest`, `Argon2DeriveResult`, `Argon2DeriveError`, `Argon2WorkerResponse`) in shared types — used by both the main module and the worker
+- **Web Worker** (`argon2id.worker.ts`) — handles `argon2-browser` lazy-loading and Argon2id computation. The main thread sends `{password, salt, params}` to the worker and receives the derived key back. The Web Worker lazy-loads `argon2-browser` via dynamic `import()` and caches the module reference for subsequent calls.
+- `Argon2Error` class extending `CryptoError` — wraps all Argon2id derivation and Worker errors with i18n key `crypto:errors.argon2Failed`
 - **Code splitting:** Ensure `argon2-browser` is in its own Vite chunk by using dynamic `import('argon2-browser')` inside the Web Worker. This keeps the WASM binary out of the initial bundle.
 
 **Tests:**

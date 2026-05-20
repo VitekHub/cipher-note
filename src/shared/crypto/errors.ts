@@ -18,3 +18,10 @@ export class CorruptedDataError extends CryptoError {
     this.name = 'CorruptedDataError'
   }
 }
+
+export class Argon2Error extends CryptoError {
+  constructor(message = 'crypto:errors.argon2Failed', options?: ErrorOptions) {
+    super(message, options)
+    this.name = 'Argon2Error'
+  }
+}
