@@ -96,6 +96,7 @@ See `IMPLEMENTATION-PLAN.md` for the full 36-step plan.
 - Step 8 (Auth State + Protected Routes) — complete
 - Step 9 (Dashboard Layout — Responsive) — complete
 - Step 10 (Dashboard Page Shell + Field Components) — complete
+- Step 11 (Settings Page Shell) — complete
 
 ### Implementation Notes
 
@@ -108,3 +109,4 @@ Non-obvious decisions not visible from code alone:
 - **Crypto placeholder**: `derive-placeholder.ts` uses SHA-256 — replaced by Argon2id in Step 14
 - **FieldCard children pattern**: uses render function `() => ReactNode` so editors aren't mounted when vault is locked
 - **FieldCard i18n keys**: `FIELD_I18N_KEYS` is a static record (not template literals) so i18next-parser can discover them
+- **`useCurrentUser` hook**: wraps the auth store in `shared/auth/` so features can access user data without cross-feature imports

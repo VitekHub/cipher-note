@@ -2,16 +2,23 @@
   "title": "Settings",
   "security": {
     "title": "Security",
+    "description": "Manage your password and security settings.",
     "changePassword": "Change password",
     "seedPhrase": "View seed phrase",
     "keyVersions": "Key versions"
   },
   "preferences": {
     "title": "Preferences",
-    "language": "Language"
+    "description": "Language and display preferences.",
+    "language": "Language",
+    "languageName": {
+      "en": "English",
+      "cs": "Czech"
+    }
   },
   "account": {
     "title": "Account",
+    "description": "Manage your account settings.",
     "username": "Username",
     "deleteAccount": "Delete account"
   }
