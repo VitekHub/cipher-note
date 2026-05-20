@@ -6,6 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardAction } from '@/shared/u
 import type { FieldName } from '@/shared/types/entities/field.types'
 import type { ReactNode } from 'react'
 
+// Static keys so i18next-parser can discover them (template literals would not be scanned)
+const FIELD_I18N_KEYS: Record<FieldName, { label: string; locked: string; unlock: string }> = {
+  note: { label: 'note.label', locked: 'note.locked', unlock: 'note.unlock' },
+  website: { label: 'website.label', locked: 'website.locked', unlock: 'website.unlock' },
+  email: { label: 'email.label', locked: 'email.locked', unlock: 'email.unlock' },
+}
+
 // Render function avoids creating editor components when vault is locked
 interface FieldCardProps {
   fieldName: FieldName
@@ -16,13 +23,12 @@ interface FieldCardProps {
 
 function FieldCard({ fieldName, isLocked, children, onUnlock }: FieldCardProps) {
   const { t } = useTranslation('fields')
+  const keys = FIELD_I18N_KEYS[fieldName]
 
-  // Dynamic keys (fieldName.label, fieldName.locked, fieldName.unlock) are not
-  // discoverable by i18next-parser - managed manually in fields.json
   return (
     <Card size="sm">
       <CardHeader>
-        <CardTitle>{t(`${fieldName}.label`)}</CardTitle>
+        <CardTitle>{t(keys.label)}</CardTitle>
         {isLocked && (
           <CardAction>
             <Lock className="text-muted-foreground size-4" />
@@ -33,10 +39,10 @@ function FieldCard({ fieldName, isLocked, children, onUnlock }: FieldCardProps) 
         {isLocked ? (
           <div className="flex flex-col items-center gap-3 py-4">
             <Lock className="text-muted-foreground size-8" />
-            <p className="text-muted-foreground text-sm">{t(`${fieldName}.locked`)}</p>
+            <p className="text-muted-foreground text-sm">{t(keys.locked)}</p>
             {onUnlock && (
               <Button variant="outline" size="sm" onClick={onUnlock}>
-                {t(`${fieldName}.unlock`)}
+                {t(keys.unlock)}
               </Button>
             )}
           </div>

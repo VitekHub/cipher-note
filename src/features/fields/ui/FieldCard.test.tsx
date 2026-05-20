@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@/test/utils'
+import userEvent from '@testing-library/user-event'
 
 import { FieldCard } from './FieldCard'
 
@@ -16,12 +17,26 @@ describe('FieldCard', () => {
   })
 
   it('renders unlock button in locked state when onUnlock is provided', () => {
+    const onUnlock = vi.fn()
     render(
-      <FieldCard fieldName="note" isLocked={true} onUnlock={() => {}}>
+      <FieldCard fieldName="note" isLocked={true} onUnlock={onUnlock}>
         {() => <div>unlocked content</div>}
       </FieldCard>,
     )
-    expect(screen.getByRole('button', { name: 'Unlock' })).toBeInTheDocument()
+    const button = screen.getByRole('button', { name: 'Unlock' })
+    expect(button).toBeInTheDocument()
+  })
+
+  it('calls onUnlock when unlock button is clicked', async () => {
+    const onUnlock = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <FieldCard fieldName="note" isLocked={true} onUnlock={onUnlock}>
+        {() => <div>unlocked content</div>}
+      </FieldCard>,
+    )
+    await user.click(screen.getByRole('button', { name: 'Unlock' }))
+    expect(onUnlock).toHaveBeenCalledOnce()
   })
 
   it('does not render unlock button when onUnlock is not provided', () => {
