@@ -13,8 +13,8 @@ export class DecryptionError extends CryptoError {
 }
 
 export class CorruptedDataError extends CryptoError {
-  constructor(message = 'crypto:errors.corruptedData') {
-    super(message)
+  constructor(message = 'crypto:errors.corruptedData', options?: ErrorOptions) {
+    super(message, options)
     this.name = 'CorruptedDataError'
   }
 }
