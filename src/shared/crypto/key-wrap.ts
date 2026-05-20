@@ -4,6 +4,7 @@ import type { WrappedKey } from '@/shared/types/crypto.types'
 const encoder = new TextEncoder()
 
 export function encodeAAD(fieldName: string, version: number): Uint8Array<ArrayBuffer> {
+  if (version < 0) throw new Error(`Version must be non-negative, got ${version}`)
   const nameBytes = encoder.encode(fieldName)
   const result = new Uint8Array(2 + nameBytes.length + 4)
   const view = new DataView(result.buffer)

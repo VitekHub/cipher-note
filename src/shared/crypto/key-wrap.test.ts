@@ -86,4 +86,12 @@ describe('encodeAAD', () => {
   it('is deterministic for same inputs', () => {
     expect(encodeAAD('note', 1)).toEqual(encodeAAD('note', 1))
   })
+
+  it('encodes AAD as [2-byte name length BE][name UTF-8][4-byte version BE]', () => {
+    expect(encodeAAD('ab', 1)).toEqual(new Uint8Array([0, 2, 97, 98, 0, 0, 0, 1]))
+  })
+
+  it('throws on negative version', () => {
+    expect(() => encodeAAD('note', -1)).toThrow('Version must be non-negative')
+  })
 })
