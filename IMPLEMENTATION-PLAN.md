@@ -559,31 +559,36 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 
 ## Phase 4: Crypto Foundation
 
-### Step 12 — AES-256-GCM Encrypt/Decrypt
+### Step 12 — AES-256-GCM Encrypt/Decrypt ✅
 
 **Goal:** Web Crypto API wrapper for AES-256-GCM encryption and decryption of field content.
 
 **Code:**
 - `src/shared/crypto/aes-gcm.ts`:
-  - `generateIV(): Uint8Array` — generate 12-byte random IV using `crypto.getRandomValues`
-  - `encrypt(plaintext: Uint8Array, key: CryptoKey, iv?: Uint8Array): Promise<{ciphertext: Uint8Array, iv: Uint8Array}>`
-  - `decrypt(ciphertext: Uint8Array, key: CryptoKey, iv: Uint8Array): Promise<Uint8Array>`
-  - `importKey(rawKey: Uint8Array): Promise<CryptoKey>` — import raw 256-bit key as AES-GCM CryptoKey
-  - `exportKey(key: CryptoKey): Promise<Uint8Array>` — export CryptoKey to raw bytes
-  - `generateKey(): Promise<CryptoKey>` — generate random 256-bit AES-GCM key
+  - `generateIV(): Uint8Array<ArrayBuffer>` — generate 12-byte random IV using `crypto.getRandomValues`
+  - `encrypt(plaintext: Uint8Array<ArrayBuffer>, key: CryptoKey, iv?: Uint8Array<ArrayBuffer>): Promise<{ciphertext: Uint8Array<ArrayBuffer>, iv: Uint8Array<ArrayBuffer>}>`
+  - `decrypt(ciphertext: Uint8Array<ArrayBuffer>, key: CryptoKey, iv: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>>` — wraps all `crypto.subtle.decrypt` failures in `DecryptionError` (from `shared/crypto/errors`), preserving original error as `cause`
+  - `importKey(rawKey: Uint8Array<ArrayBuffer>): Promise<CryptoKey>` — validates 32-byte key length, then import as AES-GCM CryptoKey with `extractable: true`
+  - `exportKey(key: CryptoKey): Promise<Uint8Array<ArrayBuffer>>` — export CryptoKey to raw bytes
+  - `generateKey(): Promise<CryptoKey>` — generate random 256-bit AES-GCM key with `extractable: true`
 - All operations use Web Crypto API (`crypto.subtle`)
 - IV is always 12 bytes (96 bits)
 - Use `crypto.subtle.encrypt` with `{ name: 'AES-GCM', iv }` and `crypto.subtle.decrypt` similarly
+- **TypeScript 6.0 note:** All `Uint8Array` type annotations in Web Crypto function signatures must use `Uint8Array<ArrayBuffer>` (not bare `Uint8Array` which expands to `Uint8Array<ArrayBufferLike>`). The Web Crypto API expects `BufferSource` which requires `ArrayBufferView<ArrayBuffer>`, excluding `SharedArrayBuffer`. This applies to all future crypto modules that pass `Uint8Array` to `crypto.subtle` methods.
+- **Error handling:** `decrypt` wraps all failures (wrong key, wrong IV, tampered data) in `DecryptionError` from `shared/crypto/errors.ts`, passing `undefined` for the message (uses default `'crypto:errors.decryptFailed'`) and preserving the original `OperationError` as `cause`. The `DecryptionError` constructor accepts `ErrorOptions` as a second parameter to support this.
+- **`importKey` validation:** Explicitly checks `rawKey.length !== 32` and throws a descriptive error, because the Web Crypto API accepts 128-bit keys for AES-GCM (which is valid AES but wrong for our AES-256 use case).
 
 **Tests:**
 - Encrypt then decrypt returns original plaintext
 - Different IVs produce different ciphertexts for same plaintext
-- Decrypt with wrong key throws error
-- Decrypt with wrong IV throws error
-- Tampered ciphertext (modified byte) causes decrypt to throw
+- Decrypt with wrong key throws `DecryptionError`
+- Decrypt with wrong IV throws `DecryptionError`
+- Tampered ciphertext (modified byte) causes decrypt to throw `DecryptionError`
+- `DecryptionError` preserves original error as `cause`
 - Round-trip with Uint8Array of various sizes (0 bytes, 1 byte, 100 bytes, 10000 bytes)
-- `generateKey()` produces 256-bit key
+- `generateKey()` produces 256-bit (32-byte) key
 - `importKey` / `exportKey` round-trip preserves key bytes
+- `importKey` with non-32-byte key throws error
 
 ---
 

@@ -6,8 +6,8 @@ export class CryptoError extends Error {
 }
 
 export class DecryptionError extends CryptoError {
-  constructor(message = 'crypto:errors.decryptFailed') {
-    super(message)
+  constructor(message = 'crypto:errors.decryptFailed', options?: ErrorOptions) {
+    super(message, options)
     this.name = 'DecryptionError'
   }
 }

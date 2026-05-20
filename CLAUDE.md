@@ -97,6 +97,7 @@ See `IMPLEMENTATION-PLAN.md` for the full 36-step plan.
 - Step 9 (Dashboard Layout — Responsive) — complete
 - Step 10 (Dashboard Page Shell + Field Components) — complete
 - Step 11 (Settings Page Shell) — complete
+- Step 12 (AES-256-GCM Encrypt/Decrypt) — complete
 
 ### Implementation Notes
 
@@ -110,3 +111,4 @@ Non-obvious decisions not visible from code alone:
 - **FieldCard children pattern**: uses render function `() => ReactNode` so editors aren't mounted when vault is locked
 - **FieldCard i18n keys**: `FIELD_I18N_KEYS` is a static record (not template literals) so i18next-parser can discover them
 - **`useCurrentUser` hook**: wraps the auth store in `shared/auth/` so features can access user data without cross-feature imports
+- **`Uint8Array<ArrayBuffer>` for Web Crypto**: TS 6.0 made `Uint8Array` generic; bare `Uint8Array` expands to `Uint8Array<ArrayBufferLike>` which doesn't satisfy `BufferSource`. All `crypto.subtle` function signatures must use `Uint8Array<ArrayBuffer>`.
