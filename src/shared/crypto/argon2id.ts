@@ -34,13 +34,23 @@ function handleWorkerMessage(event: MessageEvent): void {
   }
 }
 
-function handleWorkerError(event: ErrorEvent): void {
-  const error = new Argon2Error(event.message || 'Worker error')
+function cleanupWorker(rejectWith: Error): void {
   for (const request of pendingRequests.values()) {
-    request.reject(error)
+    request.reject(rejectWith)
   }
   pendingRequests.clear()
+  nextRequestId = 0
+  worker?.terminate()
   worker = null
+}
+
+function handleWorkerError(event: ErrorEvent): void {
+  cleanupWorker(new Argon2Error(event.message || 'Worker error'))
+}
+
+/** Terminate the Web Worker and reject all pending requests. */
+export function terminateWorker(): void {
+  cleanupWorker(new Argon2Error('Worker terminated'))
 }
 
 /**
