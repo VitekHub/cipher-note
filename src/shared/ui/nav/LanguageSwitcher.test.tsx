@@ -29,14 +29,22 @@ describe('LanguageSwitcher', () => {
   it('switches language when clicked in compact variant', async () => {
     const user = userEvent.setup()
     render(<LanguageSwitcher variant="compact" />)
-    const button = screen.getByRole('button', { name: 'EN' })
-    await user.click(button)
+    await user.click(screen.getByRole('button', { name: 'EN' }))
+    expect(i18next.language.startsWith('cs')).toBe(true)
   })
 
   it('switches language when clicked in full variant', async () => {
     const user = userEvent.setup()
     render(<LanguageSwitcher variant="full" />)
+    await user.click(screen.getByRole('button', { name: 'Czech' }))
+    expect(i18next.language.startsWith('cs')).toBe(true)
+  })
+
+  it('marks active language with aria-current in full variant', () => {
+    render(<LanguageSwitcher variant="full" />)
+    const enButton = screen.getByRole('button', { name: 'English' })
     const csButton = screen.getByRole('button', { name: 'Czech' })
-    await user.click(csButton)
+    expect(enButton).toHaveAttribute('aria-current')
+    expect(csButton).not.toHaveAttribute('aria-current')
   })
 })

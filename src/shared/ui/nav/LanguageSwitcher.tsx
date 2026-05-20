@@ -22,6 +22,7 @@ function LanguageSwitcher({ variant = 'compact' }: LanguageSwitcherProps) {
           <Button
             key={lang.code}
             variant={currentCode === lang.code ? 'default' : 'outline'}
+            aria-current={currentCode === lang.code ? 'true' : undefined}
             size="sm"
             onClick={() => void i18n.changeLanguage(lang.code)}
           >
