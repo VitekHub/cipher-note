@@ -20,16 +20,14 @@ interface Argon2Module {
   ArgonType: { Argon2d: number; Argon2i: number; Argon2id: number }
 }
 
-// Cache the loaded argon2 default export to avoid re-importing on every call
-let argon2Default: Argon2Module | null = null
+// Cache the load promise to deduplicate concurrent calls
+let argon2Promise: Promise<Argon2Module> | null = null
 
-async function loadArgon2(): Promise<Argon2Module> {
-  if (!argon2Default) {
-    const module = await import('argon2-browser')
-    // argon2-browser is CJS with default export
-    argon2Default = module.default as Argon2Module
+function loadArgon2(): Promise<Argon2Module> {
+  if (!argon2Promise) {
+    argon2Promise = import('argon2-browser').then((m) => m.default as Argon2Module)
   }
-  return argon2Default
+  return argon2Promise
 }
 
 async function computeArgon2id(password: string, salt: Uint8Array, params: Argon2Params): Promise<Uint8Array> {
