@@ -7,7 +7,6 @@ import { Button } from '@/shared/ui/button'
 import { NavLink } from '@/shared/ui/nav/NavLink'
 import { Separator } from '@/shared/ui/separator'
 import { AppLogo } from '@/shared/ui/brand/AppLogo'
-import { LanguageSwitcher } from '@/shared/ui/nav/LanguageSwitcher'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { useCryptoStore } from '@/features/encryption/model/crypto-store'
 import { logoutUser } from '@/features/auth/model/auth-credentials'
@@ -76,11 +75,6 @@ function Sidebar({ onClose, className }: SidebarProps) {
             <span className="min-w-0 truncate">{user.username}</span>
           </div>
         )}
-
-        {/* Language switcher */}
-        <div className="flex items-center justify-between">
-          <LanguageSwitcher />
-        </div>
 
         {/* Vault lock button */}
         <Button variant="outline" size="sm" className="w-full" onClick={handleVaultLock}>

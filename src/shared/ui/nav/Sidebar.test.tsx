@@ -38,11 +38,6 @@ describe('Sidebar', () => {
     expect(screen.getByText('Cipher Note')).toBeInTheDocument()
   })
 
-  it('renders language switcher', () => {
-    render(<Sidebar />)
-    expect(screen.getByRole('button', { name: /en/i })).toBeInTheDocument()
-  })
-
   it('renders logout button', () => {
     render(<Sidebar />)
     expect(screen.getByRole('button', { name: /log out/i })).toBeInTheDocument()

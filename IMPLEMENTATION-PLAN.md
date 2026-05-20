@@ -533,24 +533,26 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 
 ---
 
-### Step 11 — Settings Page Shell
+### Step 11 — Settings Page Shell ✅
 
 **Goal:** Settings page with sections for security, preferences, and account.
 
 **Code:**
-- `src/pages/settings/SettingsPage.tsx`:
+- `src/features/settings/ui/SettingsPage.tsx`:
   - Sections: Security, Preferences, Account
   - Security section: Change Password, View Seed Phrase, Key Versions
-  - Preferences: Language selector (en/cs)
-  - Account: Username display, Delete Account button
+  - Preferences: Language selector with full variant showing language names (en/cs)
+  - Account: Username display (via shared auth hook), Delete Account button
 - `src/features/settings/ui/SecuritySection.tsx` — change password + seed phrase links
-- `src/features/settings/ui/PreferencesSection.tsx` — language switcher
+- `src/features/settings/ui/PreferencesSection.tsx` — language switcher (full variant)
 - `src/features/settings/ui/AccountSection.tsx` — account info + delete
-- Add i18n strings to `settings.json`
+- Enhance `LanguageSwitcher` with `variant` prop: `compact` (toggle button in sidebar/mobile) and `full` (button group showing language names, used in Preferences)
+- Shared `useCurrentUser` hook in `src/shared/auth/` to access current user data without cross-feature imports from auth store
+- Add i18n strings to `settings.json` (including `languageName.en/cs` for full variant labels)
 
 **Tests:**
 - Component tests: SettingsPage renders all sections
-- Component tests: language switcher changes app language
+- Component tests: language switcher changes app language (both variants)
 - Component test: security section links are present
 
 ---

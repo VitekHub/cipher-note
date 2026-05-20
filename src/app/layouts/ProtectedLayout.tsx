@@ -27,7 +27,7 @@ function ProtectedLayout() {
   })
 
   return (
-    <div className="text-foreground bg-background flex min-h-screen">
+    <div className="text-foreground bg-background flex h-screen">
       {/* Desktop sidebar */}
       <aside
         className="bg-sidebar text-sidebar-foreground border-sidebar-border hidden flex-shrink-0 flex-col border-r md:flex"

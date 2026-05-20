@@ -2,16 +2,23 @@
   "title": "Nastavení",
   "security": {
     "title": "Zabezpečení",
+    "description": "Správa hesla a nastavení zabezpečení.",
     "changePassword": "Změnit heslo",
     "seedPhrase": "Zobrazit seed frázi",
     "keyVersions": "Verze klíčů"
   },
   "preferences": {
     "title": "Předvolby",
-    "language": "Jazyk"
+    "description": "Jazyk a předvolby zobrazení.",
+    "language": "Jazyk",
+    "languageName": {
+      "en": "Angličtina",
+      "cs": "Čeština"
+    }
   },
   "account": {
     "title": "Účet",
+    "description": "Správa nastavení účtu.",
     "username": "Uživatelské jméno",
     "deleteAccount": "Smazat účet"
   }
