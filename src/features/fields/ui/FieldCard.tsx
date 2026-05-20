@@ -42,11 +42,12 @@ function FieldCard({ fieldName, isLocked, children, onUnlock, entranceIndex }: F
       </CardHeader>
       <CardContent>
         {isLocked ? (
-          <div className="flex flex-col items-center gap-3 py-4">
-            <Lock className="text-muted-foreground size-8" />
-            <p className="text-muted-foreground text-sm">{t(keys.locked)}</p>
+          <div className="relative flex flex-col items-center gap-3 overflow-hidden rounded-lg py-4">
+            <div className="bg-primary/5 absolute inset-0 [mask-image:radial-gradient(circle_at_center,black_40%,transparent_100%)]" />
+            <Lock className="text-muted-foreground/60 relative size-8" />
+            <p className="text-muted-foreground relative text-sm">{t(keys.locked)}</p>
             {onUnlock && (
-              <Button variant="outline" size="sm" onClick={onUnlock}>
+              <Button variant="outline" size="sm" onClick={onUnlock} className="relative">
                 {t(keys.unlock)}
               </Button>
             )}
