@@ -103,6 +103,7 @@ See `IMPLEMENTATION-PLAN.md` for the full 36-step plan.
 - Step 11 (Settings Page Shell) — complete
 - Step 12 (AES-256-GCM Encrypt/Decrypt) — complete
 - Step 13 (Key Wrapping/Unwrapping) — complete
+- Step 14 (Argon2id Key Derivation) — complete
 
 ### Implementation Notes
 
@@ -113,6 +114,7 @@ Non-obvious decisions not visible from code alone:
 - **Test file naming**: prefix with `-` in `src/app/routes/` to exclude from TanStack Router route tree generation
 - **Test setup**: resets `useAuthStore` (with `isRestoringSession: false`), `useCryptoStore`, and `useUiStore` (including `sidebarWidth: 240`) in `afterEach`; mocks `@tanstack/react-router` for components using `NavLink`/`Link`
 - **Crypto placeholder**: `derive-placeholder.ts` uses SHA-256 — replaced by Argon2id in Step 14
+- **Argon2id Web Worker**: `argon2id.ts` delegates all derivation to `argon2id.worker.ts` via `postMessage`. The worker lazy-loads `argon2-browser` (WASM). Tests mock the Worker constructor; actual Argon2id computation is tested in E2E (Step 36).
 - **FieldCard children pattern**: uses render function `() => ReactNode` so editors aren't mounted when vault is locked
 - **FieldCard i18n keys**: `FIELD_I18N_KEYS` is a static record (not template literals) so i18next-parser can discover them
 - **`useCurrentUser` hook**: wraps the auth store in `shared/auth/` so features can access user data without cross-feature imports

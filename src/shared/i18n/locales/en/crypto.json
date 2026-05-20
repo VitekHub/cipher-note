@@ -8,6 +8,7 @@
   "errors": {
     "decryptFailed": "Decryption failed. Your data may be corrupted.",
     "corruptedData": "Your data appears corrupted. Please contact support.",
-    "wrongPassword": "Wrong password"
+    "wrongPassword": "Wrong password",
+    "argon2Failed": "Key derivation failed. Please try again."
   }
 }

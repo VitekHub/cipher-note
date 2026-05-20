@@ -8,6 +8,7 @@
   "errors": {
     "decryptFailed": "Dešifrování selhalo. Vaše data mohou být poškozena.",
     "corruptedData": "Vaše data se zdají být poškozena. Kontaktujte prosím podporu.",
-    "wrongPassword": "Špatné heslo"
+    "wrongPassword": "Špatné heslo",
+    "argon2Failed": "Odvození klíče selhalo. Zkuste to prosím znovu."
   }
 }
