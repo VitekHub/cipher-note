@@ -73,7 +73,7 @@ function Sidebar({ onClose, className }: SidebarProps) {
         {user && (
           <div className="text-muted-foreground flex items-center gap-2 text-sm">
             <User className="size-4" />
-            <span>{user.username}</span>
+            <span className="min-w-0 truncate">{user.username}</span>
           </div>
         )}
 

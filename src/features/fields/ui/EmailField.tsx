@@ -5,7 +5,15 @@ import { Input } from '@/shared/ui/input'
 function EmailField() {
   const { t } = useTranslation('fields')
 
-  return <Input type="email" autoComplete="email" placeholder={t('email.placeholder')} />
+  return (
+    <Input
+      type="email"
+      autoComplete="email"
+      aria-label={t('email.label')}
+      spellCheck={false}
+      placeholder={t('email.placeholder')}
+    />
+  )
 }
 
 export { EmailField }

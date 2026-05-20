@@ -27,7 +27,7 @@ function NoteField() {
     <textarea
       ref={textareaRef}
       aria-label={t('note.label')}
-      className="bg-muted/50 border-border focus:border-ring focus:ring-ring/20 w-full resize-none rounded-md border px-3 py-2 text-sm outline-none focus:ring-2"
+      className="bg-muted/50 border-border focus-visible:border-ring focus-visible:ring-ring/20 w-full resize-none rounded-md border px-3 py-2 text-sm outline-none focus-visible:ring-2"
       placeholder={t('note.placeholder')}
       rows={6}
       onInput={handleInput}
