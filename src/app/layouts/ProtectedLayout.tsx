@@ -10,7 +10,7 @@ import { ResizeHandle } from '@/shared/ui/nav/ResizeHandle'
 import { VaultIndicator } from '@/features/encryption/ui/VaultIndicator'
 import { useUiStore } from '@/features/settings/model/ui-store'
 import { useResizable } from '@/shared/lib/use-resizable'
-import { logoutUser } from '@/features/auth/model/auth-credentials'
+import { logoutUser } from '@/app/flows/auth-flow'
 
 function ProtectedLayout() {
   const { t } = useTranslation('common')

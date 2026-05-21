@@ -1,5 +1,5 @@
 import { loginSchema, type LoginFormData } from '@/features/auth/model/login-schema'
-import { loginUser } from '@/features/auth/model/auth-credentials'
+import { loginUser } from '@/app/flows/auth-flow'
 import { AuthForm, type AuthFieldConfig } from '@/features/auth/ui/AuthForm'
 
 const loginFields: AuthFieldConfig<LoginFormData>[] = [

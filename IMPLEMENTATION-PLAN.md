@@ -66,7 +66,7 @@ cipher-note-react/
     app/
       Providers.tsx            # QueryClientProvider, i18n, AuthProvider
       flows/
-        registration-flow.ts   # Orchestrate: derive keys → signup → upload → store
+        auth-flow.ts            # Orchestrate: signup, login, logout, session restore
       router.tsx               # TanStack Router route tree
       ErrorBoundary.tsx       # Root error boundary with crypto error handling
       styles/
@@ -726,7 +726,7 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
     - Master key wrapping uses no AAD because the master key has no field name or version concept, unlike field key wrapping which uses AAD(fieldName, version)
     - Return `{ newAuthHash, newAuthSalt, newKeySalt, newWrappedMasterKey, newMasterKeyIV }`
 - `AuthCredentials`, `LoginCredentials`, `PasswordChangeResult` types already exist in crypto.types.ts — no changes needed
-- `derive-placeholder.ts` remains in place until Steps 19/21 replace its consumer in auth-credentials.ts
+- `derive-placeholder.ts` remains in place until Step 21 replaces its consumer in `auth-flow.ts` `loginUser`
 
 **Tests:**
 - `deriveAuthCredentials`: generates two salts, calls Argon2id with correct args, returns correct types
@@ -852,8 +852,9 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
   - `hexEncode(data: Uint8Array): string` — encode Uint8Array as hex string for Zustand storage
   - `hexDecode(hex: string): Uint8Array` — decode hex string back to Uint8Array for crypto operations
   - `zeroFill(buffer: Uint8Array): void` — securely overwrite array with zeros
-- `src/app/flows/registration-flow.ts`:
-  - `handleRegister(username: string, password: string): Promise<AuthResult & { mnemonic: string }>` — orchestrates the full registration flow: derives keys, signs up via auth adapter, uploads registration data, populates crypto store with hex-encoded keys, returns auth result with mnemonic. Sets auth store loading state. On upload failure after successful signup, attempts best-effort cleanup via `authAdapter.logout()`
+- `src/app/flows/auth-flow.ts`
+  - `signUpUser(username: string, password: string): Promise<AuthResult & { mnemonic: string }>` — orchestrates the full registration flow: derives keys, signs up via auth adapter, uploads registration data, populates crypto store with hex-encoded keys, returns auth result with mnemonic. Sets auth store loading state. On upload failure after successful signup, attempts best-effort cleanup via `authAdapter.logout()`
+  - `loginUser`, `logoutUser`, `restoreSession`, `subscribeToAuthChanges` — move from `features/auth/model/auth-credentials.ts` (and delete). These functions will be replaced by proper flow-level implementations in Steps 21–23.
 - Update `IAuthAdapter.signup` to remove `keySalt` parameter — salts are stored in the `keys` table by `supabase-registration.ts`, not in `user_metadata`
 - Fix SQL salt CHECK constraints: salt columns use `CHECK (length(...) = 32)` (16 bytes → 32 hex chars), not 64
 - Handle error cases: on any error after `deriveRegistrationKeys`, attempt best-effort cleanup via `authAdapter.logout()`
@@ -864,8 +865,8 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 - Unit: returned wrapped field keys can be unwrapped with derived KEK
 - Unit: mnemonic can unwrap master key via recovery KEK
 - Unit: `uploadRegistrationData` inserts correct hex-encoded values into correct tables
-- Unit: `handleRegister` calls signup, upload, and populates crypto store
-- Unit: `handleRegister` attempts cleanup logout on upload failure
+- Unit: `signUpUser` calls signup, upload, and populates crypto store
+- Unit: `signUpUser` attempts cleanup logout on upload failure
 
 ---
 
@@ -875,7 +876,7 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 
 **Code:**
 - Update `src/features/auth/ui/RegisterPage.tsx`:
-  - `handleRegister` returns `{ ...AuthResult, mnemonic: string }` — the flow already produces the mnemonic. `AuthForm` currently discards the return value of `onSubmit`, so Step 20 must capture the mnemonic from `handleRegister`'s return value and pass it to `MnemonicDialog`.
+  - `signUpUser` returns `{ ...AuthResult, mnemonic: string }` — the flow already produces the mnemonic. `AuthForm` currently discards the return value of `onSubmit`, so Step 20 must capture the mnemonic from `signUpUser`'s return value and pass it to `MnemonicDialog`.
   - Show Argon2id derivation progress (spinner or progress indicator)
   - On success: show mnemonic in a `<Dialog>` with:
     - 12-word mnemonic displayed in groups of 3
