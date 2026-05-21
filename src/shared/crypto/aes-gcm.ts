@@ -1,8 +1,9 @@
 import { DecryptionError } from '@/shared/crypto/errors'
+import { CRYPTO_KEY_LENGTH } from '@/shared/crypto/constants'
 
 const IV_LENGTH = 12
 const AES_GCM_ALGORITHM = 'AES-GCM'
-const AES_GCM_KEY_LENGTH = 256
+const AES_GCM_KEY_LENGTH = CRYPTO_KEY_LENGTH * 8 // 256
 
 export function generateIV(): Uint8Array<ArrayBuffer> {
   return crypto.getRandomValues(new Uint8Array(IV_LENGTH))
@@ -38,8 +39,8 @@ export async function decrypt(
 }
 
 export async function importKey(rawKey: Uint8Array<ArrayBuffer>): Promise<CryptoKey> {
-  if (rawKey.length !== AES_GCM_KEY_LENGTH / 8) {
-    throw new Error(`Invalid key length: expected ${AES_GCM_KEY_LENGTH / 8} bytes, got ${rawKey.length}`)
+  if (rawKey.length !== CRYPTO_KEY_LENGTH) {
+    throw new Error(`Invalid key length: expected ${CRYPTO_KEY_LENGTH} bytes, got ${rawKey.length}`)
   }
   return crypto.subtle.importKey('raw', rawKey, { name: AES_GCM_ALGORITHM }, true, ['encrypt', 'decrypt'])
 }

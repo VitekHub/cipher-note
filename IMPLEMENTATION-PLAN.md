@@ -657,37 +657,47 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 
 ---
 
-### Step 15 — HKDF Key Derivation + Key Hierarchy
+### Step 15 — HKDF Key Derivation + Key Hierarchy ✅
 
 **Goal:** HKDF-SHA-256 for deriving KEK and signing key seed from master key. Full key hierarchy module.
 
 **Code:**
 - `src/shared/crypto/hkdf.ts`:
-  - `deriveSubKey(masterKey: Uint8Array, info: string, length?: number): Promise<Uint8Array>`
-    - Uses Web Crypto API `crypto.subtle.deriveKey` with HKDF
+  - `deriveSubKey(masterKey: Uint8Array<ArrayBuffer>, info: string, length?: number): Promise<Uint8Array<ArrayBuffer>>`
+    - Validates masterKey is exactly 32 bytes (throws descriptive error if not)
+    - Uses Web Crypto API `crypto.subtle.deriveBits` with HKDF (not `deriveKey` — we need raw bytes because KEK bytes are later imported as an AES-GCM CryptoKey separately)
+    - Empty salt (master key is already a cryptographically random 256-bit value; HKDF uses zero-filled salt internally)
     - `info` parameter: `"wrap"` → KEK, `"sign"` → Signing Key Seed
-    - Default `length=32` (256 bits)
-  - `deriveKEK(masterKey: Uint8Array): Promise<Uint8Array>` — `deriveSubKey(masterKey, "wrap")`
-  - `deriveSigningKeySeed(masterKey: Uint8Array): Promise<Uint8Array>` — `deriveSubKey(masterKey, "sign")`
+    - Default `length=32` (256 bits), converted to bits for `deriveBits`
+  - `deriveKEK(masterKey: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>>` — `deriveSubKey(masterKey, "wrap")`
+  - `deriveSigningKeySeed(masterKey: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>>` — `deriveSubKey(masterKey, "sign")`
 - `src/shared/crypto/key-hierarchy.ts`:
-  - `generateMasterKey(): Uint8Array` — generate random 256-bit master key
-  - `generateFieldKey(): Uint8Array` — generate random 256-bit field key
-  - `deriveFullKeyHierarchy(masterKey: Uint8Array): Promise<KeyHierarchy>`
-    - Returns `{ masterKey, kek, signingKeySeed }`
-  - `wrapFieldKeys(fieldKeys: Map<string, Uint8Array>, kek: CryptoKey, versions: Map<string, number>): Promise<WrappedFieldKey[]>`
-    - Wrap all three field keys with KEK using AAD (field_name + version)
-  - `unwrapFieldKeys(wrappedKeys: WrappedFieldKey[], kek: CryptoKey): Promise<Map<string, Uint8Array>>`
-    - Unwrap all three field keys, verify AAD for each
+  - `generateMasterKey(): Uint8Array<ArrayBuffer>` — generate random 256-bit master key
+  - `generateFieldKeys(): Map<string, Uint8Array<ArrayBuffer>>` — generate all three field keys (note, website, email) at once, each 256-bit random
+  - `deriveFullKeyHierarchy(masterKey: Uint8Array<ArrayBuffer>): Promise<KeyHierarchy>`
+    - Derives KEK and signing key seed in parallel via `Promise.all`
+    - Imports raw KEK bytes as AES-GCM CryptoKey via `importKey`
+    - Returns `{ masterKey, kek: CryptoKey, signingKeySeed }`
+  - `wrapFieldKeys(fieldKeys: Map<string, Uint8Array<ArrayBuffer>>, kek: CryptoKey, versions: Map<string, number>): Promise<WrappedFieldKey[]>`
+    - Validates version presence for each field (throws if missing)
+    - Wrap all field keys with KEK using AAD (field_name + version) in parallel via `Promise.all`
+  - `unwrapFieldKeys(wrappedKeys: WrappedFieldKey[], kek: CryptoKey): Promise<Map<string, Uint8Array<ArrayBuffer>>>`
+    - Unwrap all field keys in parallel via `Promise.all`, verify AAD for each (throws DecryptionError on wrong version/key)
   - `KeyHierarchy` type in `src/shared/types/crypto.types.ts`
-- `WrappedFieldKey` type: `{ fieldName: string, version: number, wrappedKey: Uint8Array, iv: Uint8Array }`
+- `WrappedFieldKey` type: `{ fieldName: string, version: number, wrappedKey: Uint8Array<ArrayBuffer>, iv: Uint8Array<ArrayBuffer> }`
 
 **Tests:**
 - HKDF: same master key + same info → same sub-key (deterministic)
 - HKDF: same master key + different info → different sub-keys
 - HKDF: different master key + same info → different sub-keys
+- HKDF: `deriveSubKey` with empty info string produces deterministic output
+- HKDF: `deriveSubKey` throws for non-32-byte master key
 - `deriveKEK` ≠ `deriveSigningKeySeed` for same master key
+- `generateFieldKeys` returns Map with note, website, and email keys
 - Key hierarchy: generate → wrap → unwrap → verify all keys match
 - Field key wrapping: version in AAD prevents rollback (unwrap with wrong version throws)
+- `wrapFieldKeys` with empty map returns empty array
+- `unwrapFieldKeys` with empty array returns empty map
 - Full round-trip: generate master key → derive KEK → generate field keys → wrap with KEK → unwrap with KEK → decrypt field content
 
 ---
