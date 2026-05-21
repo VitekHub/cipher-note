@@ -1,37 +1,16 @@
 import { useAuthStore } from '@/features/auth/model/auth-store'
-import { useCryptoStore } from '@/features/encryption/model/crypto-store'
-import { deriveRegistrationKeys } from '@/features/encryption/model/registration'
-import { uploadRegistrationData } from '@/features/encryption/model/upload-keys'
 import { authAdapter } from '@/shared/auth/supabase-adapter'
-import { hexEncode } from '@/shared/crypto/memory'
 import { deriveCredentials } from '@/shared/crypto/derive-placeholder'
+import type { AuthResult } from '@/shared/auth/auth.types'
 
-export async function registerUser(username: string, password: string) {
+export async function signUpUser(username: string, authHash: string): Promise<AuthResult> {
   const store = useAuthStore.getState()
   store.setLoading(true)
 
   try {
-    const regResult = await deriveRegistrationKeys(password)
-    const authResult = await authAdapter.signup(username, regResult.authHash)
-    await uploadRegistrationData(regResult, authResult.user.id)
+    const authResult = await authAdapter.signup(username, authHash)
     store.setAuth(authResult.user, authResult.session)
-
-    const cryptoStore = useCryptoStore.getState()
-    cryptoStore.setKeys(
-      hexEncode(regResult.masterKey),
-      hexEncode(regResult.kek),
-      Object.fromEntries(Array.from(regResult.fieldKeys.entries()).map(([name, key]) => [name, hexEncode(key)])),
-    )
-
-    return { ...authResult, mnemonic: regResult.mnemonic }
-  } catch (error) {
-    // Best-effort cleanup: if signup succeeded but upload failed, sign out
-    try {
-      await authAdapter.logout()
-    } catch {
-      // Server signOut may fail — ignore
-    }
-    throw error
+    return authResult
   } finally {
     store.setLoading(false)
   }

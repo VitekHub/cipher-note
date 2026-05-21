@@ -65,6 +65,8 @@ cipher-note-react/
   src/
     app/
       Providers.tsx            # QueryClientProvider, i18n, AuthProvider
+      flows/
+        registration-flow.ts   # Orchestrate: derive keys → signup → upload → store
       router.tsx               # TanStack Router route tree
       ErrorBoundary.tsx       # Root error boundary with crypto error handling
       styles/
@@ -115,7 +117,7 @@ cipher-note-react/
           vault-timeout.ts     # Auto-lock after inactivity
           key-rotation.ts      # Rotate individual field keys
           multi-device.ts      # Handle key changes from other sessions
-          upload-keys.ts       # Upload wrapped keys to server
+          registration.ts      # Pure crypto: deriveRegistrationKeys
           encryption-facade.ts # Thin public API for other features to call
         ui/
           VaultUnlockDialog.tsx
@@ -163,6 +165,7 @@ cipher-note-react/
         supabase-keys.ts      # Keys CRUD (getKeys, getFieldKeys, saveWrappedKey)
         supabase-fields.ts    # Fields CRUD (getField, saveField)
         supabase-recovery.ts  # Recovery data CRUD (saveRecoveryData, getRecoveryData)
+        supabase-registration.ts # Registration data upload (uploadRegistrationData)
         # future: hono-client.ts
       auth/
         auth.types.ts         # IAuthAdapter interface
@@ -842,15 +845,16 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
     10. Export KEK CryptoKey to raw bytes (for hex-encoding into crypto store)
     11. Return all data needed to upload to server
 - `RegistrationResult` type: all wrapped keys, salts, IVs, recovery data, mnemonic. `kek` is `Uint8Array<ArrayBuffer>` (exported from CryptoKey), not `CryptoKey`
-- `src/features/encryption/model/upload-keys.ts`:
+- `src/shared/api/supabase-registration.ts`:
   - `uploadRegistrationData(data: RegistrationResult, userId: string): Promise<void>`
     - Call Supabase client directly to store: keys, field_keys, recovery (hex-encode all binary values)
 - `src/shared/crypto/memory.ts`:
   - `hexEncode(data: Uint8Array): string` — encode Uint8Array as hex string for Zustand storage
   - `hexDecode(hex: string): Uint8Array` — decode hex string back to Uint8Array for crypto operations
   - `zeroFill(buffer: Uint8Array): void` — securely overwrite array with zeros
-- Update `IAuthAdapter.signup` to remove `keySalt` parameter — salts are stored in the `keys` table by `upload-keys.ts`, not in `user_metadata`
-- Update auth operations module `registerUser` to: call `deriveRegistrationKeys`, then `authAdapter.signup(username, authHash)`, then `uploadRegistrationData`, then populate crypto store with hex-encoded keys, then return `{ ...AuthResult, mnemonic }`
+- `src/app/flows/registration-flow.ts`:
+  - `handleRegister(username: string, password: string): Promise<AuthResult & { mnemonic: string }>` — orchestrates the full registration flow: derives keys, signs up via auth adapter, uploads registration data, populates crypto store with hex-encoded keys, returns auth result with mnemonic. Sets auth store loading state. On upload failure after successful signup, attempts best-effort cleanup via `authAdapter.logout()`
+- Update `IAuthAdapter.signup` to remove `keySalt` parameter — salts are stored in the `keys` table by `supabase-registration.ts`, not in `user_metadata`
 - Fix SQL salt CHECK constraints: salt columns use `CHECK (length(...) = 32)` (16 bytes → 32 hex chars), not 64
 - Handle error cases: on any error after `deriveRegistrationKeys`, attempt best-effort cleanup via `authAdapter.logout()`
 
@@ -860,7 +864,8 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 - Unit: returned wrapped field keys can be unwrapped with derived KEK
 - Unit: mnemonic can unwrap master key via recovery KEK
 - Unit: `uploadRegistrationData` inserts correct hex-encoded values into correct tables
-- Unit: `registerUser` calls signup, upload, and populates crypto store
+- Unit: `handleRegister` calls signup, upload, and populates crypto store
+- Unit: `handleRegister` attempts cleanup logout on upload failure
 
 ---
 
@@ -869,8 +874,8 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 **Goal:** Registration page with password strength indicator and mnemonic display.
 
 **Code:**
-- Update `src/pages/register/RegisterPage.tsx`:
-  - Call `registerUser()` on form submit
+- Update `src/features/auth/ui/RegisterPage.tsx`:
+  - `handleRegister` returns `{ ...AuthResult, mnemonic: string }` — the flow already produces the mnemonic. `AuthForm` currently discards the return value of `onSubmit`, so Step 20 must capture the mnemonic from `handleRegister`'s return value and pass it to `MnemonicDialog`.
   - Show Argon2id derivation progress (spinner or progress indicator)
   - On success: show mnemonic in a `<Dialog>` with:
     - 12-word mnemonic displayed in groups of 3

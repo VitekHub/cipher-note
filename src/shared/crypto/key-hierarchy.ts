@@ -18,7 +18,7 @@
  */
 
 import { importKey } from '@/shared/crypto/aes-gcm'
-import { CRYPTO_KEY_LENGTH } from '@/shared/crypto/constants'
+import { CRYPTO_KEY_LENGTH } from '@/shared/types/crypto.types'
 import { encodeAAD, wrapKey, unwrapKey } from '@/shared/crypto/key-wrap'
 import { deriveKEK, deriveSigningKeySeed } from '@/shared/crypto/hkdf'
 import type { KeyHierarchy, WrappedFieldKey } from '@/shared/types/crypto.types'

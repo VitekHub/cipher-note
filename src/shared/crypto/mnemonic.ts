@@ -1,6 +1,6 @@
 import { deriveKey, generateSalt } from '@/shared/crypto/argon2id'
 import { importKey, encrypt, decrypt, generateIV } from '@/shared/crypto/aes-gcm'
-import { CRYPTO_KEY_LENGTH } from '@/shared/crypto/constants'
+import { CRYPTO_KEY_LENGTH } from '@/shared/types/crypto.types'
 import { MnemonicError } from '@/shared/crypto/errors'
 import type { RecoveryData } from '@/shared/types/crypto.types'
 

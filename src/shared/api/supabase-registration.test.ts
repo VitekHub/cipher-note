@@ -11,7 +11,7 @@ vi.mock('@/shared/api/supabase-client', () => {
 })
 
 import { getSupabase } from '@/shared/api/supabase-client'
-import { uploadRegistrationData } from '@/features/encryption/model/upload-keys'
+import { uploadRegistrationData } from '@/shared/api/supabase-registration'
 
 function mockBytes(length: number, fill: number): Uint8Array<ArrayBuffer> {
   return new Uint8Array(length).fill(fill) as Uint8Array<ArrayBuffer>

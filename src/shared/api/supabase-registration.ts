@@ -1,10 +1,3 @@
-/**
- * Uploads registration crypto data to Supabase.
- *
- * Converts Uint8Array values to hex strings and inserts into keys,
- * field_keys, and recovery tables. Called after successful auth signup.
- */
-
 import { getSupabase } from '@/shared/api/supabase-client'
 import { hexEncode } from '@/shared/crypto/memory'
 import type { RegistrationResult } from '@/shared/types/crypto.types'
