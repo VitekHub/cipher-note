@@ -36,7 +36,7 @@ describe('PasswordStrength', () => {
 
   it('renders 5 bar segments', () => {
     const { container } = render(<PasswordStrength password="" />)
-    const bars = container.querySelectorAll('.flex.gap-1 > div')
+    const bars = container.querySelectorAll('[data-testid="strength-bar"]')
     expect(bars.length).toBe(5)
   })
 })

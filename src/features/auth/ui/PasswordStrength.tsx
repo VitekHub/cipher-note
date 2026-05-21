@@ -15,7 +15,7 @@ interface StrengthResult {
 
 const CRITERIA_CONFIG = [
   { key: 'minLength', test: (p: string) => p.length >= 8 },
-  { key: 'maxLength', test: (p: string) => p.length >= 12 },
+  { key: 'recommendedLength', test: (p: string) => p.length >= 12 },
   { key: 'uppercase', test: (p: string) => /[A-Z]/.test(p) },
   { key: 'lowercase', test: (p: string) => /[a-z]/.test(p) },
   { key: 'digitOrSpecial', test: (p: string) => /[\d\W_]/.test(p) },
@@ -60,7 +60,11 @@ function PasswordStrength({ password }: PasswordStrengthProps) {
     <div className="space-y-2 pt-1">
       <div className="flex gap-1">
         {Array.from({ length: 5 }, (_, i) => (
-          <div key={i} className={cn('h-1.5 flex-1 rounded-full transition-colors', getBarColor(i + 1, score))} />
+          <div
+            key={i}
+            data-testid="strength-bar"
+            className={cn('h-1.5 flex-1 rounded-full transition-colors', getBarColor(i + 1, score))}
+          />
         ))}
       </div>
       <p className={cn('text-sm font-medium', getLabelColor(level))}>{t(`passwordStrength.${level}`)}</p>

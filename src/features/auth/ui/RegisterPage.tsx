@@ -21,7 +21,8 @@ function RegisterPage({ onSubmit }: RegisterPageProps) {
   const navigate = useNavigate()
 
   function handleSuccess(result: unknown) {
-    setMnemonic(result as string)
+    if (typeof result !== 'string') return
+    setMnemonic(result)
     setShowMnemonic(true)
   }
 

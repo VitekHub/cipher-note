@@ -74,7 +74,11 @@ function AuthForm<T extends FieldValues>({
     defaultValues: defaultValues as DefaultValues<T>,
   })
 
-  const watchedValues = useWatch({ control, name: watchFields }) as Record<string, unknown>
+  const watchedValues = useWatch({
+    control,
+    name: watchFields,
+    disabled: !watchFields?.length,
+  }) as Record<string, unknown>
 
   const onFormSubmit = async (data: T) => {
     try {

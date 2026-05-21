@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Copy, Download, ShieldAlert } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/ui/dialog'
 import { Button } from '@/shared/ui/button'
 import { Checkbox } from '@/shared/ui/checkbox'
 import { Label } from '@/shared/ui/label'
+import { cn } from '@/shared/lib/utils'
 import { toast } from 'sonner'
 
 interface MnemonicDialogProps {
@@ -16,12 +17,16 @@ interface MnemonicDialogProps {
 function MnemonicDialog({ open, mnemonic, onContinue }: MnemonicDialogProps) {
   const { t } = useTranslation('auth')
   const [acknowledged, setAcknowledged] = useState(false)
+  const [dismissWarning, setDismissWarning] = useState(false)
 
   const words = mnemonic ? mnemonic.trim().split(/\s+/) : []
 
   function handleOpenChange(nextOpen: boolean) {
-    // Prevent dismissal — user must acknowledge the mnemonic before continuing
-    if (!nextOpen) return
+    if (!nextOpen) {
+      setDismissWarning(true)
+      setTimeout(() => setDismissWarning(false), 1500)
+      return
+    }
   }
 
   async function handleCopy() {
@@ -40,15 +45,20 @@ function MnemonicDialog({ open, mnemonic, onContinue }: MnemonicDialogProps) {
     a.href = url
     a.download = `${t('mnemonic.downloadFilename')}.txt`
     document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    try {
+      a.click()
+    } finally {
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    }
   }
 
   function handleContinue() {
     setAcknowledged(false)
     onContinue()
   }
+
+  const handleAcknowledge = useCallback((checked: boolean | 'indeterminate') => setAcknowledged(checked === true), [])
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -58,7 +68,12 @@ function MnemonicDialog({ open, mnemonic, onContinue }: MnemonicDialogProps) {
           <DialogDescription>{t('mnemonic.description')}</DialogDescription>
         </DialogHeader>
 
-        <div className="border-destructive/30 bg-destructive/10 flex items-start gap-2 rounded-md border p-3">
+        <div
+          className={cn(
+            'border-destructive/30 bg-destructive/10 flex items-start gap-2 rounded-md border p-3 transition-shadow',
+            dismissWarning && 'shadow-destructive/40 shadow-md',
+          )}
+        >
           <ShieldAlert className="text-destructive mt-0.5 size-4 shrink-0" />
           <p className="text-destructive text-sm">{t('mnemonic.warning')}</p>
         </div>
@@ -84,11 +99,7 @@ function MnemonicDialog({ open, mnemonic, onContinue }: MnemonicDialogProps) {
         </div>
 
         <div className="flex items-start gap-2">
-          <Checkbox
-            id="mnemonic-acknowledge"
-            checked={acknowledged}
-            onCheckedChange={(checked) => setAcknowledged(checked === true)}
-          />
+          <Checkbox id="mnemonic-acknowledge" checked={acknowledged} onCheckedChange={handleAcknowledge} />
           <Label htmlFor="mnemonic-acknowledge" className="text-sm font-normal">
             {t('mnemonic.acknowledge')}
           </Label>
