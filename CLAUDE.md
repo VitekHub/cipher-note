@@ -34,7 +34,7 @@ This app will never need backward compatibility with previous versions. The data
 
 ### Crypto Security
 - NEVER import `argon2-browser` or `@scure/bip39` at the top level of any module that loads on app startup.
-- These MUST be dynamically imported: `const argon2 = await import('argon2-browser')`
+- These MUST be dynamically imported. For `argon2-browser`, use the bundled build to avoid Vite WASM loading issues: `const argon2 = await import('argon2-browser/dist/argon2-bundled.min.js')`. The default import (`argon2-browser`) tries to load a `.wasm` file which Vite cannot handle. The bundled build embeds WASM as base64 in JS. A module declaration in `src/env.d.ts` maps the bundled path to `argon2-browser` types.
 - The Vite config already has manual chunks for these modules to keep them out of the initial bundle.
 - NEVER persist crypto keys to localStorage, sessionStorage, or IndexedDB.
 - Use hex-encoded strings in Zustand stores (not Uint8Array or Map) for proper reactivity.
@@ -120,7 +120,7 @@ Non-obvious decisions not visible from code alone:
 - **Test file naming**: prefix with `-` in `src/app/routes/` to exclude from TanStack Router route tree generation
 - **Test setup**: shared setup (`src/test/setup.ts`) resets `useAuthStore` (with `isRestoringSession: false`), `useCryptoStore`, and `useUiStore` (including `sidebarWidth: 240`) in `afterEach`. Router mocking (`@tanstack/react-router`) is done per-file in each test that needs it, not centralized
 - **Crypto placeholder**: `derive-placeholder.ts` uses SHA-256 — still actively imported by `auth-flow.ts` `loginUser` as a stand-in until the real login flow is wired in (Step 21)
-- **Argon2id Web Worker**: `argon2id.ts` delegates all derivation to `argon2id.worker.ts` via `postMessage`. The worker lazy-loads `argon2-browser` (WASM). Tests mock the Worker constructor; actual Argon2id computation is tested in E2E (Step 36).
+- **Argon2id Web Worker**: `argon2id.ts` delegates all derivation to `argon2id.worker.ts` via `postMessage`. The worker lazy-loads `argon2-browser/dist/argon2-bundled.min.js` (not the default `argon2-browser` import — the default tries to load a `.wasm` file which Vite cannot handle; the bundled build embeds WASM as base64 in JS). Tests mock the Worker constructor; actual Argon2id computation is tested in E2E (Step 36).
 - **FieldCard children pattern**: uses render function `() => ReactNode` so editors aren't mounted when vault is locked
 - **FieldCard i18n keys**: `FIELD_I18N_KEYS` is a static record (not template literals) so i18next-parser can discover them
 - **`useCurrentUser` hook**: wraps the auth store in `shared/auth/` so features can access user data without cross-feature imports. This is a deliberate exception to the "shared must not import from features" rule — the hook re-exports only what other features need, keeping the dependency surface narrow.

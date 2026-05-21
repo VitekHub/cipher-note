@@ -10,7 +10,7 @@
 --   2. "alice" — a second user for cross-user RLS testing
 --
 -- Crypto value sizes (hex chars, matching CHECK constraints):
---   salts:            64 chars (32 bytes)
+--   salts:            32 chars
 --   IVs:              24 chars (12 bytes, AES-GCM standard)
 --   wrapped keys:     96 chars (48 bytes = 32 byte ciphertext + 16 byte GCM auth tag)
 --   encrypted blobs:  variable, minimum 32 chars (16 byte GCM auth tag)
@@ -84,15 +84,15 @@ ON CONFLICT (id) DO NOTHING;
 
 -- ============================================
 -- Keys for testuser
--- 32 bytes = 64 hex chars for salts
+-- 32 hex chars for salts
 -- 12 bytes = 24 hex chars for IVs
 -- 48 bytes = 96 hex chars for wrapped keys (32 byte key + 16 byte GCM tag)
 -- ============================================
 INSERT INTO public.keys (user_id, auth_salt, key_salt, wrapped_master_key, master_key_iv)
 VALUES (
   'a0eebc99-9c0b-4ef8-bb6d-6bb6513e5e0a',
-  '57f8224006f5ffe8caa77918877811a28e589325bc2f819e76efc3624bce2593',
-  'e5480adac4d241406a29a320896bef268ebcea25fe0ea378b95f2ecdac7dcb3b',
+  '57f8224006f5ffe8caa77918877811a2',
+  'e5480adac4d241406a29a320896bef26',
   '80241001ef027018028278406a4d886f766ca4cf00d011401fe8dcc40cb4af6657516cfcdfe624455c3709ab8844bf26',
   '9b89cb38693b20b0bf67c3fc'
 );
@@ -101,8 +101,8 @@ VALUES (
 INSERT INTO public.keys (user_id, auth_salt, key_salt, wrapped_master_key, master_key_iv)
 VALUES (
   'b1eebc99-9c0b-4ef8-bb6d-6bb6513e5e0b',
-  '2209418feadb8df5d56bf11984e9cd1a0089097db624fcacb72065226df6d9c2',
-  '52555a7b430c1ce5d2624e07ef49ae80b3ee0b5dfcc2936d1f4deb75ceccb601',
+  '2209418feadb8df5d56bf11984e9cd1a',
+  '52555a7b430c1ce5d2624e07ef49ae80',
   'fa63f8aee5b437fa787ca38fd93701606f05fc56ad96a565580dbf39ee6845c9f131604b8213d119b33075fd68d5dbd0',
   '2161bd83d7de15f2ea96bf6c'
 );
@@ -145,7 +145,7 @@ VALUES
 INSERT INTO public.recovery (user_id, recovery_salt, wrapped_master_key, recovery_iv)
 VALUES (
   'a0eebc99-9c0b-4ef8-bb6d-6bb6513e5e0a',
-  '677f39e619bd8cb8dfd5477b74ae4bc0abd52b87623f954eb73e179941b3d0d4',
+  '677f39e619bd8cb8dfd5477b74ae4bc0',
   '429cebd164ca2acbb6ad61b7aaf0895b23233628beb8b9970570742faef3c8eb86b3a472635e19971b2c64f739284874',
   'b8948164ce36c6742ecafac7'
 );
@@ -154,7 +154,7 @@ VALUES (
 INSERT INTO public.recovery (user_id, recovery_salt, wrapped_master_key, recovery_iv)
 VALUES (
   'b1eebc99-9c0b-4ef8-bb6d-6bb6513e5e0b',
-  '1ff63f31e36c0259f57fcd842a9128193a08fa5bbdfc38d4baba844670ca79c1',
+  '1ff63f31e36c0259f57fcd842a912819',
   '2fe9ca73258f574a68cd8dbe63e9793833c7f618608a0d72795cf02ad9bda1c905254cfffad60bb86da287e0dbf0c1c5',
   '76d190a197af06da33bc1cc8'
 );
