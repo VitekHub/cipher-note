@@ -712,10 +712,10 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
     - Generate `auth_salt` (16 bytes) and `key_salt` (16 bytes) via `generateSalt()`
     - Derive `auth_hash` and `password_key` in parallel via `Promise.all`
     - Return `{ authHash, passwordKey, authSalt, keySalt }`
-  - `deriveLoginCredentials(password: string, authSalt: Uint8Array, keySalt: Uint8Array): Promise<LoginCredentials>`
+  - `deriveLoginCredentials(password: string, authSalt: Uint8Array<ArrayBuffer>, keySalt: Uint8Array<ArrayBuffer>): Promise<LoginCredentials>`
     - Given existing salts (from server), derive both keys in parallel
     - Return `{ authHash, passwordKey }`
-  - `changePassword(oldPassword: string, newPassword: string, authSalt: Uint8Array, keySalt: Uint8Array, wrappedMasterKey: Uint8Array, masterKeyIV: Uint8Array): Promise<PasswordChangeResult>`
+  - `changePassword(oldPassword: string, newPassword: string, keySalt: Uint8Array<ArrayBuffer>, wrappedMasterKey: Uint8Array<ArrayBuffer>, masterKeyIV: Uint8Array<ArrayBuffer>): Promise<PasswordChangeResult>`
     - Derive old password key → import as CryptoKey → decrypt master key (no AAD)
     - Generate new auth_salt and key_salt
     - Derive new auth_hash and password_key in parallel

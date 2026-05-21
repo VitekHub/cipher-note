@@ -114,32 +114,37 @@ describe('split-kdf', () => {
     // Use real AES-GCM for wrapping/unwrapping since changePassword
     // composes real crypto operations on the master key.
 
+    async function wrapMasterKey(
+      masterKey: Uint8Array<ArrayBuffer>,
+      keyFill: number,
+    ): Promise<{ wrappedMasterKey: Uint8Array<ArrayBuffer>; iv: Uint8Array<ArrayBuffer> }> {
+      const wrappingKey = await importKey(mockBytes(32, keyFill))
+      const iv = generateIV()
+      const { ciphertext } = await encrypt(masterKey, wrappingKey, iv)
+      return { wrappedMasterKey: ciphertext, iv }
+    }
+
+    const OLD_KEY_FILL = 0x11
+    const NEW_KEY_FILL = 0x22
+
     it('unwraps master key with old password and re-wraps with new password', async () => {
       const masterKey = generateMasterKey()
-
-      // Mock Argon2id to return different keys for old vs new password
       vi.mocked(derivePasswordKey)
-        .mockImplementationOnce(async () => mockBytes(32, 0x11)) // old password key
-        .mockImplementationOnce(async () => mockBytes(32, 0x22)) // new password key
+        .mockImplementationOnce(async () => mockBytes(32, OLD_KEY_FILL))
+        .mockImplementationOnce(async () => mockBytes(32, NEW_KEY_FILL))
       vi.mocked(deriveAuthHash).mockResolvedValue('newhash'.padEnd(64, '0'))
 
-      // Wrap master key with old password key using real AES-GCM (no AAD)
-      const oldWrappingKey = await importKey(mockBytes(32, 0x11))
-      const oldIV = generateIV()
-      const { ciphertext: wrappedMasterKey } = await encrypt(masterKey, oldWrappingKey, oldIV)
-
-      const keySalt = mockBytes(16, 0x02)
+      const { wrappedMasterKey, iv: oldIV } = await wrapMasterKey(masterKey, OLD_KEY_FILL)
 
       const result: PasswordChangeResult = await changePassword(
         'oldPassword',
         'newPassword',
-        keySalt,
+        mockBytes(16, 0x02),
         wrappedMasterKey,
         oldIV,
       )
 
-      // Verify the re-wrapped master key can be unwrapped with the new password key
-      const newWrappingKey = await importKey(mockBytes(32, 0x22))
+      const newWrappingKey = await importKey(mockBytes(32, NEW_KEY_FILL))
       const unwrappedMasterKey = await decrypt(result.newWrappedMasterKey, newWrappingKey, result.newMasterKeyIV)
 
       expect(unwrappedMasterKey).toEqual(masterKey)
@@ -147,43 +152,31 @@ describe('split-kdf', () => {
 
     it('generates new salts that differ from old salts', async () => {
       const masterKey = generateMasterKey()
-
-      vi.mocked(derivePasswordKey).mockResolvedValue(mockBytes(32, 0x11))
+      vi.mocked(derivePasswordKey).mockResolvedValue(mockBytes(32, OLD_KEY_FILL))
       vi.mocked(deriveAuthHash).mockResolvedValue('a'.repeat(64))
 
       const newAuthSalt = mockBytes(16, 0xbb)
       const newKeySalt = mockBytes(16, 0xcc)
       vi.mocked(generateSalt).mockReturnValueOnce(newAuthSalt).mockReturnValueOnce(newKeySalt)
 
-      const oldWrappingKey = await importKey(mockBytes(32, 0x11))
-      const oldIV = generateIV()
-      const { ciphertext: wrappedMasterKey } = await encrypt(masterKey, oldWrappingKey, oldIV)
+      const { wrappedMasterKey, iv: oldIV } = await wrapMasterKey(masterKey, OLD_KEY_FILL)
 
-      const keySalt = mockBytes(16, 0x02)
+      const result = await changePassword('oldPw', 'newPw', mockBytes(16, 0x02), wrappedMasterKey, oldIV)
 
-      const result = await changePassword('oldPw', 'newPw', keySalt, wrappedMasterKey, oldIV)
-
-      expect(result.newAuthSalt).toEqual(newAuthSalt)
-      expect(result.newKeySalt).toEqual(newKeySalt)
       expect(result.newAuthSalt).toEqual(newAuthSalt)
       expect(result.newKeySalt).toEqual(newKeySalt)
     })
 
     it('returns newAuthHash from deriveAuthHash', async () => {
       const masterKey = generateMasterKey()
-
       vi.mocked(derivePasswordKey)
-        .mockImplementationOnce(async () => mockBytes(32, 0x11))
-        .mockImplementationOnce(async () => mockBytes(32, 0x22))
+        .mockImplementationOnce(async () => mockBytes(32, OLD_KEY_FILL))
+        .mockImplementationOnce(async () => mockBytes(32, NEW_KEY_FILL))
       vi.mocked(deriveAuthHash).mockResolvedValue('newauthhash00000000000000000000000000000000000000000000000')
 
-      const newAuthSalt = mockBytes(16, 0xaa)
-      const newKeySalt = mockBytes(16, 0xbb)
-      vi.mocked(generateSalt).mockReturnValueOnce(newAuthSalt).mockReturnValueOnce(newKeySalt)
+      vi.mocked(generateSalt).mockReturnValueOnce(mockBytes(16, 0xaa)).mockReturnValueOnce(mockBytes(16, 0xbb))
 
-      const oldWrappingKey = await importKey(mockBytes(32, 0x11))
-      const oldIV = generateIV()
-      const { ciphertext: wrappedMasterKey } = await encrypt(masterKey, oldWrappingKey, oldIV)
+      const { wrappedMasterKey, iv: oldIV } = await wrapMasterKey(masterKey, OLD_KEY_FILL)
 
       const result = await changePassword('oldPw', 'newPw', mockBytes(16, 0x02), wrappedMasterKey, oldIV)
 
@@ -191,16 +184,13 @@ describe('split-kdf', () => {
     })
 
     it('throws DecryptionError if old password cannot unwrap master key', async () => {
-      // Mock derivePasswordKey to return a key different from the one used to wrap
       vi.mocked(derivePasswordKey).mockResolvedValue(mockBytes(32, 0xff))
       vi.mocked(deriveAuthHash).mockResolvedValue('x'.repeat(64))
       vi.mocked(generateSalt).mockReturnValue(mockBytes(16, 0xaa))
 
       // Wrap master key with a DIFFERENT key than the mock returns
       const masterKey = generateMasterKey()
-      const realKey = await importKey(mockBytes(32, 0x11))
-      const oldIV = generateIV()
-      const { ciphertext: wrappedMasterKey } = await encrypt(masterKey, realKey, oldIV)
+      const { wrappedMasterKey, iv: oldIV } = await wrapMasterKey(masterKey, OLD_KEY_FILL)
 
       await expect(
         changePassword('wrongPassword', 'newPw', mockBytes(16, 0x02), wrappedMasterKey, oldIV),
@@ -209,16 +199,13 @@ describe('split-kdf', () => {
 
     it('calls generateSalt twice for new salts', async () => {
       const masterKey = generateMasterKey()
-
       vi.mocked(derivePasswordKey)
-        .mockImplementationOnce(async () => mockBytes(32, 0x11))
-        .mockImplementationOnce(async () => mockBytes(32, 0x22))
+        .mockImplementationOnce(async () => mockBytes(32, OLD_KEY_FILL))
+        .mockImplementationOnce(async () => mockBytes(32, NEW_KEY_FILL))
       vi.mocked(deriveAuthHash).mockResolvedValue('a'.repeat(64))
       vi.mocked(generateSalt).mockReturnValueOnce(mockBytes(16, 0xaa)).mockReturnValueOnce(mockBytes(16, 0xbb))
 
-      const oldWrappingKey = await importKey(mockBytes(32, 0x11))
-      const oldIV = generateIV()
-      const { ciphertext: wrappedMasterKey } = await encrypt(masterKey, oldWrappingKey, oldIV)
+      const { wrappedMasterKey, iv: oldIV } = await wrapMasterKey(masterKey, OLD_KEY_FILL)
 
       await changePassword('oldPw', 'newPw', mockBytes(16, 0x02), wrappedMasterKey, oldIV)
 
@@ -227,22 +214,17 @@ describe('split-kdf', () => {
 
     it('master key content is unchanged after re-wrap', async () => {
       const masterKey = generateMasterKey()
-
-      // Use different fill values so old and new keys differ
       vi.mocked(derivePasswordKey)
-        .mockImplementationOnce(async () => mockBytes(32, 0x11))
-        .mockImplementationOnce(async () => mockBytes(32, 0x22))
+        .mockImplementationOnce(async () => mockBytes(32, OLD_KEY_FILL))
+        .mockImplementationOnce(async () => mockBytes(32, NEW_KEY_FILL))
       vi.mocked(deriveAuthHash).mockResolvedValue('a'.repeat(64))
       vi.mocked(generateSalt).mockReturnValueOnce(mockBytes(16, 0xaa)).mockReturnValueOnce(mockBytes(16, 0xbb))
 
-      const oldWrappingKey = await importKey(mockBytes(32, 0x11))
-      const oldIV = generateIV()
-      const { ciphertext: wrappedMasterKey } = await encrypt(masterKey, oldWrappingKey, oldIV)
+      const { wrappedMasterKey, iv: oldIV } = await wrapMasterKey(masterKey, OLD_KEY_FILL)
 
       const result = await changePassword('oldPw', 'newPw', mockBytes(16, 0x02), wrappedMasterKey, oldIV)
 
-      // Unwrap with the new password key to verify master key is unchanged
-      const newWrappingKey = await importKey(mockBytes(32, 0x22))
+      const newWrappingKey = await importKey(mockBytes(32, NEW_KEY_FILL))
       const unwrapped = await decrypt(result.newWrappedMasterKey, newWrappingKey, result.newMasterKeyIV)
 
       expect(unwrapped).toEqual(masterKey)
