@@ -1,3 +1,11 @@
+/** System-wide cryptographic key length in bytes (256 bits). */
+export const CRYPTO_KEY_LENGTH = 32 as const
+
+/** System-wide cryptographic salt length in bytes (128 bits). */
+export const CRYPTO_SALT_LENGTH = 16 as const
+
+export const FIELD_KEY_VERSION = 1 as const
+
 export interface WrappedKey {
   wrappedKey: Uint8Array<ArrayBuffer>
   iv: Uint8Array<ArrayBuffer>
@@ -57,4 +65,18 @@ export interface RecoveryData {
   wrappedMasterKey: Uint8Array<ArrayBuffer>
   recoveryIV: Uint8Array<ArrayBuffer>
   recoverySalt: Uint8Array<ArrayBuffer>
+}
+
+export interface RegistrationResult {
+  authHash: string
+  authSalt: Uint8Array<ArrayBuffer>
+  keySalt: Uint8Array<ArrayBuffer>
+  masterKey: Uint8Array<ArrayBuffer>
+  kek: Uint8Array<ArrayBuffer>
+  fieldKeys: Map<string, Uint8Array<ArrayBuffer>>
+  wrappedMasterKey: Uint8Array<ArrayBuffer>
+  masterKeyIV: Uint8Array<ArrayBuffer>
+  wrappedFieldKeys: WrappedFieldKey[]
+  recoveryData: RecoveryData
+  mnemonic: string
 }

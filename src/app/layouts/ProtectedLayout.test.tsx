@@ -11,10 +11,6 @@ vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => vi.fn(),
 }))
 
-vi.mock('@/features/auth/model/auth-credentials', () => ({
-  logoutUser: vi.fn(),
-}))
-
 import { ProtectedLayout } from './ProtectedLayout'
 
 describe('ProtectedLayout', () => {

@@ -8,7 +8,7 @@
  * - `"sign"` info → signing key seed for integrity verification of wrapped keys
  */
 
-import { CRYPTO_KEY_LENGTH } from '@/shared/crypto/constants'
+import { CRYPTO_KEY_LENGTH } from '@/shared/types/crypto.types'
 
 const HKDF_HASH = 'SHA-256'
 

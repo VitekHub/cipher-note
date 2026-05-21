@@ -3,24 +3,12 @@ import { render, screen, waitFor } from '@/test/utils'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
 
-vi.mock('@/shared/crypto/derive-placeholder', () => ({
-  deriveCredentials: vi.fn().mockResolvedValue({
-    authHash: 'a'.repeat(64),
-    passwordKey: 'b'.repeat(64),
-    keySalt: 'c'.repeat(64),
-    authSalt: 'd'.repeat(64),
+const { mockHandleRegister } = vi.hoisted(() => ({
+  mockHandleRegister: vi.fn().mockResolvedValue({
+    user: { id: '1', username: 'newuser', createdAt: '2024-01-01' },
+    session: { accessToken: 'tok', expiresAt: 0 },
+    mnemonic: 'word0 word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11',
   }),
-}))
-
-vi.mock('@/shared/auth/supabase-adapter', () => ({
-  authAdapter: {
-    login: vi.fn(),
-    signup: vi.fn().mockResolvedValue({
-      user: { id: '1', username: 'newuser', createdAt: '2024-01-01' },
-      session: { accessToken: 'tok', expiresAt: 0 },
-    }),
-    logout: vi.fn(),
-  },
 }))
 
 vi.mock('sonner', () => ({
@@ -34,7 +22,6 @@ vi.mock('@tanstack/react-router', () => ({
 }))
 
 import { RegisterPage } from '@/features/auth/ui/RegisterPage'
-import { authAdapter } from '@/shared/auth/supabase-adapter'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { toast } from 'sonner'
 
@@ -45,7 +32,7 @@ describe('RegisterPage', () => {
   })
 
   it('renders username, password, confirm password inputs and submit button', () => {
-    render(<RegisterPage />)
+    render(<RegisterPage onSubmit={mockHandleRegister} />)
     expect(screen.getByLabelText(/username/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/confirm password/i)).toBeInTheDocument()
@@ -54,7 +41,7 @@ describe('RegisterPage', () => {
 
   it('shows validation error for short password', async () => {
     const user = userEvent.setup()
-    render(<RegisterPage />)
+    render(<RegisterPage onSubmit={mockHandleRegister} />)
 
     await user.type(screen.getByLabelText(/username/i), 'testuser')
     await user.type(screen.getByLabelText(/^password$/i), 'short')
@@ -67,7 +54,7 @@ describe('RegisterPage', () => {
 
   it('shows validation error for password mismatch', async () => {
     const user = userEvent.setup()
-    render(<RegisterPage />)
+    render(<RegisterPage onSubmit={mockHandleRegister} />)
 
     await user.type(screen.getByLabelText(/username/i), 'testuser')
     await user.type(screen.getByLabelText(/^password$/i), 'testpass123')
@@ -81,7 +68,7 @@ describe('RegisterPage', () => {
 
   it('shows validation error for invalid username pattern', async () => {
     const user = userEvent.setup()
-    render(<RegisterPage />)
+    render(<RegisterPage onSubmit={mockHandleRegister} />)
 
     await user.type(screen.getByLabelText(/username/i), 'Bad Username!')
     await user.type(screen.getByLabelText(/^password$/i), 'testpass123')
@@ -93,9 +80,9 @@ describe('RegisterPage', () => {
     })
   })
 
-  it('calls registerUser on valid form submission', async () => {
+  it('calls onSubmit on valid form submission', async () => {
     const user = userEvent.setup()
-    render(<RegisterPage />)
+    render(<RegisterPage onSubmit={mockHandleRegister} />)
 
     await user.type(screen.getByLabelText(/username/i), 'testuser')
     await user.type(screen.getByLabelText(/^password$/i), 'testpass123')
@@ -103,14 +90,14 @@ describe('RegisterPage', () => {
     await user.click(screen.getByRole('button', { name: /create account/i }))
 
     await waitFor(() => {
-      expect(authAdapter.signup).toHaveBeenCalled()
+      expect(mockHandleRegister).toHaveBeenCalledWith('testuser', 'testpass123')
     })
   })
 
   it('shows error toast on registration failure', async () => {
-    vi.mocked(authAdapter.signup).mockRejectedValueOnce(new Error('User already registered'))
+    mockHandleRegister.mockRejectedValueOnce(new Error('User already registered'))
     const user = userEvent.setup()
-    render(<RegisterPage />)
+    render(<RegisterPage onSubmit={mockHandleRegister} />)
 
     await user.type(screen.getByLabelText(/username/i), 'testuser')
     await user.type(screen.getByLabelText(/^password$/i), 'testpass123')
@@ -123,7 +110,7 @@ describe('RegisterPage', () => {
   })
 
   it('displays link to login page', () => {
-    render(<RegisterPage />)
+    render(<RegisterPage onSubmit={mockHandleRegister} />)
     expect(screen.getByText(/log in/i)).toBeInTheDocument()
   })
 })

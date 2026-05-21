@@ -10,6 +10,7 @@ import { ResizeHandle } from '@/shared/ui/nav/ResizeHandle'
 import { VaultIndicator } from '@/features/encryption/ui/VaultIndicator'
 import { useUiStore } from '@/features/settings/model/ui-store'
 import { useResizable } from '@/shared/lib/use-resizable'
+import { logoutUser } from '@/app/flows/auth-flow'
 
 function ProtectedLayout() {
   const { t } = useTranslation('common')
@@ -33,7 +34,7 @@ function ProtectedLayout() {
         className="bg-sidebar text-sidebar-foreground border-sidebar-border hidden flex-shrink-0 flex-col border-r md:flex"
         style={{ width: `${currentSidebarWidth}px` }}
       >
-        <Sidebar />
+        <Sidebar onLogout={logoutUser} />
       </aside>
       <ResizeHandle isDragging={isDragging} handleProps={handleProps} />
 
@@ -51,7 +52,7 @@ function ProtectedLayout() {
               </SheetTrigger>
               <SheetContent side="left" showCloseButton={false} className="bg-sidebar text-sidebar-foreground w-60 p-0">
                 <SheetTitle className="sr-only">{t('nav.menu')}</SheetTitle>
-                <Sidebar onClose={() => setSidebarOpen(false)} />
+                <Sidebar onClose={() => setSidebarOpen(false)} onLogout={logoutUser} />
               </SheetContent>
             </Sheet>
             <span className="text-lg font-semibold md:hidden">{t('app.name')}</span>

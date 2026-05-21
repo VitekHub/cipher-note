@@ -1,18 +1,51 @@
+import { deriveRegistrationKeys } from '@/features/encryption/model/registration'
+import { useCryptoStore } from '@/features/encryption/model/crypto-store'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { authAdapter } from '@/shared/auth/supabase-adapter'
+import { uploadRegistrationData } from '@/shared/api/supabase-registration'
 import { deriveCredentials } from '@/shared/crypto/derive-placeholder'
+import type { AuthResult } from '@/shared/auth/auth.types'
+import { hexEncode } from '@/shared/crypto/memory'
 
-export async function registerUser(username: string, password: string) {
-  const store = useAuthStore.getState()
-  store.setLoading(true)
+function encodeFieldKeysToHex(fieldKeys: Map<string, Uint8Array>): Record<string, string> {
+  const mapEntries = Array.from(fieldKeys.entries())
+  const hexEntries = mapEntries.map(([name, key]) => {
+    const hexKey = hexEncode(key)
+    return [name, hexKey]
+  })
+  return Object.fromEntries(hexEntries)
+}
+
+export async function signUpUser(username: string, password: string): Promise<AuthResult & { mnemonic: string }> {
+  const authStore = useAuthStore.getState()
+  authStore.setLoading(true)
 
   try {
-    const creds = await deriveCredentials(username, password)
-    const result = await authAdapter.signup(username, creds.authHash, creds.keySalt)
-    store.setAuth(result.user, result.session)
-    return result
+    const regResult = await deriveRegistrationKeys(password)
+    const authResult = await authAdapter.signup(username, regResult.authHash)
+
+    try {
+      await uploadRegistrationData(regResult, authResult.user.id)
+    } catch (error) {
+      // Signup succeeded but upload failed — best-effort cleanup
+      try {
+        await authAdapter.logout()
+      } catch {
+        // Server signOut may fail — ignore
+      }
+      throw error
+    }
+
+    authStore.setAuth(authResult.user, authResult.session)
+
+    const masterKeyHex = hexEncode(regResult.masterKey)
+    const kekHex = hexEncode(regResult.kek)
+    const fieldKeysHex = encodeFieldKeysToHex(regResult.fieldKeys)
+    useCryptoStore.getState().setKeys(masterKeyHex, kekHex, fieldKeysHex)
+
+    return { ...authResult, mnemonic: regResult.mnemonic }
   } finally {
-    store.setLoading(false)
+    authStore.setLoading(false)
   }
 }
 
@@ -37,7 +70,7 @@ export async function logoutUser() {
   try {
     await authAdapter.logout()
   } catch {
-    // Server signOut may fail (no session, network error) — clear local state regardless
+    // Server signOut may fail (no session, network error) - clear local state regardless
   } finally {
     store.reset()
   }

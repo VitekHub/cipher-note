@@ -23,7 +23,7 @@ class SupabaseAuthAdapter implements IAuthAdapter {
     return mapSupabaseToAuthResult(data.user, data.session)
   }
 
-  async signup(username: string, authHash: string, keySalt: string): Promise<AuthResult> {
+  async signup(username: string, authHash: string): Promise<AuthResult> {
     const email = toSupabaseEmail(username)
     const { data, error } = await getSupabase().auth.signUp({
       email,
@@ -31,7 +31,6 @@ class SupabaseAuthAdapter implements IAuthAdapter {
       options: {
         data: {
           username,
-          key_salt: keySalt,
         },
       },
     })

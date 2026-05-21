@@ -9,14 +9,14 @@ import { Separator } from '@/shared/ui/separator'
 import { AppLogo } from '@/shared/ui/brand/AppLogo'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { useCryptoStore } from '@/features/encryption/model/crypto-store'
-import { logoutUser } from '@/features/auth/model/auth-credentials'
 
 interface SidebarProps {
   onClose?: () => void
+  onLogout?: () => Promise<void>
   className?: string
 }
 
-function Sidebar({ onClose, className }: SidebarProps) {
+function Sidebar({ onClose, onLogout, className }: SidebarProps) {
   const { t } = useTranslation(['common', 'crypto'])
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
@@ -29,7 +29,7 @@ function Sidebar({ onClose, className }: SidebarProps) {
 
   async function handleLogout() {
     onClose?.()
-    await logoutUser()
+    await onLogout?.()
     navigate({ to: '/login' })
   }
 

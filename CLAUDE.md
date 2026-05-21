@@ -108,6 +108,7 @@ See `IMPLEMENTATION-PLAN.md` for the full 36-step plan.
 - Step 16 (Split KDF Module) — complete
 - Step 17 (BIP-39 Mnemonic Module) — complete
 - Step 18 (Crypto Integration Tests) — complete
+- Step 19 (Registration Crypto Flow) — complete
 
 ### Implementation Notes
 
@@ -117,15 +118,16 @@ Non-obvious decisions not visible from code alone:
 - **Crypto store `toggleVaultLock`**: TEMP action that flips `isVaultLocked` — remove after Step 22 when real vault unlock is wired
 - **Test file naming**: prefix with `-` in `src/app/routes/` to exclude from TanStack Router route tree generation
 - **Test setup**: shared setup (`src/test/setup.ts`) resets `useAuthStore` (with `isRestoringSession: false`), `useCryptoStore`, and `useUiStore` (including `sidebarWidth: 240`) in `afterEach`. Router mocking (`@tanstack/react-router`) is done per-file in each test that needs it, not centralized
-- **Crypto placeholder**: `derive-placeholder.ts` uses SHA-256 — still actively imported by `auth-credentials.ts` as a stand-in until the real Argon2id flow is wired in (Step 17+)
+- **Crypto placeholder**: `derive-placeholder.ts` uses SHA-256 — still actively imported by `auth-flow.ts` `loginUser` as a stand-in until the real login flow is wired in (Step 21)
 - **Argon2id Web Worker**: `argon2id.ts` delegates all derivation to `argon2id.worker.ts` via `postMessage`. The worker lazy-loads `argon2-browser` (WASM). Tests mock the Worker constructor; actual Argon2id computation is tested in E2E (Step 36).
 - **FieldCard children pattern**: uses render function `() => ReactNode` so editors aren't mounted when vault is locked
 - **FieldCard i18n keys**: `FIELD_I18N_KEYS` is a static record (not template literals) so i18next-parser can discover them
 - **`useCurrentUser` hook**: wraps the auth store in `shared/auth/` so features can access user data without cross-feature imports. This is a deliberate exception to the "shared must not import from features" rule — the hook re-exports only what other features need, keeping the dependency surface narrow.
 - **`Uint8Array<ArrayBuffer>` for Web Crypto**: TS 6.0 made `Uint8Array` generic; bare `Uint8Array` expands to `Uint8Array<ArrayBufferLike>` which doesn't satisfy `BufferSource`. All `crypto.subtle` function signatures must use `Uint8Array<ArrayBuffer>`.
 - **Split KDF master key wrapping uses no AAD**: `changePassword` in `split-kdf.ts` uses `encrypt`/`decrypt` from `aes-gcm.ts` directly (no AAD), not `wrapKey`/`unwrapKey` from `key-wrap.ts`. The master key has no field name or version concept, so AAD is omitted. Field key wrapping still uses AAD via `key-wrap.ts`.
-- **Split KDF parallel derivation**: `deriveAuthCredentials` and `deriveLoginCredentials` run `deriveAuthHash` and `derivePasswordKey` in parallel via `Promise.all` since they use independent salts and have no data dependency.
 - **HKDF uses `deriveBits`, not `deriveKey`**: `deriveSubKey` returns raw `Uint8Array` bytes because the KEK bytes need to be imported as an AES-GCM CryptoKey via `importKey()` separately in `deriveFullKeyHierarchy`. HKDF uses empty salt since the master key is already random.
 - **BIP-39 mnemonic functions are async**: `generateMnemonic`, `validateMnemonic`, `mnemonicToSeed` must be `async` despite the underlying `@scure/bip39` functions being synchronous, because the lazy-loading pattern (`await loadBip39()`) requires it. Same as how `argon2id.ts` wraps sync Argon2 in async.
 - **`deriveRecoveryKEK` uses mnemonic string directly**: The mnemonic phrase is passed as the Argon2id "password" parameter, not the BIP-39 binary seed. The human-readable phrase is the input because it is what the user supplies and remembers; the binary seed is an internal derivation artifact. `mnemonicToSeed` is a utility function not used in the recovery KEK path.
 - **Crypto integration tests mock `deriveKey` re-consumption**: In `crypto-integration.test.ts`, `unwrapMasterKeyWithRecovery` requires a fresh `deriveKey` mock even after `wrapMasterKeyWithRecovery` consumed one during setup. The `setupRegistration` helper uses `mockResolvedValueOnce` which is consumed, so the test must re-mock before calling unwrap.
+- **`deriveRegistrationKeys` is a pure crypto function**: in `features/encryption/model/registration.ts`, it has no side effects (no auth, no DB, no store writes). The orchestration (signup + upload + store population) lives in `auth-flow.ts` `signUpUser`. Do not add side effects to this function.
+- **`signUpUser` error cleanup**: on any error after `deriveRegistrationKeys` succeeds, attempts `authAdapter.logout()` as best-effort cleanup (harmless if no session exists, since Supabase signOut with no session is a no-op).

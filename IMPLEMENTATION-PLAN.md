@@ -65,6 +65,8 @@ cipher-note-react/
   src/
     app/
       Providers.tsx            # QueryClientProvider, i18n, AuthProvider
+      flows/
+        auth-flow.ts            # Orchestrate: signup, login, logout, session restore
       router.tsx               # TanStack Router route tree
       ErrorBoundary.tsx       # Root error boundary with crypto error handling
       styles/
@@ -115,7 +117,7 @@ cipher-note-react/
           vault-timeout.ts     # Auto-lock after inactivity
           key-rotation.ts      # Rotate individual field keys
           multi-device.ts      # Handle key changes from other sessions
-          upload-keys.ts       # Upload wrapped keys to server
+          registration.ts      # Pure crypto: deriveRegistrationKeys
           encryption-facade.ts # Thin public API for other features to call
         ui/
           VaultUnlockDialog.tsx
@@ -156,13 +158,14 @@ cipher-note-react/
         key-hierarchy.ts     # Master key → KEK → field keys orchestration
         split-kdf.ts          # Split KDF (auth + key derivation from password)
         mnemonic.ts           # BIP-39 generate/validate/wrap/unwrap (lazy-loaded)
-        memory.ts             # zeroFill, copyToUint8Array
+        memory.ts             # hexEncode, hexDecode, zeroFill, copyToUint8Array
       api/
         api.types.ts          # IApiAdapter interface
         supabase-client.ts    # Supabase client initialization only
         supabase-keys.ts      # Keys CRUD (getKeys, getFieldKeys, saveWrappedKey)
         supabase-fields.ts    # Fields CRUD (getField, saveField)
         supabase-recovery.ts  # Recovery data CRUD (saveRecoveryData, getRecoveryData)
+        supabase-registration.ts # Registration data upload (uploadRegistrationData)
         # future: hono-client.ts
       auth/
         auth.types.ts         # IAuthAdapter interface
@@ -331,7 +334,7 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
   - `src/features/encryption/model/crypto-store.ts` — masterKey, KEK, fieldKeys, isVaultLocked (memory only, no persist). **Use plain `Record<string, string>` (hex-encoded) for fieldKeys instead of `Map<string, Uint8Array>`** — Zustand uses `Object.is` for shallow comparison, which fails on Map mutations and Uint8Array references. Hex strings are comparable by value and trigger correct re-renders.
   - `src/features/settings/model/ui-store.ts` — sidebarOpen, activeField. **Do NOT store `language` here** — `i18next` is the source of truth for language state. Only store UI state that i18next doesn't manage.
 - Create adapter interfaces:
-  - `src/shared/auth/auth.types.ts` — `IAuthAdapter` interface: `login(username, authHash)`, `logout()`, `getSession()`, `signup(username, authHash, keySalt)`, `recoverPassword()`
+  - `src/shared/auth/auth.types.ts` — `IAuthAdapter` interface: `login(username, authHash)`, `logout()`, `getSession()`, `signup(username, authHash)`, `recoverPassword()`
   - `src/shared/api/api.types.ts` — `IApiAdapter` interface: `getKeys(userId)`, `getFieldKeys(userId)`, `getField(userId, fieldName)`, `saveField(userId, fieldName, blob, iv)`, `saveWrappedKey(userId, data)`, `getRecovery(userId)`
   - `src/shared/realtime/realtime.types.ts` — `IRealtimeAdapter` interface: `subscribe(userId, callbacks)`, `unsubscribe()`
 - Create `src/shared/types/crypto.types.ts` — TypeScript types for all crypto operations (WrappedKey, FieldKey, EncryptedField, KeyVersion, etc.)
@@ -355,7 +358,7 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 - Create migration files:
   - `supabase/migrations/00001_create_tables.sql`:
     - `users` table (minimal — Supabase Auth manages auth columns)
-    - `keys` table (auth_salt, key_salt, wrapped_master_key, master_key_iv)
+    - `keys` table (auth_salt, key_salt, wrapped_master_key, master_key_iv) — salts are 16 bytes (32 hex chars), wrapped keys 48 bytes (96 hex chars), IVs 12 bytes (24 hex chars)
     - `field_keys` table (field_name, key_version, wrapped_key, key_iv)
     - `encrypted_fields` table (field_name, encrypted_blob, iv)
     - `recovery` table (recovery_salt, wrapped_master_key, recovery_iv)
@@ -387,7 +390,7 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 - Install `@supabase/supabase-js`
 - Create `src/shared/auth/supabase-adapter.ts` implementing `IAuthAdapter`:
   - `login(username, authHash)` → maps `username` to `{username}@ciphernote.internal`, calls `supabase.auth.signInWithPassword`
-  - `signup(username, authHash, keySalt)` → maps email, calls `supabase.auth.signUp`, stores keySalt in user metadata
+  - `signup(username, authHash)` → maps email, calls `supabase.auth.signUp`, stores username in user metadata
   - `logout()` → calls `supabase.auth.signOut()`
   - `getSession()` → calls `supabase.auth.getSession()`
   - `recoverPassword()` → placeholder for seed phrase recovery
@@ -723,7 +726,7 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
     - Master key wrapping uses no AAD because the master key has no field name or version concept, unlike field key wrapping which uses AAD(fieldName, version)
     - Return `{ newAuthHash, newAuthSalt, newKeySalt, newWrappedMasterKey, newMasterKeyIV }`
 - `AuthCredentials`, `LoginCredentials`, `PasswordChangeResult` types already exist in crypto.types.ts — no changes needed
-- `derive-placeholder.ts` remains in place until Steps 19/21 replace its consumer in auth-credentials.ts
+- `derive-placeholder.ts` remains in place until Step 21 replaces its consumer in `auth-flow.ts` `loginUser`
 
 **Tests:**
 - `deriveAuthCredentials`: generates two salts, calls Argon2id with correct args, returns correct types
@@ -823,35 +826,47 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 
 ## Phase 5: Registration & Login Flows
 
-### Step 19 — Registration Crypto Flow
+### Step 19 — Registration Crypto Flow ✅
 
 **Goal:** Wire up the full registration flow: derive keys, wrap, store on server.
 
 **Code:**
 - `src/features/encryption/model/registration.ts`:
-  - `registerUser(username: string, password: string): Promise<RegistrationResult>`
+  - `deriveRegistrationKeys(password: string): Promise<RegistrationResult>` — pure crypto function with no side effects (no auth calls, no DB writes). The auth orchestration (signup, upload, store population) remains in the auth operations module.
     1. Generate salts: auth_salt, key_salt
     2. Derive auth credentials: auth_hash + password_key
     3. Generate master key (256-bit random)
     4. Derive key hierarchy: KEK, signing key seed
     5. Generate field keys: note, website, email (256-bit random each, version 1)
     6. Wrap field keys with KEK (AAD = field_name + version)
-    7. Wrap master key with password key
+    7. Wrap master key with password key (no AAD)
     8. Generate recovery mnemonic
     9. Wrap master key with recovery KEK
-    10. Return all data needed to upload to server
-- `RegistrationResult` type: all wrapped keys, salts, IVs, recovery data, mnemonic
-- `src/features/encryption/model/upload-keys.ts`:
+    10. Export KEK CryptoKey to raw bytes (for hex-encoding into crypto store)
+    11. Return all data needed to upload to server
+- `RegistrationResult` type: all wrapped keys, salts, IVs, recovery data, mnemonic. `kek` is `Uint8Array<ArrayBuffer>` (exported from CryptoKey), not `CryptoKey`
+- `src/shared/api/supabase-registration.ts`:
   - `uploadRegistrationData(data: RegistrationResult, userId: string): Promise<void>`
-    - Call Supabase API adapter to store: keys, field_keys, encrypted_fields, recovery
-- Handle error cases: username taken, network error, Argon2id timeout
+    - Call Supabase client directly to store: keys, field_keys, recovery (hex-encode all binary values)
+- `src/shared/crypto/memory.ts`:
+  - `hexEncode(data: Uint8Array): string` — encode Uint8Array as hex string for Zustand storage
+  - `hexDecode(hex: string): Uint8Array` — decode hex string back to Uint8Array for crypto operations
+  - `zeroFill(buffer: Uint8Array): void` — securely overwrite array with zeros
+- `src/app/flows/auth-flow.ts`
+  - `signUpUser(username: string, password: string): Promise<AuthResult & { mnemonic: string }>` — orchestrates the full registration flow: derives keys, signs up via auth adapter, uploads registration data, populates crypto store with hex-encoded keys, returns auth result with mnemonic. Sets auth store loading state. On upload failure after successful signup, attempts best-effort cleanup via `authAdapter.logout()`
+  - `loginUser`, `logoutUser`, `restoreSession`, `subscribeToAuthChanges` — move from `features/auth/model/auth-credentials.ts` (and delete). These functions will be replaced by proper flow-level implementations in Steps 21–23.
+- Update `IAuthAdapter.signup` to remove `keySalt` parameter — salts are stored in the `keys` table by `supabase-registration.ts`, not in `user_metadata`
+- Fix SQL salt CHECK constraints: salt columns use `CHECK (length(...) = 32)` (16 bytes → 32 hex chars), not 64
+- Handle error cases: on any error after `deriveRegistrationKeys`, attempt best-effort cleanup via `authAdapter.logout()`
 
 **Tests:**
-- Unit: `registerUser` returns all required fields (wrapped keys, salts, IVs, mnemonic)
+- Unit: `deriveRegistrationKeys` returns all required fields (wrapped keys, salts, IVs, mnemonic)
 - Unit: returned wrapped master key can be unwrapped with password_key
 - Unit: returned wrapped field keys can be unwrapped with derived KEK
 - Unit: mnemonic can unwrap master key via recovery KEK
-- Integration: full registration → upload to local Supabase → verify data in DB
+- Unit: `uploadRegistrationData` inserts correct hex-encoded values into correct tables
+- Unit: `signUpUser` calls signup, upload, and populates crypto store
+- Unit: `signUpUser` attempts cleanup logout on upload failure
 
 ---
 
@@ -860,8 +875,8 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 **Goal:** Registration page with password strength indicator and mnemonic display.
 
 **Code:**
-- Update `src/pages/register/RegisterPage.tsx`:
-  - Call `registerUser()` on form submit
+- Update `src/features/auth/ui/RegisterPage.tsx`:
+  - `signUpUser` returns `{ ...AuthResult, mnemonic: string }` — the flow already produces the mnemonic. `AuthForm` currently discards the return value of `onSubmit`, so Step 20 must capture the mnemonic from `signUpUser`'s return value and pass it to `MnemonicDialog`.
   - Show Argon2id derivation progress (spinner or progress indicator)
   - On success: show mnemonic in a `<Dialog>` with:
     - 12-word mnemonic displayed in groups of 3
@@ -960,10 +975,7 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
   - `lockVault()` zeros all key material using `cryptoZeroFill(key)` — overwrites Uint8Array with zeros, then clears all state fields and sets `isVaultLocked = true`
   - **Critical:** `lockVault()` must also call `queryClient.removeQueries({ queryKey: ['field'] })` to purge all decrypted field content from TanStack Query's cache. Without this, decrypted plaintext remains in memory after vault lock. The `queryClient` reference is obtained from the React component tree or passed in during store initialization.
 - `src/shared/crypto/memory.ts`:
-  - `zeroFill(buffer: Uint8Array): void` — securely overwrite array with zeros
   - `copyToUint8Array(data: ArrayBuffer | Uint8Array): Uint8Array` — safe copy for storing in Zustand
-  - `hexEncode(data: Uint8Array): string` — encode Uint8Array as hex string for Zustand storage
-  - `hexDecode(hex: string): Uint8Array` — decode hex string back to Uint8Array for crypto operations
 - Verify that no crypto keys appear in localStorage, sessionStorage, or IndexedDB
 
 **Tests:**

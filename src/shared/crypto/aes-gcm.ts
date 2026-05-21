@@ -1,5 +1,5 @@
 import { DecryptionError } from '@/shared/crypto/errors'
-import { CRYPTO_KEY_LENGTH } from '@/shared/crypto/constants'
+import { CRYPTO_KEY_LENGTH } from '@/shared/types/crypto.types'
 
 const IV_LENGTH = 12
 const AES_GCM_ALGORITHM = 'AES-GCM'
