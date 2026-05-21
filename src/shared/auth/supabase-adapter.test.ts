@@ -125,7 +125,7 @@ describe('SupabaseAuthAdapter — signup', () => {
       error: null,
     })
 
-    await expect(authAdapter.signup('alice', 'hash', 'salt')).rejects.toThrow('email confirmation')
+    await expect(authAdapter.signup('alice', 'hash')).rejects.toThrow('email confirmation')
   })
 
   it('throws when user is null', async () => {
@@ -136,7 +136,7 @@ describe('SupabaseAuthAdapter — signup', () => {
       error: null,
     })
 
-    await expect(authAdapter.signup('alice', 'hash', 'salt')).rejects.toThrow('no user returned')
+    await expect(authAdapter.signup('alice', 'hash')).rejects.toThrow('no user returned')
   })
 
   it('returns AuthResult on successful signup', async () => {
@@ -155,7 +155,7 @@ describe('SupabaseAuthAdapter — signup', () => {
       error: null,
     })
 
-    const result = await authAdapter.signup('alice', 'hash', 'salt')
+    const result = await authAdapter.signup('alice', 'hash')
 
     expect(result.user.username).toBe('alice')
     expect(result.session.accessToken).toBe('token')

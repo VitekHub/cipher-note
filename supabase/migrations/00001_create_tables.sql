@@ -23,8 +23,8 @@ CREATE UNIQUE INDEX idx_users_username ON public.users (LOWER(username));
 -- ============================================
 CREATE TABLE public.keys (
   user_id UUID PRIMARY KEY REFERENCES public.users(id) ON DELETE CASCADE,
-  auth_salt TEXT NOT NULL CHECK (length(auth_salt) = 64),
-  key_salt TEXT NOT NULL CHECK (length(key_salt) = 64),
+  auth_salt TEXT NOT NULL CHECK (length(auth_salt) = 32),
+  key_salt TEXT NOT NULL CHECK (length(key_salt) = 32),
   wrapped_master_key TEXT NOT NULL CHECK (length(wrapped_master_key) = 96),
   master_key_iv TEXT NOT NULL CHECK (length(master_key_iv) = 24),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -75,7 +75,7 @@ CREATE INDEX idx_encrypted_fields_user ON public.encrypted_fields (user_id);
 -- ============================================
 CREATE TABLE public.recovery (
   user_id UUID PRIMARY KEY REFERENCES public.users(id) ON DELETE CASCADE,
-  recovery_salt TEXT NOT NULL CHECK (length(recovery_salt) = 64),
+  recovery_salt TEXT NOT NULL CHECK (length(recovery_salt) = 32),
   wrapped_master_key TEXT NOT NULL CHECK (length(wrapped_master_key) = 96),
   recovery_iv TEXT NOT NULL CHECK (length(recovery_iv) = 24),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),

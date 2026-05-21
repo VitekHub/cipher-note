@@ -3,13 +3,40 @@ import { render, screen, waitFor } from '@/test/utils'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
 
-vi.mock('@/shared/crypto/derive-placeholder', () => ({
-  deriveCredentials: vi.fn().mockResolvedValue({
+vi.mock('@/features/encryption/model/registration', () => ({
+  deriveRegistrationKeys: vi.fn().mockResolvedValue({
     authHash: 'a'.repeat(64),
-    passwordKey: 'b'.repeat(64),
-    keySalt: 'c'.repeat(64),
-    authSalt: 'd'.repeat(64),
+    authSalt: new Uint8Array(16).fill(0x01),
+    keySalt: new Uint8Array(16).fill(0x02),
+    masterKey: new Uint8Array(32).fill(0x03),
+    kek: new Uint8Array(32).fill(0x04),
+    fieldKeys: new Map([
+      ['note', new Uint8Array(32).fill(0x10)],
+      ['website', new Uint8Array(32).fill(0x20)],
+      ['email', new Uint8Array(32).fill(0x30)],
+    ]),
+    wrappedMasterKey: new Uint8Array(48).fill(0x05),
+    masterKeyIV: new Uint8Array(12).fill(0x06),
+    wrappedFieldKeys: [],
+    recoveryData: {
+      recoverySalt: new Uint8Array(16).fill(0xaa),
+      wrappedMasterKey: new Uint8Array(48).fill(0xbb),
+      recoveryIV: new Uint8Array(12).fill(0xcc),
+    },
+    mnemonic: 'word0 word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11',
   }),
+}))
+
+vi.mock('@/features/encryption/model/upload-keys', () => ({
+  uploadRegistrationData: vi.fn().mockResolvedValue(undefined),
+}))
+
+vi.mock('@/shared/crypto/memory', () => ({
+  hexEncode: vi.fn((data: Uint8Array) =>
+    Array.from(data)
+      .map((b: number) => b.toString(16).padStart(2, '0'))
+      .join(''),
+  ),
 }))
 
 vi.mock('@/shared/auth/supabase-adapter', () => ({

@@ -3,6 +3,8 @@ export interface WrappedKey {
   iv: Uint8Array<ArrayBuffer>
 }
 
+export const FIELD_KEY_VERSION = 1 as const
+
 export interface WrappedFieldKey extends WrappedKey {
   fieldName: string
   version: number
@@ -57,4 +59,18 @@ export interface RecoveryData {
   wrappedMasterKey: Uint8Array<ArrayBuffer>
   recoveryIV: Uint8Array<ArrayBuffer>
   recoverySalt: Uint8Array<ArrayBuffer>
+}
+
+export interface RegistrationResult {
+  authHash: string
+  authSalt: Uint8Array<ArrayBuffer>
+  keySalt: Uint8Array<ArrayBuffer>
+  masterKey: Uint8Array<ArrayBuffer>
+  kek: Uint8Array<ArrayBuffer>
+  fieldKeys: Map<string, Uint8Array<ArrayBuffer>>
+  wrappedMasterKey: Uint8Array<ArrayBuffer>
+  masterKeyIV: Uint8Array<ArrayBuffer>
+  wrappedFieldKeys: WrappedFieldKey[]
+  recoveryData: RecoveryData
+  mnemonic: string
 }
