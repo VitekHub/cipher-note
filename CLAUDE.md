@@ -104,6 +104,7 @@ See `IMPLEMENTATION-PLAN.md` for the full 36-step plan.
 - Step 12 (AES-256-GCM Encrypt/Decrypt) — complete
 - Step 13 (Key Wrapping/Unwrapping) — complete
 - Step 14 (Argon2id Key Derivation) — complete
+- Step 15 (HKDF Key Derivation + Key Hierarchy) — complete
 
 ### Implementation Notes
 
@@ -119,3 +120,4 @@ Non-obvious decisions not visible from code alone:
 - **FieldCard i18n keys**: `FIELD_I18N_KEYS` is a static record (not template literals) so i18next-parser can discover them
 - **`useCurrentUser` hook**: wraps the auth store in `shared/auth/` so features can access user data without cross-feature imports
 - **`Uint8Array<ArrayBuffer>` for Web Crypto**: TS 6.0 made `Uint8Array` generic; bare `Uint8Array` expands to `Uint8Array<ArrayBufferLike>` which doesn't satisfy `BufferSource`. All `crypto.subtle` function signatures must use `Uint8Array<ArrayBuffer>`.
+- **HKDF uses `deriveBits`, not `deriveKey`**: `deriveSubKey` returns raw `Uint8Array` bytes because the KEK bytes need to be imported as an AES-GCM CryptoKey via `importKey()` separately in `deriveFullKeyHierarchy`. HKDF uses empty salt since the master key is already random.

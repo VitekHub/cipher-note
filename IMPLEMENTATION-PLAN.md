@@ -657,27 +657,31 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 
 ---
 
-### Step 15 — HKDF Key Derivation + Key Hierarchy
+### Step 15 — HKDF Key Derivation + Key Hierarchy ✅
 
 **Goal:** HKDF-SHA-256 for deriving KEK and signing key seed from master key. Full key hierarchy module.
 
 **Code:**
 - `src/shared/crypto/hkdf.ts`:
   - `deriveSubKey(masterKey: Uint8Array, info: string, length?: number): Promise<Uint8Array>`
-    - Uses Web Crypto API `crypto.subtle.deriveKey` with HKDF
+    - Uses Web Crypto API `crypto.subtle.deriveBits` with HKDF (not `deriveKey` — we need raw bytes because KEK bytes are later imported as an AES-GCM CryptoKey separately)
+    - Empty salt (master key is already random; HKDF uses zero-filled salt internally)
     - `info` parameter: `"wrap"` → KEK, `"sign"` → Signing Key Seed
-    - Default `length=32` (256 bits)
+    - Default `length=32` (256 bits), converted to bits for `deriveBits`
   - `deriveKEK(masterKey: Uint8Array): Promise<Uint8Array>` — `deriveSubKey(masterKey, "wrap")`
   - `deriveSigningKeySeed(masterKey: Uint8Array): Promise<Uint8Array>` — `deriveSubKey(masterKey, "sign")`
 - `src/shared/crypto/key-hierarchy.ts`:
   - `generateMasterKey(): Uint8Array` — generate random 256-bit master key
   - `generateFieldKey(): Uint8Array` — generate random 256-bit field key
   - `deriveFullKeyHierarchy(masterKey: Uint8Array): Promise<KeyHierarchy>`
-    - Returns `{ masterKey, kek, signingKeySeed }`
+    - Derives KEK and signing key seed in parallel via `Promise.all`
+    - Imports raw KEK bytes as AES-GCM CryptoKey via `importKey`
+    - Returns `{ masterKey, kek: CryptoKey, signingKeySeed }`
   - `wrapFieldKeys(fieldKeys: Map<string, Uint8Array>, kek: CryptoKey, versions: Map<string, number>): Promise<WrappedFieldKey[]>`
+    - Validates version presence for each field (throws if missing)
     - Wrap all three field keys with KEK using AAD (field_name + version)
   - `unwrapFieldKeys(wrappedKeys: WrappedFieldKey[], kek: CryptoKey): Promise<Map<string, Uint8Array>>`
-    - Unwrap all three field keys, verify AAD for each
+    - Unwrap all three field keys, verify AAD for each (throws DecryptionError on wrong version/key)
   - `KeyHierarchy` type in `src/shared/types/crypto.types.ts`
 - `WrappedFieldKey` type: `{ fieldName: string, version: number, wrappedKey: Uint8Array, iv: Uint8Array }`
 
