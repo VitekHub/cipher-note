@@ -702,55 +702,55 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 
 ---
 
-### Step 16 — Split KDF Module
+### Step 16 — Split KDF Module ✅
 
 **Goal:** Complete Split KDF implementation for authentication and key derivation.
 
 **Code:**
-- `src/shared/crypto/split-kdf.ts`:
+- Split KDF module:
   - `deriveAuthCredentials(password: string): Promise<AuthCredentials>`
-    - Generate `auth_salt` (16 bytes) and `key_salt` (16 bytes) if not provided
-    - Derive `auth_hash = Argon2id(password, auth_salt)` → hex string for Supabase Auth
-    - Derive `password_key = Argon2id(password, key_salt)` → Uint8Array for key wrapping
-    - Return `{ authHash: string, passwordKey: Uint8Array, authSalt: Uint8Array, keySalt: Uint8Array }`
-  - `deriveLoginCredentials(password: string, authSalt: Uint8Array, keySalt: Uint8Array): Promise<LoginCredentials>`
-    - Given existing salts (from server), derive both keys
-    - Return `{ authHash: string, passwordKey: Uint8Array }`
-  - `changePassword(oldPassword: string, newPassword: string, authSalt: Uint8Array, keySalt: Uint8Array, wrappedMasterKey: Uint8Array, masterKeyIV: Uint8Array): Promise<PasswordChangeResult>`
-    - Derive old password key → unwrap master key
+    - Generate `auth_salt` (16 bytes) and `key_salt` (16 bytes) via `generateSalt()`
+    - Derive `auth_hash` and `password_key` in parallel via `Promise.all`
+    - Return `{ authHash, passwordKey, authSalt, keySalt }`
+  - `deriveLoginCredentials(password: string, authSalt: Uint8Array<ArrayBuffer>, keySalt: Uint8Array<ArrayBuffer>): Promise<LoginCredentials>`
+    - Given existing salts (from server), derive both keys in parallel
+    - Return `{ authHash, passwordKey }`
+  - `changePassword(oldPassword: string, newPassword: string, keySalt: Uint8Array<ArrayBuffer>, wrappedMasterKey: Uint8Array<ArrayBuffer>, masterKeyIV: Uint8Array<ArrayBuffer>): Promise<PasswordChangeResult>`
+    - Derive old password key → import as CryptoKey → decrypt master key (no AAD)
     - Generate new auth_salt and key_salt
-    - Derive new auth_hash and password_key
-    - Re-wrap master key with new password key
+    - Derive new auth_hash and password_key in parallel
+    - Re-wrap master key with new password key using AES-256-GCM (no AAD)
+    - Master key wrapping uses no AAD because the master key has no field name or version concept, unlike field key wrapping which uses AAD(fieldName, version)
     - Return `{ newAuthHash, newAuthSalt, newKeySalt, newWrappedMasterKey, newMasterKeyIV }`
-- `AuthCredentials`, `LoginCredentials`, `PasswordChangeResult` types in crypto.types.ts
+- `AuthCredentials`, `LoginCredentials`, `PasswordChangeResult` types already exist in crypto.types.ts — no changes needed
+- `derive-placeholder.ts` remains in place until Steps 19/21 replace its consumer in auth-credentials.ts
 
 **Tests:**
-- `deriveAuthCredentials`: same password → same auth_hash and password_key (deterministic with same salts)
-- `deriveLoginCredentials`: matches `deriveAuthCredentials` output for same inputs
-- Different passwords → different auth_hash and password_key
-- `changePassword`: old password unwraps master key correctly
-- `changePassword`: new password re-wraps master key correctly
-- `changePassword`: new auth_hash differs from old auth_hash
-- `changePassword`: master key content is unchanged after re-wrap
+- `deriveAuthCredentials`: generates two salts, calls Argon2id with correct args, returns correct types
+- `deriveLoginCredentials`: derives from existing salts without generating new ones, matches `deriveAuthCredentials` output for same password and salts
+- `changePassword`: round-trip — unwrap with old key, re-wrap with new key, verify master key unchanged
+- `changePassword`: new salts differ from old salts
+- `changePassword`: throws `DecryptionError` if wrong old password (cannot unwrap master key)
+- `changePassword`: calls `generateSalt` exactly twice for new salts
 
 ---
 
-### Step 17 — BIP-39 Mnemonic Module
+### Step 17 — BIP-39 Mnemonic Module ✅
 
 **Goal:** Generate, validate, and use BIP-39 mnemonic for seed phrase recovery.
 
 **Code:**
 - `src/shared/crypto/mnemonic.ts`:
-  - `generateMnemonic(): string` — generate 12-word BIP-39 mnemonic from 128-bit entropy
-  - `validateMnemonic(mnemonic: string): boolean` — validate checksum and word list
-  - `mnemonicToSeed(mnemonic: string): Uint8Array` — convert mnemonic to 256-bit seed (for recovery_KEK derivation)
-  - `deriveRecoveryKEK(mnemonic: string, recoverySalt: Uint8Array): Promise<Uint8Array>` — Argon2id(mnemonic_phrase, recovery_salt) → recovery KEK
-  - `wrapMasterKeyWithRecovery(masterKey: Uint8Array, mnemonic: string, recoverySalt?: Uint8Array): Promise<RecoveryData>`
+  - `generateMnemonic(): Promise<string>` — generate 12-word BIP-39 mnemonic from 128-bit entropy
+  - `validateMnemonic(mnemonic: string): Promise<boolean>` — validate checksum and word list
+  - `mnemonicToSeed(mnemonic: string): Promise<Uint8Array<ArrayBuffer>>` — convert mnemonic to 256-bit seed (for recovery_KEK derivation)
+  - `deriveRecoveryKEK(mnemonic: string, recoverySalt: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>>` — Argon2id(mnemonic_phrase, recovery_salt) → recovery KEK
+  - `wrapMasterKeyWithRecovery(masterKey: Uint8Array<ArrayBuffer>, mnemonic: string, recoverySalt?: Uint8Array<ArrayBuffer>): Promise<RecoveryData>`
     - Generate recovery_salt if not provided
     - Derive recovery_KEK from mnemonic + salt
     - Wrap master key with recovery_KEK using AES-256-GCM
     - Return `{ wrappedMasterKey, recoveryIV, recoverySalt }`
-  - `unwrapMasterKeyWithRecovery(wrappedMasterKey: Uint8Array, mnemonic: string, recoverySalt: Uint8Array, recoveryIV: Uint8Array): Promise<Uint8Array>`
+  - `unwrapMasterKeyWithRecovery(wrappedMasterKey: Uint8Array<ArrayBuffer>, mnemonic: string, recoverySalt: Uint8Array<ArrayBuffer>, recoveryIV: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>>`
     - Derive recovery_KEK from mnemonic + salt
     - Unwrap master key
     - Return master key bytes
@@ -768,52 +768,56 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 
 ---
 
-### Step 18 — Crypto Integration Tests
+### Step 18 — Crypto Integration Tests ✅
 
-**Goal:** Full end-to-end crypto flow tests proving the entire key hierarchy works together.
+**Goal:** Cross-module integration tests proving the entire key hierarchy works end-to-end (composition gaps that unit tests can't verify).
 
 **Code:**
-- `src/shared/crypto/__tests__/integration.test.ts`:
-  - **Registration flow test:**
-    1. Generate master key
-    2. Derive auth credentials from password
-    3. Derive full key hierarchy (KEK, signing key)
-    4. Generate three field keys (note, website, email)
-    5. Wrap field keys with KEK (version 1)
-    6. Wrap master key with password key
-    7. Generate mnemonic and wrap master key with recovery KEK
-    8. Verify all wrapped keys can be unwrapped
-  - **Login flow test:**
-    1. Given stored salts, derive login credentials from password
-    2. Unwrap master key with password key
-    3. Derive KEK from master key
-    4. Unwrap all field keys with KEK
-    5. Verify field keys match originals
-  - **Decrypt field content test:**
-    1. Encrypt plaintext with field key
-    2. Decrypt with field key
-    3. Verify round-trip
-  - **Password change test:**
-    1. Unwrap master key with old password key
-    2. Derive new credentials with new password
-    3. Re-wrap master key
-    4. Unwrap with new password key → verify master key unchanged
-    5. Field keys unaffected (don't need re-wrap)
-  - **Seed phrase recovery test:**
-    1. Wrap master key with recovery KEK
-    2. Unwrap master key with mnemonic
-    3. Derive full key hierarchy
-    4. Decrypt all fields
-  - **Key rotation test:**
-    1. Rotate one field key (e.g., note v1 → v2)
-    2. Re-encrypt field content with new key
-    3. Verify old key can no longer decrypt
-    4. Verify other field keys (website, email) are unaffected
+- Colocated test file in `src/shared/crypto/`
+- Mock Argon2id module and @scure/bip39 at module boundaries (Web Worker and WASM won't run in jsdom); use real Web Crypto API for all other modules
+- Shared `setupRegistration` helper that runs the full registration flow and returns all artifacts for reuse across test cases
+- **Registration flow test:**
+  1. Generate master key
+  2. Derive auth credentials from password
+  3. Derive full key hierarchy (KEK, signing key)
+  4. Generate three field keys (note, website, email)
+  5. Wrap field keys with KEK (version 1)
+  6. Wrap master key with password key
+  7. Generate mnemonic and wrap master key with recovery KEK
+  8. Verify all wrapped keys can be unwrapped (field keys with KEK, master key with password key, master key with recovery)
+- **Login flow test:**
+  1. Given stored salts, derive login credentials from password
+  2. Unwrap master key with password key
+  3. Derive KEK from master key
+  4. Unwrap all field keys with KEK
+  5. Verify field keys match originals
+  6. Decrypt actual field content with recovered field keys (verifies encrypt/decrypt round-trip in login context)
+- **Password change test:**
+  1. Unwrap master key with old password key
+  2. Derive new credentials with new password
+  3. Re-wrap master key
+  4. Unwrap with new password key → verify master key unchanged
+  5. Field keys unaffected (unwrap still works with same KEK)
+  6. Field content survives password change (encrypt/decrypt with field key still works)
+  7. Old password key cannot unwrap new wrapped master key
+- **Seed phrase recovery test:**
+  1. Unwrap master key with mnemonic
+  2. Derive full key hierarchy
+  3. Unwrap all field keys
+  4. Decrypt all field content with recovered keys
+  5. Wrong mnemonic cannot unwrap
+- **Key rotation test:**
+  1. Rotate one field key (e.g., note v1 → v2)
+  2. Re-encrypt field content with new key
+  3. Verify old key can no longer decrypt
+  4. Verify other field keys (website, email) are unaffected
+  5. Version rollback protection: unwrap v2 wrapped key with v1 AAD fails
+- **Performance tests:** registration and login flows complete within 5 seconds (Argon2id mocked, so these validate Web Crypto operation timing; real perf validation in E2E Step 36)
 
 **Tests:**
 - All integration tests pass
 - Performance: full registration flow completes within 5 seconds
-- Performance: full login flow (including Argon2id) completes within 5 seconds
+- Performance: full login flow completes within 5 seconds
 
 ---
 
