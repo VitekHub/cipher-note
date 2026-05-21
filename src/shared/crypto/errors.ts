@@ -25,3 +25,10 @@ export class Argon2Error extends CryptoError {
     this.name = 'Argon2Error'
   }
 }
+
+export class MnemonicError extends CryptoError {
+  constructor(message = 'crypto:errors.mnemonicFailed', options?: ErrorOptions) {
+    super(message, options)
+    this.name = 'MnemonicError'
+  }
+}

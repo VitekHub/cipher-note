@@ -735,22 +735,22 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 
 ---
 
-### Step 17 — BIP-39 Mnemonic Module
+### Step 17 — BIP-39 Mnemonic Module ✅
 
 **Goal:** Generate, validate, and use BIP-39 mnemonic for seed phrase recovery.
 
 **Code:**
 - `src/shared/crypto/mnemonic.ts`:
-  - `generateMnemonic(): string` — generate 12-word BIP-39 mnemonic from 128-bit entropy
-  - `validateMnemonic(mnemonic: string): boolean` — validate checksum and word list
-  - `mnemonicToSeed(mnemonic: string): Uint8Array` — convert mnemonic to 256-bit seed (for recovery_KEK derivation)
-  - `deriveRecoveryKEK(mnemonic: string, recoverySalt: Uint8Array): Promise<Uint8Array>` — Argon2id(mnemonic_phrase, recovery_salt) → recovery KEK
-  - `wrapMasterKeyWithRecovery(masterKey: Uint8Array, mnemonic: string, recoverySalt?: Uint8Array): Promise<RecoveryData>`
+  - `generateMnemonic(): Promise<string>` — generate 12-word BIP-39 mnemonic from 128-bit entropy
+  - `validateMnemonic(mnemonic: string): Promise<boolean>` — validate checksum and word list
+  - `mnemonicToSeed(mnemonic: string): Promise<Uint8Array<ArrayBuffer>>` — convert mnemonic to 256-bit seed (for recovery_KEK derivation)
+  - `deriveRecoveryKEK(mnemonic: string, recoverySalt: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>>` — Argon2id(mnemonic_phrase, recovery_salt) → recovery KEK
+  - `wrapMasterKeyWithRecovery(masterKey: Uint8Array<ArrayBuffer>, mnemonic: string, recoverySalt?: Uint8Array<ArrayBuffer>): Promise<RecoveryData>`
     - Generate recovery_salt if not provided
     - Derive recovery_KEK from mnemonic + salt
     - Wrap master key with recovery_KEK using AES-256-GCM
     - Return `{ wrappedMasterKey, recoveryIV, recoverySalt }`
-  - `unwrapMasterKeyWithRecovery(wrappedMasterKey: Uint8Array, mnemonic: string, recoverySalt: Uint8Array, recoveryIV: Uint8Array): Promise<Uint8Array>`
+  - `unwrapMasterKeyWithRecovery(wrappedMasterKey: Uint8Array<ArrayBuffer>, mnemonic: string, recoverySalt: Uint8Array<ArrayBuffer>, recoveryIV: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>>`
     - Derive recovery_KEK from mnemonic + salt
     - Unwrap master key
     - Return master key bytes

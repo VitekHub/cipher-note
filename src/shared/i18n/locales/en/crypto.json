@@ -9,6 +9,7 @@
     "decryptFailed": "Decryption failed. Your data may be corrupted.",
     "corruptedData": "Your data appears corrupted. Please contact support.",
     "wrongPassword": "Wrong password",
-    "argon2Failed": "Key derivation failed. Please try again."
+    "argon2Failed": "Key derivation failed. Please try again.",
+    "mnemonicFailed": "Invalid seed phrase. Please check your seed phrase and try again."
   }
 }
