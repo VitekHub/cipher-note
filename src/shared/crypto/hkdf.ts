@@ -30,6 +30,10 @@ export async function deriveSubKey(
   info: string,
   length: number = DEFAULT_LENGTH,
 ): Promise<Uint8Array<ArrayBuffer>> {
+  if (masterKey.length !== 32) {
+    throw new Error(`Invalid master key length: expected 32 bytes, got ${masterKey.length}`)
+  }
+
   const baseKey = await crypto.subtle.importKey('raw', masterKey, { name: 'HKDF', hash: HKDF_HASH }, false, [
     'deriveBits',
   ])
@@ -38,7 +42,7 @@ export async function deriveSubKey(
     {
       name: 'HKDF',
       hash: HKDF_HASH,
-      // empty salt because the master key is already a strong random value
+      // empty salt: master key is already a cryptographically random 256-bit value
       salt: new Uint8Array(0),
       info: encoder.encode(info),
     },

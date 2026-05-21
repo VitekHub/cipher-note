@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { DecryptionError } from '@/shared/crypto/errors'
 import {
   generateMasterKey,
-  generateFieldKey,
+  generateFieldKeys,
   deriveFullKeyHierarchy,
   wrapFieldKeys,
   unwrapFieldKeys,
@@ -22,16 +22,34 @@ describe('key-hierarchy', () => {
     })
   })
 
-  describe('generateFieldKey', () => {
-    it('produces a 32-byte key', () => {
-      const key = generateFieldKey()
-      expect(key.length).toBe(32)
+  describe('generateFieldKeys', () => {
+    it('returns a Map with note, website, and email keys', () => {
+      const fieldKeys = generateFieldKeys()
+      expect(fieldKeys.size).toBe(3)
+      expect(fieldKeys.has('note')).toBe(true)
+      expect(fieldKeys.has('website')).toBe(true)
+      expect(fieldKeys.has('email')).toBe(true)
+    })
+
+    it('produces 32-byte keys for each field', () => {
+      const fieldKeys = generateFieldKeys()
+      for (const key of fieldKeys.values()) {
+        expect(key.length).toBe(32)
+      }
+    })
+
+    it('produces unique keys for each field', () => {
+      const fieldKeys = generateFieldKeys()
+      const keys = [...fieldKeys.values()]
+      expect(keys[0]).not.toEqual(keys[1])
+      expect(keys[0]).not.toEqual(keys[2])
+      expect(keys[1]).not.toEqual(keys[2])
     })
 
     it('produces unique keys on successive calls', () => {
-      const key1 = generateFieldKey()
-      const key2 = generateFieldKey()
-      expect(key1).not.toEqual(key2)
+      const fieldKeys1 = generateFieldKeys()
+      const fieldKeys2 = generateFieldKeys()
+      expect(fieldKeys1.get('note')).not.toEqual(fieldKeys2.get('note'))
     })
   })
 
@@ -72,11 +90,7 @@ describe('key-hierarchy', () => {
       const masterKey = generateMasterKey()
       const hierarchy = await deriveFullKeyHierarchy(masterKey)
 
-      const fieldKeys = new Map<string, Uint8Array<ArrayBuffer>>([
-        ['note', generateFieldKey()],
-        ['website', generateFieldKey()],
-        ['email', generateFieldKey()],
-      ])
+      const fieldKeys = generateFieldKeys()
 
       const versions = new Map<string, number>([
         ['note', 1],
@@ -167,13 +181,25 @@ describe('key-hierarchy', () => {
     it('wraps and unwraps a single field key', async () => {
       const masterKey = generateMasterKey()
       const hierarchy = await deriveFullKeyHierarchy(masterKey)
-      const fieldKeys = new Map<string, Uint8Array<ArrayBuffer>>([['note', generateFieldKey()]])
+      const fieldKeys = new Map<string, Uint8Array<ArrayBuffer>>([['note', crypto.getRandomValues(new Uint8Array(32))]])
       const versions = new Map<string, number>([['note', 1]])
 
       const wrapped = await wrapFieldKeys(fieldKeys, hierarchy.kek, versions)
       const unwrapped = await unwrapFieldKeys(wrapped, hierarchy.kek)
 
       expect(unwrapped.get('note')).toEqual(fieldKeys.get('note'))
+    })
+
+    it('returns empty array for empty fieldKeys map', async () => {
+      const { hierarchy } = await setupHierarchy()
+      const wrapped = await wrapFieldKeys(new Map(), hierarchy.kek, new Map())
+      expect(wrapped).toEqual([])
+    })
+
+    it('returns empty map for empty wrappedKeys array', async () => {
+      const { hierarchy } = await setupHierarchy()
+      const unwrapped = await unwrapFieldKeys([], hierarchy.kek)
+      expect(unwrapped.size).toBe(0)
     })
   })
 
@@ -186,14 +212,7 @@ describe('key-hierarchy', () => {
       const hierarchy = await deriveFullKeyHierarchy(masterKey)
 
       // 3. Generate field keys
-      const noteKey = generateFieldKey()
-      const websiteKey = generateFieldKey()
-      const emailKey = generateFieldKey()
-      const fieldKeys = new Map<string, Uint8Array<ArrayBuffer>>([
-        ['note', noteKey],
-        ['website', websiteKey],
-        ['email', emailKey],
-      ])
+      const fieldKeys = generateFieldKeys()
       const versions = new Map<string, number>([
         ['note', 1],
         ['website', 1],
@@ -207,9 +226,9 @@ describe('key-hierarchy', () => {
       const unwrapped = await unwrapFieldKeys(wrapped, hierarchy.kek)
 
       // 6. Verify all field keys match originals
-      expect(unwrapped.get('note')).toEqual(noteKey)
-      expect(unwrapped.get('website')).toEqual(websiteKey)
-      expect(unwrapped.get('email')).toEqual(emailKey)
+      expect(unwrapped.get('note')).toEqual(fieldKeys.get('note'))
+      expect(unwrapped.get('website')).toEqual(fieldKeys.get('website'))
+      expect(unwrapped.get('email')).toEqual(fieldKeys.get('email'))
     })
   })
 })

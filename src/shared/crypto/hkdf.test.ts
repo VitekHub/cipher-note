@@ -53,6 +53,21 @@ describe('hkdf', () => {
         }
       }
     })
+
+    it('handles empty info string', async () => {
+      const masterKey = generateKey()
+      const result = await deriveSubKey(masterKey, '')
+      expect(result.length).toBe(32)
+      const result2 = await deriveSubKey(masterKey, '')
+      expect(result).toEqual(result2)
+    })
+
+    it('throws for non-32-byte master key', async () => {
+      const shortKey = crypto.getRandomValues(new Uint8Array(16))
+      await expect(deriveSubKey(shortKey, 'wrap')).rejects.toThrow(
+        'Invalid master key length: expected 32 bytes, got 16',
+      )
+    })
   })
 
   describe('deriveKEK', () => {
