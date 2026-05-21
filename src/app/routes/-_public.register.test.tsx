@@ -4,11 +4,9 @@ import userEvent from '@testing-library/user-event'
 import React from 'react'
 
 const { mockHandleRegister } = vi.hoisted(() => ({
-  mockHandleRegister: vi.fn().mockResolvedValue({
-    user: { id: '1', username: 'newuser', createdAt: '2024-01-01' },
-    session: { accessToken: 'tok', expiresAt: 0 },
-    mnemonic: 'word0 word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11',
-  }),
+  mockHandleRegister: vi
+    .fn()
+    .mockResolvedValue('word0 word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11'),
 }))
 
 vi.mock('sonner', () => ({
@@ -48,7 +46,7 @@ describe('RegisterPage', () => {
     await user.click(screen.getByRole('button', { name: /create account/i }))
 
     await waitFor(() => {
-      expect(screen.getByText(/at least 8 characters/i)).toBeInTheDocument()
+      expect(screen.getByText('Password must be at least 8 characters')).toBeInTheDocument()
     })
   })
 

@@ -1,5 +1,9 @@
+import { useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import { registerSchema, type RegisterFormData } from '@/features/auth/model/register-schema'
 import { AuthForm, type AuthFieldConfig } from '@/features/auth/ui/AuthForm'
+import { MnemonicDialog } from '@/features/auth/ui/MnemonicDialog'
+import { PasswordStrength } from '@/features/auth/ui/PasswordStrength'
 
 const registerFields: AuthFieldConfig<RegisterFormData>[] = [
   { name: 'username', id: 'username', type: 'text', autoComplete: 'username' },
@@ -12,16 +16,39 @@ interface RegisterPageProps {
 }
 
 function RegisterPage({ onSubmit }: RegisterPageProps) {
+  const [mnemonic, setMnemonic] = useState<string | null>(null)
+  const [showMnemonic, setShowMnemonic] = useState(false)
+  const navigate = useNavigate()
+
+  function handleSuccess(result: unknown) {
+    setMnemonic(result as string)
+    setShowMnemonic(true)
+  }
+
+  function handleMnemonicContinue() {
+    setShowMnemonic(false)
+    navigate({ to: '/dashboard' })
+  }
+
   return (
-    <AuthForm<RegisterFormData>
-      schema={registerSchema}
-      defaultValues={{ username: '', password: '', confirmPassword: '' }}
-      fields={registerFields}
-      onSubmit={onSubmit}
-      i18nPrefix="register"
-      successRedirect="/dashboard"
-      footer={{ textKey: 'register.hasAccount', linkLabelKey: 'register.loginLink', linkTo: '/login' }}
-    />
+    <>
+      <AuthForm<RegisterFormData>
+        schema={registerSchema}
+        defaultValues={{ username: '', password: '', confirmPassword: '' }}
+        fields={registerFields}
+        onSubmit={onSubmit}
+        onSuccess={handleSuccess}
+        i18nPrefix="register"
+        successRedirect="/dashboard"
+        footer={{ textKey: 'register.hasAccount', linkLabelKey: 'register.loginLink', linkTo: '/login' }}
+        renderAfterField={(fieldName, values) =>
+          fieldName === 'password' ? (
+            <PasswordStrength password={(values as Record<string, string>).password ?? ''} />
+          ) : null
+        }
+      />
+      <MnemonicDialog open={showMnemonic} mnemonic={mnemonic ?? ''} onContinue={handleMnemonicContinue} />
+    </>
   )
 }
 

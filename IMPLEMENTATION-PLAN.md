@@ -853,7 +853,7 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
   - `hexDecode(hex: string): Uint8Array` — decode hex string back to Uint8Array for crypto operations
   - `zeroFill(buffer: Uint8Array): void` — securely overwrite array with zeros
 - `src/app/flows/auth-flow.ts`
-  - `signUpUser(username: string, password: string): Promise<AuthResult & { mnemonic: string }>` — orchestrates the full registration flow: derives keys, signs up via auth adapter, uploads registration data, populates crypto store with hex-encoded keys, returns auth result with mnemonic. Sets auth store loading state. On upload failure after successful signup, attempts best-effort cleanup via `authAdapter.logout()`
+  - `signUpUser(username: string, password: string): Promise<string>` — orchestrates the full registration flow: derives keys, signs up via auth adapter, uploads registration data, populates crypto store with hex-encoded keys, returns mnemonic as a string. Sets auth store loading state. On upload failure after successful signup, attempts best-effort cleanup via `authAdapter.logout()`
   - `loginUser`, `logoutUser`, `restoreSession`, `subscribeToAuthChanges` — move from `features/auth/model/auth-credentials.ts` (and delete). These functions will be replaced by proper flow-level implementations in Steps 21–23.
 - Update `IAuthAdapter.signup` to remove `keySalt` parameter — salts are stored in the `keys` table by `supabase-registration.ts`, not in `user_metadata`
 - Fix SQL salt CHECK constraints: salt columns use `CHECK (length(...) = 32)` (16 bytes → 32 hex chars), not 64
@@ -870,13 +870,13 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 
 ---
 
-### Step 20 — Registration UI
+### Step 20 — Registration UI ✅
 
 **Goal:** Registration page with password strength indicator and mnemonic display.
 
 **Code:**
 - Update `src/features/auth/ui/RegisterPage.tsx`:
-  - `signUpUser` returns `{ ...AuthResult, mnemonic: string }` — the flow already produces the mnemonic. `AuthForm` currently discards the return value of `onSubmit`, so Step 20 must capture the mnemonic from `signUpUser`'s return value and pass it to `MnemonicDialog`.
+  - `signUpUser` returns `mnemonic: string` — the flow already produces the mnemonic. `AuthForm` currently discards the return value of `onSubmit`, so Step 20 must capture the mnemonic from `signUpUser`'s return value and pass it to `MnemonicDialog`.
   - Show Argon2id derivation progress (spinner or progress indicator)
   - On success: show mnemonic in a `<Dialog>` with:
     - 12-word mnemonic displayed in groups of 3

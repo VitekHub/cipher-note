@@ -109,6 +109,7 @@ See `IMPLEMENTATION-PLAN.md` for the full 36-step plan.
 - Step 17 (BIP-39 Mnemonic Module) — complete
 - Step 18 (Crypto Integration Tests) — complete
 - Step 19 (Registration Crypto Flow) — complete
+- Step 20 (Registration UI) — complete
 
 ### Implementation Notes
 

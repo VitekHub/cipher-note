@@ -1,7 +1,9 @@
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
+import type { ReactNode } from 'react'
 import {
   useForm,
+  useWatch,
   type FieldValues,
   type Path,
   type Resolver,
@@ -37,6 +39,8 @@ interface AuthFormConfig<T extends FieldValues> {
   defaultValues: T
   fields: AuthFieldConfig<T>[]
   onSubmit: (username: string, password: string) => Promise<unknown>
+  onSuccess?: (result: unknown) => void
+  renderAfterField?: (fieldName: string, formValues: Record<string, unknown>) => ReactNode
   i18nPrefix: string
   successRedirect: string
   redirectUrl?: string
@@ -48,6 +52,8 @@ function AuthForm<T extends FieldValues>({
   defaultValues,
   fields,
   onSubmit,
+  onSuccess,
+  renderAfterField,
   i18nPrefix,
   successRedirect,
   redirectUrl,
@@ -59,18 +65,25 @@ function AuthForm<T extends FieldValues>({
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<T>({
     resolver: zodResolver(schema) as Resolver<T>,
     defaultValues: defaultValues as DefaultValues<T>,
   })
 
+  const watchedValues = useWatch({ control }) as Record<string, unknown>
+
   const onFormSubmit = async (data: T) => {
     try {
       const { username, password } = data as unknown as Record<string, string>
-      await onSubmit(username, password)
-      const redirectTo = redirectUrl && isSafeRedirect(redirectUrl) ? redirectUrl : successRedirect
-      await navigate({ to: redirectTo })
+      const result = await onSubmit(username, password)
+      if (onSuccess) {
+        onSuccess(result)
+      } else {
+        const redirectTo = redirectUrl && isSafeRedirect(redirectUrl) ? redirectUrl : successRedirect
+        await navigate({ to: redirectTo })
+      }
     } catch (error) {
       toast.error(getAuthErrorMessage(error, t))
     }
@@ -93,21 +106,23 @@ function AuthForm<T extends FieldValues>({
         {fields.map((field) => {
           const errorKey = errors[field.name as keyof T]?.message as string | undefined
           return (
-            <FormField
-              key={field.id}
-              id={field.id}
-              label={t(`${i18nPrefix}.${field.name}`)}
-              error={errorKey ? t(errorKey) : undefined}
-            >
-              <Input
+            <div key={field.id}>
+              <FormField
                 id={field.id}
-                type={field.type}
-                autoComplete={field.autoComplete}
-                disabled={isSubmitting}
-                aria-invalid={!!errors[field.name as keyof T]}
-                {...register(field.name as Path<T>)}
-              />
-            </FormField>
+                label={t(`${i18nPrefix}.${field.name}`)}
+                error={errorKey ? t(errorKey) : undefined}
+              >
+                <Input
+                  id={field.id}
+                  type={field.type}
+                  autoComplete={field.autoComplete}
+                  disabled={isSubmitting}
+                  aria-invalid={!!errors[field.name as keyof T]}
+                  {...register(field.name as Path<T>)}
+                />
+              </FormField>
+              {renderAfterField?.(field.name as string, watchedValues)}
+            </div>
           )
         })}
         <Button type="submit" className="w-full" disabled={isSubmitting}>
