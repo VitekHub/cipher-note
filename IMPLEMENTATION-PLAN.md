@@ -702,36 +702,36 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 
 ---
 
-### Step 16 — Split KDF Module
+### Step 16 — Split KDF Module ✅
 
 **Goal:** Complete Split KDF implementation for authentication and key derivation.
 
 **Code:**
-- `src/shared/crypto/split-kdf.ts`:
+- Split KDF module:
   - `deriveAuthCredentials(password: string): Promise<AuthCredentials>`
-    - Generate `auth_salt` (16 bytes) and `key_salt` (16 bytes) if not provided
-    - Derive `auth_hash = Argon2id(password, auth_salt)` → hex string for Supabase Auth
-    - Derive `password_key = Argon2id(password, key_salt)` → Uint8Array for key wrapping
-    - Return `{ authHash: string, passwordKey: Uint8Array, authSalt: Uint8Array, keySalt: Uint8Array }`
+    - Generate `auth_salt` (16 bytes) and `key_salt` (16 bytes) via `generateSalt()`
+    - Derive `auth_hash` and `password_key` in parallel via `Promise.all`
+    - Return `{ authHash, passwordKey, authSalt, keySalt }`
   - `deriveLoginCredentials(password: string, authSalt: Uint8Array, keySalt: Uint8Array): Promise<LoginCredentials>`
-    - Given existing salts (from server), derive both keys
-    - Return `{ authHash: string, passwordKey: Uint8Array }`
+    - Given existing salts (from server), derive both keys in parallel
+    - Return `{ authHash, passwordKey }`
   - `changePassword(oldPassword: string, newPassword: string, authSalt: Uint8Array, keySalt: Uint8Array, wrappedMasterKey: Uint8Array, masterKeyIV: Uint8Array): Promise<PasswordChangeResult>`
-    - Derive old password key → unwrap master key
+    - Derive old password key → import as CryptoKey → decrypt master key (no AAD)
     - Generate new auth_salt and key_salt
-    - Derive new auth_hash and password_key
-    - Re-wrap master key with new password key
+    - Derive new auth_hash and password_key in parallel
+    - Re-wrap master key with new password key using AES-256-GCM (no AAD)
+    - Master key wrapping uses no AAD because the master key has no field name or version concept, unlike field key wrapping which uses AAD(fieldName, version)
     - Return `{ newAuthHash, newAuthSalt, newKeySalt, newWrappedMasterKey, newMasterKeyIV }`
-- `AuthCredentials`, `LoginCredentials`, `PasswordChangeResult` types in crypto.types.ts
+- `AuthCredentials`, `LoginCredentials`, `PasswordChangeResult` types already exist in crypto.types.ts — no changes needed
+- `derive-placeholder.ts` remains in place until Steps 19/21 replace its consumer in auth-credentials.ts
 
 **Tests:**
-- `deriveAuthCredentials`: same password → same auth_hash and password_key (deterministic with same salts)
-- `deriveLoginCredentials`: matches `deriveAuthCredentials` output for same inputs
-- Different passwords → different auth_hash and password_key
-- `changePassword`: old password unwraps master key correctly
-- `changePassword`: new password re-wraps master key correctly
-- `changePassword`: new auth_hash differs from old auth_hash
-- `changePassword`: master key content is unchanged after re-wrap
+- `deriveAuthCredentials`: generates two salts, calls Argon2id with correct args, returns correct types
+- `deriveLoginCredentials`: derives from existing salts without generating new ones, matches `deriveAuthCredentials` output for same password and salts
+- `changePassword`: round-trip — unwrap with old key, re-wrap with new key, verify master key unchanged
+- `changePassword`: new salts differ from old salts
+- `changePassword`: throws `DecryptionError` if wrong old password (cannot unwrap master key)
+- `changePassword`: calls `generateSalt` exactly twice for new salts
 
 ---
 
