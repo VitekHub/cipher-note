@@ -20,12 +20,17 @@ function MnemonicDialog({ open, mnemonic, onContinue }: MnemonicDialogProps) {
   const words = mnemonic ? mnemonic.trim().split(/\s+/) : []
 
   function handleOpenChange(nextOpen: boolean) {
+    // Prevent dismissal — user must acknowledge the mnemonic before continuing
     if (!nextOpen) return
   }
 
-  function handleCopy() {
-    navigator.clipboard.writeText(mnemonic)
-    toast.success(t('mnemonic.copied'))
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(mnemonic)
+      toast.success(t('mnemonic.copied'))
+    } catch {
+      toast.error(t('mnemonic.copyFailed'))
+    }
   }
 
   function handleDownload() {

@@ -38,6 +38,7 @@ function RegisterPage({ onSubmit }: RegisterPageProps) {
         fields={registerFields}
         onSubmit={onSubmit}
         onSuccess={handleSuccess}
+        watchFields={['password']}
         i18nPrefix="register"
         successRedirect="/dashboard"
         footer={{ textKey: 'register.hasAccount', linkLabelKey: 'register.loginLink', linkTo: '/login' }}

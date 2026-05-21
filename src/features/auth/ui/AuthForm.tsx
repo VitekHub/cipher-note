@@ -41,6 +41,7 @@ interface AuthFormConfig<T extends FieldValues> {
   onSubmit: (username: string, password: string) => Promise<unknown>
   onSuccess?: (result: unknown) => void
   renderAfterField?: (fieldName: string, formValues: Record<string, unknown>) => ReactNode
+  watchFields?: string[]
   i18nPrefix: string
   successRedirect: string
   redirectUrl?: string
@@ -54,6 +55,7 @@ function AuthForm<T extends FieldValues>({
   onSubmit,
   onSuccess,
   renderAfterField,
+  watchFields,
   i18nPrefix,
   successRedirect,
   redirectUrl,
@@ -72,7 +74,7 @@ function AuthForm<T extends FieldValues>({
     defaultValues: defaultValues as DefaultValues<T>,
   })
 
-  const watchedValues = useWatch({ control }) as Record<string, unknown>
+  const watchedValues = useWatch({ control, name: watchFields }) as Record<string, unknown>
 
   const onFormSubmit = async (data: T) => {
     try {

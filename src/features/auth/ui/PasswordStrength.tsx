@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Check, X } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
@@ -52,7 +53,7 @@ interface PasswordStrengthProps {
 
 function PasswordStrength({ password }: PasswordStrengthProps) {
   const { t } = useTranslation('auth')
-  const { score, criteria } = calculateStrength(password)
+  const { score, criteria } = useMemo(() => calculateStrength(password), [password])
   const level = getStrengthLevel(score)
 
   return (
