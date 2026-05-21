@@ -8,8 +8,9 @@
  * - `"sign"` info → signing key seed for integrity verification of wrapped keys
  */
 
+import { CRYPTO_KEY_LENGTH } from '@/shared/crypto/constants'
+
 const HKDF_HASH = 'SHA-256'
-const DEFAULT_LENGTH = 32
 
 const encoder = new TextEncoder()
 
@@ -28,10 +29,10 @@ const encoder = new TextEncoder()
 export async function deriveSubKey(
   masterKey: Uint8Array<ArrayBuffer>,
   info: string,
-  length: number = DEFAULT_LENGTH,
+  length: number = CRYPTO_KEY_LENGTH,
 ): Promise<Uint8Array<ArrayBuffer>> {
-  if (masterKey.length !== 32) {
-    throw new Error(`Invalid master key length: expected 32 bytes, got ${masterKey.length}`)
+  if (masterKey.length !== CRYPTO_KEY_LENGTH) {
+    throw new Error(`Invalid master key length: expected ${CRYPTO_KEY_LENGTH} bytes, got ${masterKey.length}`)
   }
 
   const baseKey = await crypto.subtle.importKey('raw', masterKey, { name: 'HKDF', hash: HKDF_HASH }, false, [

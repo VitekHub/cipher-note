@@ -18,6 +18,7 @@
  */
 
 import { importKey } from '@/shared/crypto/aes-gcm'
+import { CRYPTO_KEY_LENGTH } from '@/shared/crypto/constants'
 import { encodeAAD, wrapKey, unwrapKey } from '@/shared/crypto/key-wrap'
 import { deriveKEK, deriveSigningKeySeed } from '@/shared/crypto/hkdf'
 import type { KeyHierarchy, WrappedFieldKey } from '@/shared/types/crypto.types'
@@ -30,13 +31,13 @@ const FIELD_NAMES = ['note', 'website', 'email'] as const
  */
 export function generateFieldKeys(): Map<string, Uint8Array<ArrayBuffer>> {
   return new Map<string, Uint8Array<ArrayBuffer>>(
-    FIELD_NAMES.map((name) => [name, crypto.getRandomValues(new Uint8Array(32))]),
+    FIELD_NAMES.map((name) => [name, crypto.getRandomValues(new Uint8Array(CRYPTO_KEY_LENGTH))]),
   )
 }
 
 /** Generate a 256-bit random master key. Used once during registration. */
 export function generateMasterKey(): Uint8Array<ArrayBuffer> {
-  return crypto.getRandomValues(new Uint8Array(32))
+  return crypto.getRandomValues(new Uint8Array(CRYPTO_KEY_LENGTH))
 }
 
 /**
