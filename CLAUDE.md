@@ -107,6 +107,7 @@ See `IMPLEMENTATION-PLAN.md` for the full 36-step plan.
 - Step 15 (HKDF Key Derivation + Key Hierarchy) — complete
 - Step 16 (Split KDF Module) — complete
 - Step 17 (BIP-39 Mnemonic Module) — complete
+- Step 18 (Crypto Integration Tests) — complete
 
 ### Implementation Notes
 
@@ -127,3 +128,4 @@ Non-obvious decisions not visible from code alone:
 - **HKDF uses `deriveBits`, not `deriveKey`**: `deriveSubKey` returns raw `Uint8Array` bytes because the KEK bytes need to be imported as an AES-GCM CryptoKey via `importKey()` separately in `deriveFullKeyHierarchy`. HKDF uses empty salt since the master key is already random.
 - **BIP-39 mnemonic functions are async**: `generateMnemonic`, `validateMnemonic`, `mnemonicToSeed` must be `async` despite the underlying `@scure/bip39` functions being synchronous, because the lazy-loading pattern (`await loadBip39()`) requires it. Same as how `argon2id.ts` wraps sync Argon2 in async.
 - **`deriveRecoveryKEK` uses mnemonic string directly**: The mnemonic phrase is passed as the Argon2id "password" parameter, not the BIP-39 binary seed. The human-readable phrase is the input because it is what the user supplies and remembers; the binary seed is an internal derivation artifact. `mnemonicToSeed` is a utility function not used in the recovery KEK path.
+- **Crypto integration tests mock `deriveKey` re-consumption**: In `crypto-integration.test.ts`, `unwrapMasterKeyWithRecovery` requires a fresh `deriveKey` mock even after `wrapMasterKeyWithRecovery` consumed one during setup. The `setupRegistration` helper uses `mockResolvedValueOnce` which is consumed, so the test must re-mock before calling unwrap.

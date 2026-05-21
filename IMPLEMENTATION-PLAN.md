@@ -768,52 +768,56 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 
 ---
 
-### Step 18 — Crypto Integration Tests
+### Step 18 — Crypto Integration Tests ✅
 
-**Goal:** Full end-to-end crypto flow tests proving the entire key hierarchy works together.
+**Goal:** Cross-module integration tests proving the entire key hierarchy works end-to-end (composition gaps that unit tests can't verify).
 
 **Code:**
-- `src/shared/crypto/__tests__/integration.test.ts`:
-  - **Registration flow test:**
-    1. Generate master key
-    2. Derive auth credentials from password
-    3. Derive full key hierarchy (KEK, signing key)
-    4. Generate three field keys (note, website, email)
-    5. Wrap field keys with KEK (version 1)
-    6. Wrap master key with password key
-    7. Generate mnemonic and wrap master key with recovery KEK
-    8. Verify all wrapped keys can be unwrapped
-  - **Login flow test:**
-    1. Given stored salts, derive login credentials from password
-    2. Unwrap master key with password key
-    3. Derive KEK from master key
-    4. Unwrap all field keys with KEK
-    5. Verify field keys match originals
-  - **Decrypt field content test:**
-    1. Encrypt plaintext with field key
-    2. Decrypt with field key
-    3. Verify round-trip
-  - **Password change test:**
-    1. Unwrap master key with old password key
-    2. Derive new credentials with new password
-    3. Re-wrap master key
-    4. Unwrap with new password key → verify master key unchanged
-    5. Field keys unaffected (don't need re-wrap)
-  - **Seed phrase recovery test:**
-    1. Wrap master key with recovery KEK
-    2. Unwrap master key with mnemonic
-    3. Derive full key hierarchy
-    4. Decrypt all fields
-  - **Key rotation test:**
-    1. Rotate one field key (e.g., note v1 → v2)
-    2. Re-encrypt field content with new key
-    3. Verify old key can no longer decrypt
-    4. Verify other field keys (website, email) are unaffected
+- Colocated test file in `src/shared/crypto/`
+- Mock Argon2id module and @scure/bip39 at module boundaries (Web Worker and WASM won't run in jsdom); use real Web Crypto API for all other modules
+- Shared `setupRegistration` helper that runs the full registration flow and returns all artifacts for reuse across test cases
+- **Registration flow test:**
+  1. Generate master key
+  2. Derive auth credentials from password
+  3. Derive full key hierarchy (KEK, signing key)
+  4. Generate three field keys (note, website, email)
+  5. Wrap field keys with KEK (version 1)
+  6. Wrap master key with password key
+  7. Generate mnemonic and wrap master key with recovery KEK
+  8. Verify all wrapped keys can be unwrapped (field keys with KEK, master key with password key, master key with recovery)
+- **Login flow test:**
+  1. Given stored salts, derive login credentials from password
+  2. Unwrap master key with password key
+  3. Derive KEK from master key
+  4. Unwrap all field keys with KEK
+  5. Verify field keys match originals
+  6. Decrypt actual field content with recovered field keys (verifies encrypt/decrypt round-trip in login context)
+- **Password change test:**
+  1. Unwrap master key with old password key
+  2. Derive new credentials with new password
+  3. Re-wrap master key
+  4. Unwrap with new password key → verify master key unchanged
+  5. Field keys unaffected (unwrap still works with same KEK)
+  6. Field content survives password change (encrypt/decrypt with field key still works)
+  7. Old password key cannot unwrap new wrapped master key
+- **Seed phrase recovery test:**
+  1. Unwrap master key with mnemonic
+  2. Derive full key hierarchy
+  3. Unwrap all field keys
+  4. Decrypt all field content with recovered keys
+  5. Wrong mnemonic cannot unwrap
+- **Key rotation test:**
+  1. Rotate one field key (e.g., note v1 → v2)
+  2. Re-encrypt field content with new key
+  3. Verify old key can no longer decrypt
+  4. Verify other field keys (website, email) are unaffected
+  5. Version rollback protection: unwrap v2 wrapped key with v1 AAD fails
+- **Performance tests:** registration and login flows complete within 5 seconds (Argon2id mocked, so these validate Web Crypto operation timing; real perf validation in E2E Step 36)
 
 **Tests:**
 - All integration tests pass
 - Performance: full registration flow completes within 5 seconds
-- Performance: full login flow (including Argon2id) completes within 5 seconds
+- Performance: full login flow completes within 5 seconds
 
 ---
 
