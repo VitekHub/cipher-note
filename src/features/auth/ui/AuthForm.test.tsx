@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@/test/utils'
 import userEvent from '@testing-library/user-event'
-import React from 'react'
+import React, { useRef } from 'react'
 import { z } from 'zod'
 import { AuthForm, type AuthFieldConfig } from './AuthForm'
 
@@ -111,6 +111,7 @@ describe('AuthForm', () => {
         defaultValues={{ username: 'defaultuser', password: '' }}
         fields={testFields}
         onSubmit={vi.fn().mockResolvedValue(undefined)}
+        watchFields={['username']}
         renderAfterField={(fieldName, values) =>
           fieldName === 'username' ? <div data-testid="form-values">{JSON.stringify(values)}</div> : null
         }
@@ -147,5 +148,50 @@ describe('AuthForm', () => {
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('Invalid username or password')
     })
+  })
+
+  it('forwards containerRef to the AuthLayout card element', () => {
+    function RefTest() {
+      const containerRef = useRef<HTMLElement>(null)
+      return (
+        <AuthForm<TestFormData>
+          schema={testSchema}
+          defaultValues={{ username: '', password: '' }}
+          fields={testFields}
+          onSubmit={vi.fn().mockResolvedValue(undefined)}
+          i18nPrefix="login"
+          successRedirect="/dashboard"
+          containerRef={containerRef}
+          footer={{ textKey: 'login.noAccount', linkLabelKey: 'login.registerLink', linkTo: '/register' }}
+        />
+      )
+    }
+
+    render(<RefTest />)
+    expect(screen.getByLabelText('Username')).toBeInTheDocument()
+  })
+
+  it('calls onFocus and onBlur callbacks for a field', async () => {
+    const user = userEvent.setup()
+    const onFocus = vi.fn()
+    const onBlur = vi.fn()
+
+    render(
+      <AuthForm<TestFormData>
+        schema={testSchema}
+        defaultValues={{ username: '', password: '' }}
+        fields={[{ ...testFields[0], onFocus, onBlur }]}
+        onSubmit={vi.fn().mockResolvedValue(undefined)}
+        i18nPrefix="login"
+        successRedirect="/dashboard"
+        footer={{ textKey: 'login.noAccount', linkLabelKey: 'login.registerLink', linkTo: '/register' }}
+      />,
+    )
+
+    await user.click(screen.getByLabelText('Username'))
+    expect(onFocus).toHaveBeenCalledTimes(1)
+
+    await user.tab()
+    expect(onBlur).toHaveBeenCalledTimes(1)
   })
 })

@@ -46,8 +46,13 @@ describe('RegisterPage', () => {
     })
   })
 
-  it('shows password strength indicator below password field', () => {
+  it('shows password strength indicator in popover when password field is focused', async () => {
+    const user = userEvent.setup()
     render(<RegisterPage onSubmit={vi.fn().mockResolvedValue(undefined)} />)
+
+    const passwordInput = screen.getByLabelText(/^password$/i)
+    await user.click(passwordInput)
+    await user.keyboard('a')
 
     expect(screen.getByText('Weak')).toBeInTheDocument()
   })

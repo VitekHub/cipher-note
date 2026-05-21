@@ -1,4 +1,5 @@
 import { Link, useNavigate } from '@tanstack/react-router'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ReactNode } from 'react'
 import {
@@ -26,6 +27,8 @@ interface AuthFieldConfig<T extends Record<string, unknown>> {
   id: string
   type: string
   autoComplete: string
+  onFocus?: () => void
+  onBlur?: () => void
 }
 
 interface AuthFooterConfig {
@@ -46,6 +49,7 @@ interface AuthFormConfig<T extends FieldValues> {
   successRedirect: string
   redirectUrl?: string
   footer: AuthFooterConfig
+  containerRef?: React.Ref<HTMLElement>
 }
 
 function AuthForm<T extends FieldValues>({
@@ -60,6 +64,7 @@ function AuthForm<T extends FieldValues>({
   successRedirect,
   redirectUrl,
   footer,
+  containerRef,
 }: AuthFormConfig<T>) {
   const { t } = useTranslation('auth')
   const navigate = useNavigate()
@@ -74,11 +79,16 @@ function AuthForm<T extends FieldValues>({
     defaultValues: defaultValues as DefaultValues<T>,
   })
 
-  const watchedValues = useWatch({
+  const watchedArray = useWatch({
     control,
     name: watchFields,
     disabled: !watchFields?.length,
-  }) as Record<string, unknown>
+  })
+
+  const watchedValues = useMemo(() => {
+    if (!watchFields?.length) return {} as Record<string, unknown>
+    return Object.fromEntries(watchFields.map((name, i) => [name, (watchedArray as unknown[])[i]]))
+  }, [watchedArray, watchFields])
 
   const onFormSubmit = async (data: T) => {
     try {
@@ -97,6 +107,7 @@ function AuthForm<T extends FieldValues>({
 
   return (
     <AuthLayout
+      ref={containerRef}
       title={t(`${i18nPrefix}.title`)}
       description={t('common:app.tagline')}
       footer={
@@ -111,6 +122,7 @@ function AuthForm<T extends FieldValues>({
       <form onSubmit={handleSubmit(onFormSubmit as SubmitHandler<FieldValues>)} className="space-y-4" noValidate>
         {fields.map((field) => {
           const errorKey = errors[field.name as keyof T]?.message as string | undefined
+          const { ref: registerRef, ...registerRest } = register(field.name as Path<T>)
           return (
             <div key={field.id}>
               <FormField
@@ -124,7 +136,13 @@ function AuthForm<T extends FieldValues>({
                   autoComplete={field.autoComplete}
                   disabled={isSubmitting}
                   aria-invalid={!!errors[field.name as keyof T]}
-                  {...register(field.name as Path<T>)}
+                  {...registerRest}
+                  ref={registerRef}
+                  onFocus={() => field.onFocus?.()}
+                  onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
+                    registerRest.onBlur(e)
+                    field.onBlur?.()
+                  }}
                 />
               </FormField>
               {renderAfterField?.(field.name as string, watchedValues)}

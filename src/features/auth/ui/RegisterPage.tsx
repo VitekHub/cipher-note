@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { registerSchema, type RegisterFormData } from '@/features/auth/model/register-schema'
 import { AuthForm, type AuthFieldConfig } from '@/features/auth/ui/AuthForm'
@@ -18,7 +18,15 @@ interface RegisterPageProps {
 function RegisterPage({ onSubmit }: RegisterPageProps) {
   const [mnemonic, setMnemonic] = useState<string | null>(null)
   const [showMnemonic, setShowMnemonic] = useState(false)
+  const [passwordFocused, setPasswordFocused] = useState(false)
+  const cardRef = useRef<HTMLElement>(null)
   const navigate = useNavigate()
+
+  const fieldsWithFocus = registerFields.map((f) =>
+    f.name === 'password'
+      ? { ...f, onFocus: () => setPasswordFocused(true), onBlur: () => setPasswordFocused(false) }
+      : f,
+  )
 
   function handleSuccess(result: unknown) {
     if (typeof result !== 'string') return
@@ -36,16 +44,22 @@ function RegisterPage({ onSubmit }: RegisterPageProps) {
       <AuthForm<RegisterFormData>
         schema={registerSchema}
         defaultValues={{ username: '', password: '', confirmPassword: '' }}
-        fields={registerFields}
+        fields={fieldsWithFocus}
         onSubmit={onSubmit}
         onSuccess={handleSuccess}
         watchFields={['password']}
         i18nPrefix="register"
         successRedirect="/dashboard"
+        containerRef={cardRef}
         footer={{ textKey: 'register.hasAccount', linkLabelKey: 'register.loginLink', linkTo: '/login' }}
         renderAfterField={(fieldName, values) =>
           fieldName === 'password' ? (
-            <PasswordStrength password={(values as Record<string, string>).password ?? ''} />
+            <PasswordStrength
+              password={(values as Record<string, string>).password ?? ''}
+              open={passwordFocused}
+              onOpenChange={setPasswordFocused}
+              anchorRef={cardRef}
+            />
           ) : null
         }
       />

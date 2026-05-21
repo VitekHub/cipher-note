@@ -1,42 +1,61 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@/test/utils'
+import React, { useRef } from 'react'
 import { PasswordStrength } from './PasswordStrength'
 
+function TestWrapper({ password, open = true }: { password: string; open?: boolean }) {
+  const anchorRef = useRef<Element>(null)
+  return (
+    <>
+      <div ref={anchorRef} data-testid="anchor" />
+      <PasswordStrength password={password} open={open} onOpenChange={vi.fn()} anchorRef={anchorRef} />
+    </>
+  )
+}
+
 describe('PasswordStrength', () => {
-  it('shows "Weak" for empty password', () => {
-    render(<PasswordStrength password="" />)
+  it('renders nothing visible for empty password', () => {
+    render(<TestWrapper password="" />)
+    expect(screen.queryByText('Weak')).not.toBeInTheDocument()
+  })
+
+  it('renders nothing visible when open is false', () => {
+    render(<TestWrapper password="a" open={false} />)
+    expect(screen.queryByText('Weak')).not.toBeInTheDocument()
+  })
+
+  it('shows "Weak" for short password meeting 0-1 criteria', () => {
+    render(<TestWrapper password="a" />)
     expect(screen.getByText('Weak')).toBeInTheDocument()
   })
 
-  it('shows "Weak" for password meeting 0–1 criteria', () => {
-    render(<PasswordStrength password="a" />)
+  it('shows "Weak" for short diverse password regardless of other criteria', () => {
+    render(<TestWrapper password="aA1" />)
     expect(screen.getByText('Weak')).toBeInTheDocument()
   })
 
-  it('shows "Fair" for password meeting 2–3 criteria', () => {
-    // "password" meets: minLength (8+), lowercase → score 2 → Fair
-    render(<PasswordStrength password="password" />)
+  it('shows "Fair" for 8+ char password meeting 2 criteria', () => {
+    render(<TestWrapper password="password" />)
     expect(screen.getByText('Fair')).toBeInTheDocument()
   })
 
-  it('shows "Strong" for password meeting 4–5 criteria', () => {
-    // "Password1!" meets: minLength, uppercase, lowercase, digitOrSpecial → score 4 → Strong
-    render(<PasswordStrength password="Password1!" />)
+  it('shows "Strong" for 8+ char password meeting 3-4 criteria', () => {
+    render(<TestWrapper password="Password1!" />)
     expect(screen.getByText('Strong')).toBeInTheDocument()
   })
 
-  it('renders all 5 criteria', () => {
-    render(<PasswordStrength password="" />)
-    expect(screen.getByText('At least 8 characters')).toBeInTheDocument()
+  it('renders 4 criteria', () => {
+    render(<TestWrapper password="a" />)
     expect(screen.getByText('At least 12 characters')).toBeInTheDocument()
     expect(screen.getByText('Contains uppercase letter')).toBeInTheDocument()
     expect(screen.getByText('Contains lowercase letter')).toBeInTheDocument()
     expect(screen.getByText('Contains digit or special character')).toBeInTheDocument()
+    expect(screen.getByText('Recommended:')).toBeInTheDocument()
   })
 
-  it('renders 5 bar segments', () => {
-    const { container } = render(<PasswordStrength password="" />)
-    const bars = container.querySelectorAll('[data-testid="strength-bar"]')
-    expect(bars.length).toBe(5)
+  it('renders 4 bar segments', () => {
+    render(<TestWrapper password="a" />)
+    const bars = document.querySelectorAll('[data-testid="strength-bar"]')
+    expect(bars.length).toBe(4)
   })
 })

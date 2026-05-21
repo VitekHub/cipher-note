@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { forwardRef, type ReactNode } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card'
 
 interface AuthLayoutProps {
@@ -8,9 +8,12 @@ interface AuthLayoutProps {
   footer?: ReactNode
 }
 
-function AuthLayout({ title, description, children, footer }: AuthLayoutProps) {
+const AuthLayout = forwardRef<HTMLElement, AuthLayoutProps>(function AuthLayout(
+  { title, description, children, footer },
+  ref,
+) {
   return (
-    <Card className="w-full max-w-md">
+    <Card ref={ref} className="w-full max-w-md">
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         {description ? <CardDescription>{description}</CardDescription> : null}
@@ -21,6 +24,6 @@ function AuthLayout({ title, description, children, footer }: AuthLayoutProps) {
       </CardContent>
     </Card>
   )
-}
+})
 
 export { AuthLayout }
