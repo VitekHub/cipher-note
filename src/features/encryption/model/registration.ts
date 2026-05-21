@@ -2,7 +2,7 @@
  * Registration crypto flow: derives all keys and wraps them for server storage.
  *
  * This is a pure crypto function — no auth calls, no DB writes, no side effects.
- * The caller (auth-credentials.ts) handles Supabase Auth signup and data upload.
+ * The caller (auth-flow.ts) handles Supabase Auth signup and data upload.
  */
 
 import { importKey, encrypt, exportKey } from '@/shared/crypto/aes-gcm'

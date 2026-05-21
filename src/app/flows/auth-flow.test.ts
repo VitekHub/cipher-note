@@ -110,12 +110,12 @@ describe('signUpUser', () => {
     expect(authAdapter.signup).toHaveBeenCalledWith('testuser', 'a'.repeat(64))
   })
 
-  it('uploads registration data with user ID', async () => {
+  it('uploads registration data with user ID from signup result', async () => {
     await signUpUser('testuser', 'testpass123')
     expect(uploadRegistrationData).toHaveBeenCalledTimes(1)
     const regResult = await (deriveRegistrationKeys as ReturnType<typeof vi.fn>).mock.results[0].value
-    const userId = '1'
-    expect(uploadRegistrationData).toHaveBeenCalledWith(regResult, userId)
+    const signupResult = await (authAdapter.signup as ReturnType<typeof vi.fn>).mock.results[0].value
+    expect(uploadRegistrationData).toHaveBeenCalledWith(regResult, signupResult.user.id)
   })
 
   it('populates crypto store with hex-encoded keys', async () => {

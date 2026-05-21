@@ -7,6 +7,15 @@ import { deriveCredentials } from '@/shared/crypto/derive-placeholder'
 import type { AuthResult } from '@/shared/auth/auth.types'
 import { hexEncode } from '@/shared/crypto/memory'
 
+function encodeFieldKeysToHex(fieldKeys: Map<string, Uint8Array>): Record<string, string> {
+  const mapEntries = Array.from(fieldKeys.entries())
+  const hexEntries = mapEntries.map(([name, key]) => {
+    const hexKey = hexEncode(key)
+    return [name, hexKey]
+  })
+  return Object.fromEntries(hexEntries)
+}
+
 export async function signUpUser(username: string, password: string): Promise<AuthResult & { mnemonic: string }> {
   const authStore = useAuthStore.getState()
   authStore.setLoading(true)
@@ -28,13 +37,11 @@ export async function signUpUser(username: string, password: string): Promise<Au
     }
 
     authStore.setAuth(authResult.user, authResult.session)
-    useCryptoStore
-      .getState()
-      .setKeys(
-        hexEncode(regResult.masterKey),
-        hexEncode(regResult.kek),
-        Object.fromEntries(Array.from(regResult.fieldKeys.entries()).map(([name, key]) => [name, hexEncode(key)])),
-      )
+
+    const masterKeyHex = hexEncode(regResult.masterKey)
+    const kekHex = hexEncode(regResult.kek)
+    const fieldKeysHex = encodeFieldKeysToHex(regResult.fieldKeys)
+    useCryptoStore.getState().setKeys(masterKeyHex, kekHex, fieldKeysHex)
 
     return { ...authResult, mnemonic: regResult.mnemonic }
   } finally {
