@@ -1,3 +1,5 @@
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { loginSchema, type LoginFormData } from '@/features/auth/model/login-schema'
 import { loginUser } from '@/app/flows/auth-flow'
 import { AuthForm, type AuthFieldConfig } from '@/features/auth/ui/AuthForm'
@@ -12,10 +14,14 @@ interface LoginPageProps {
 }
 
 function LoginPage({ redirectUrl }: LoginPageProps) {
+  const form = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { username: '', password: '' },
+  })
+
   return (
     <AuthForm<LoginFormData>
-      schema={loginSchema}
-      defaultValues={{ username: '', password: '' }}
+      form={form}
       fields={loginFields}
       onSubmit={loginUser}
       i18nPrefix="login"

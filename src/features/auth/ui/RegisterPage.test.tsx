@@ -7,6 +7,16 @@ vi.mock('sonner', () => ({
   toast: { error: vi.fn(), success: vi.fn() },
 }))
 
+vi.mock('@/shared/lib/use-debounced-value', () => ({
+  useDebouncedValue: (value: unknown) => value,
+}))
+
+vi.mock('@/shared/api/supabase-client', () => ({
+  getSupabase: () => ({
+    rpc: vi.fn().mockResolvedValue({ data: true, error: null }),
+  }),
+}))
+
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children, ...props }: Record<string, unknown> & { children?: React.ReactNode }) =>
     React.createElement('a', props, children),
@@ -37,6 +47,9 @@ describe('RegisterPage', () => {
     render(<RegisterPage onSubmit={onSubmit} />)
 
     await user.type(screen.getByLabelText(/username/i), 'testuser')
+    await waitFor(() => {
+      expect(screen.getByText(/username is available/i)).toBeInTheDocument()
+    })
     await user.type(screen.getByLabelText(/^password$/i), 'Password1!')
     await user.type(screen.getByLabelText(/confirm password/i), 'Password1!')
     await user.click(screen.getByRole('button', { name: /create account/i }))
@@ -65,6 +78,9 @@ describe('RegisterPage', () => {
     render(<RegisterPage onSubmit={onSubmit} />)
 
     await user.type(screen.getByLabelText(/username/i), 'testuser')
+    await waitFor(() => {
+      expect(screen.getByText(/username is available/i)).toBeInTheDocument()
+    })
     await user.type(screen.getByLabelText(/^password$/i), 'Password1!')
     await user.type(screen.getByLabelText(/confirm password/i), 'Password1!')
     await user.click(screen.getByRole('button', { name: /create account/i }))

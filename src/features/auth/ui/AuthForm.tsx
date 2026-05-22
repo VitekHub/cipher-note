@@ -2,17 +2,7 @@ import { Link, useNavigate } from '@tanstack/react-router'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ReactNode } from 'react'
-import {
-  useForm,
-  useWatch,
-  type FieldValues,
-  type Path,
-  type Resolver,
-  type SubmitHandler,
-  type DefaultValues,
-} from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import type { ZodType } from 'zod'
+import { useWatch, type FieldValues, type Path, type SubmitHandler, type UseFormReturn } from 'react-hook-form'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
@@ -38,8 +28,7 @@ interface AuthFooterConfig {
 }
 
 interface AuthFormConfig<T extends FieldValues> {
-  schema: ZodType<T>
-  defaultValues: T
+  form: UseFormReturn<T>
   fields: AuthFieldConfig<T>[]
   onSubmit: (username: string, password: string) => Promise<unknown>
   onSuccess?: (result: unknown) => void
@@ -48,13 +37,13 @@ interface AuthFormConfig<T extends FieldValues> {
   i18nPrefix: string
   successRedirect: string
   redirectUrl?: string
+  isSubmitDisabled?: boolean
   footer: AuthFooterConfig
   containerRef?: React.Ref<HTMLElement>
 }
 
 function AuthForm<T extends FieldValues>({
-  schema,
-  defaultValues,
+  form,
   fields,
   onSubmit,
   onSuccess,
@@ -63,6 +52,7 @@ function AuthForm<T extends FieldValues>({
   i18nPrefix,
   successRedirect,
   redirectUrl,
+  isSubmitDisabled,
   footer,
   containerRef,
 }: AuthFormConfig<T>) {
@@ -74,10 +64,7 @@ function AuthForm<T extends FieldValues>({
     handleSubmit,
     control,
     formState: { errors, isSubmitting },
-  } = useForm<T>({
-    resolver: zodResolver(schema) as Resolver<T>,
-    defaultValues: defaultValues as DefaultValues<T>,
-  })
+  } = form
 
   const watchedArray = useWatch({
     control,
@@ -149,7 +136,7 @@ function AuthForm<T extends FieldValues>({
             </div>
           )
         })}
-        <Button type="submit" className="w-full" disabled={isSubmitting}>
+        <Button type="submit" className="w-full" disabled={isSubmitting || isSubmitDisabled}>
           {isSubmitting && <Loader2 className="size-4 animate-spin" />}
           {isSubmitting ? t(`${i18nPrefix}.submitting`) : t(`${i18nPrefix}.submit`)}
         </Button>

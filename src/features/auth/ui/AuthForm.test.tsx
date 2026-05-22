@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@/test/utils'
 import userEvent from '@testing-library/user-event'
 import React, { useRef } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { AuthForm, type AuthFieldConfig } from './AuthForm'
 
@@ -27,6 +29,17 @@ const testFields: AuthFieldConfig<TestFormData>[] = [
   { name: 'password', id: 'password', type: 'password', autoComplete: 'current-password' },
 ]
 
+function TestFormWrapper({
+  defaultValues = { username: '', password: '' },
+  ...authFormProps
+}: { defaultValues?: TestFormData } & Omit<Parameters<typeof AuthForm<TestFormData>>[0], 'form'>) {
+  const form = useForm<TestFormData>({
+    resolver: zodResolver(testSchema),
+    defaultValues,
+  })
+  return <AuthForm<TestFormData> form={form} {...authFormProps} />
+}
+
 describe('AuthForm', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -37,9 +50,7 @@ describe('AuthForm', () => {
     const onSubmit = vi.fn().mockResolvedValue({ user: { id: '1' } })
 
     render(
-      <AuthForm<TestFormData>
-        schema={testSchema}
-        defaultValues={{ username: '', password: '' }}
+      <TestFormWrapper
         fields={testFields}
         onSubmit={onSubmit}
         i18nPrefix="login"
@@ -64,9 +75,7 @@ describe('AuthForm', () => {
     const onSuccess = vi.fn()
 
     render(
-      <AuthForm<TestFormData>
-        schema={testSchema}
-        defaultValues={{ username: '', password: '' }}
+      <TestFormWrapper
         fields={testFields}
         onSubmit={onSubmit}
         onSuccess={onSuccess}
@@ -87,9 +96,7 @@ describe('AuthForm', () => {
 
   it('renders renderAfterField content after the specified field', () => {
     render(
-      <AuthForm<TestFormData>
-        schema={testSchema}
-        defaultValues={{ username: '', password: '' }}
+      <TestFormWrapper
         fields={testFields}
         onSubmit={vi.fn().mockResolvedValue(undefined)}
         renderAfterField={(fieldName) =>
@@ -106,8 +113,7 @@ describe('AuthForm', () => {
 
   it('passes form values to renderAfterField', () => {
     render(
-      <AuthForm<TestFormData>
-        schema={testSchema}
+      <TestFormWrapper
         defaultValues={{ username: 'defaultuser', password: '' }}
         fields={testFields}
         onSubmit={vi.fn().mockResolvedValue(undefined)}
@@ -130,9 +136,7 @@ describe('AuthForm', () => {
     const { toast } = await import('sonner')
 
     render(
-      <AuthForm<TestFormData>
-        schema={testSchema}
-        defaultValues={{ username: '', password: '' }}
+      <TestFormWrapper
         fields={testFields}
         onSubmit={onSubmit}
         i18nPrefix="login"
@@ -154,9 +158,7 @@ describe('AuthForm', () => {
     function RefTest() {
       const containerRef = useRef<HTMLElement>(null)
       return (
-        <AuthForm<TestFormData>
-          schema={testSchema}
-          defaultValues={{ username: '', password: '' }}
+        <TestFormWrapper
           fields={testFields}
           onSubmit={vi.fn().mockResolvedValue(undefined)}
           i18nPrefix="login"
@@ -177,9 +179,7 @@ describe('AuthForm', () => {
     const onBlur = vi.fn()
 
     render(
-      <AuthForm<TestFormData>
-        schema={testSchema}
-        defaultValues={{ username: '', password: '' }}
+      <TestFormWrapper
         fields={[{ ...testFields[0], onFocus, onBlur }]}
         onSubmit={vi.fn().mockResolvedValue(undefined)}
         i18nPrefix="login"
