@@ -275,7 +275,7 @@ describe('argon2id.worker — Argon2id computation', () => {
       ArgonType: { Argon2d: 0, Argon2i: 1, Argon2id: 2 },
     }
 
-    vi.doMock('argon2-browser', () => ({ default: mockArgon2Module }))
+    vi.doMock('argon2-browser/dist/argon2-bundled.min.js', () => ({ default: mockArgon2Module }))
   })
 
   afterEach(() => {
@@ -283,7 +283,7 @@ describe('argon2id.worker — Argon2id computation', () => {
   })
 
   it('passes correct parameters to argon2-browser', async () => {
-    const argon2 = await import('argon2-browser')
+    const argon2 = await import('argon2-browser/dist/argon2-bundled.min.js')
     const salt = new Uint8Array(16).fill(99)
 
     await argon2.default.hash({
@@ -308,7 +308,7 @@ describe('argon2id.worker — Argon2id computation', () => {
   })
 
   it('uses Argon2id variant', async () => {
-    const argon2 = await import('argon2-browser')
+    const argon2 = await import('argon2-browser/dist/argon2-bundled.min.js')
 
     await argon2.default.hash({
       pass: 'password',
@@ -325,7 +325,7 @@ describe('argon2id.worker — Argon2id computation', () => {
   })
 
   it('passes custom params correctly', async () => {
-    const argon2 = await import('argon2-browser')
+    const argon2 = await import('argon2-browser/dist/argon2-bundled.min.js')
     const salt = new Uint8Array(16).fill(55)
     const customParams: Argon2Params = {
       memory: 32768,
@@ -378,7 +378,7 @@ describe('argon2id.worker — onmessage handler', () => {
       ArgonType: { Argon2d: 0, Argon2i: 1, Argon2id: 2 },
     }
 
-    vi.doMock('argon2-browser', () => ({ default: mockArgon2Module }))
+    vi.doMock('argon2-browser/dist/argon2-bundled.min.js', () => ({ default: mockArgon2Module }))
 
     // Stub self.postMessage so the worker handler can call it
     vi.stubGlobal('self', { postMessage: postMessageSpy })

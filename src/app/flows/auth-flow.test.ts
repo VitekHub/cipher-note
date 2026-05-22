@@ -139,9 +139,9 @@ describe('signUpUser', () => {
     expect(mockSetLoading).toHaveBeenCalledWith(false)
   })
 
-  it('returns result with mnemonic', async () => {
+  it('returns mnemonic', async () => {
     const result = await signUpUser('testuser', 'testpass123')
-    expect(result.mnemonic).toBe('word0 word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11')
+    expect(result).toBe('word0 word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11')
   })
 
   it('attempts logout cleanup when upload fails after signup succeeds', async () => {

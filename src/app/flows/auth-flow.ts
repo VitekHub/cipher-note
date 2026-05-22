@@ -4,7 +4,6 @@ import { useAuthStore } from '@/features/auth/model/auth-store'
 import { authAdapter } from '@/shared/auth/supabase-adapter'
 import { uploadRegistrationData } from '@/shared/api/supabase-registration'
 import { deriveCredentials } from '@/shared/crypto/derive-placeholder'
-import type { AuthResult } from '@/shared/auth/auth.types'
 import { hexEncode } from '@/shared/crypto/memory'
 
 function encodeFieldKeysToHex(fieldKeys: Map<string, Uint8Array>): Record<string, string> {
@@ -16,7 +15,14 @@ function encodeFieldKeysToHex(fieldKeys: Map<string, Uint8Array>): Record<string
   return Object.fromEntries(hexEntries)
 }
 
-export async function signUpUser(username: string, password: string): Promise<AuthResult & { mnemonic: string }> {
+/**
+ * Registers a new user: derives keys, signs up on the server, uploads encrypted
+ * key material, and populates the auth and crypto stores. Returns the BIP-39
+ * mnemonic for the recovery dialog.
+ *
+ * On failure after signup, attempts best-effort cleanup via logout.
+ */
+export async function signUpUser(username: string, password: string): Promise<string> {
   const authStore = useAuthStore.getState()
   authStore.setLoading(true)
 
@@ -43,7 +49,7 @@ export async function signUpUser(username: string, password: string): Promise<Au
     const fieldKeysHex = encodeFieldKeysToHex(regResult.fieldKeys)
     useCryptoStore.getState().setKeys(masterKeyHex, kekHex, fieldKeysHex)
 
-    return { ...authResult, mnemonic: regResult.mnemonic }
+    return regResult.mnemonic
   } finally {
     authStore.setLoading(false)
   }

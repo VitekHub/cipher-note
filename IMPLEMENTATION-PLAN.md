@@ -21,7 +21,7 @@ This app will never need backward compatibility with previous versions. The data
 | Frontend stack | Vite + Zustand + TanStack Query/Router + react-i18next + shadcn/ui + Tailwind |
 | Route structure | TanStack Router file-based routes in `src/app/routes/` (no separate `pages/` dir) |
 | Crypto key storage | Zustand store with hex-encoded strings (not Uint8Array/Map) — proper reactivity |
-| Code splitting | argon2-browser WASM + @scure/bip39 lazy-loaded via dynamic import + Web Worker |
+| Code splitting | argon2-browser (bundled build) + @scure/bip39 lazy-loaded via dynamic import + Web Worker |
 | Vault lock security | Purges TanStack Query cache of decrypted field data on lock |
 | Crypto libraries | Web Crypto API + argon2-browser + @scure/bip39 |
 | Component library | shadcn/ui + Tailwind, dark theme default |
@@ -153,7 +153,7 @@ cipher-note-react/
       crypto/
         aes-gcm.ts            # AES-256-GCM encrypt/decrypt/importKey/exportKey
         key-wrap.ts           # Key wrapping/unwrapping with AAD
-        argon2id.ts           # Argon2id derivation via argon2-browser (WASM, lazy-loaded)
+        argon2id.ts           # Argon2id derivation via argon2-browser bundled build (lazy-loaded)
         hkdf.ts               # HKDF-SHA-256 sub-key derivation
         key-hierarchy.ts     # Master key → KEK → field keys orchestration
         split-kdf.ts          # Split KDF (auth + key derivation from password)
@@ -230,7 +230,7 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 - **Each test file mirrors its source.** `aes-gcm.ts` → `aes-gcm.test.ts` in the same directory. No separate `__tests__` folders — colocate tests with the code they test.
 - **No barrel files (index.ts).** Import components directly by path: `import { Button } from '@/shared/ui/button'` not `import { Button } from '@/shared/ui'`. Barrel files defeat tree-shaking and cause the entire module graph to be analyzed even when only one export is needed. This applies to all directories — `shared/ui/`, `shared/crypto/`, `shared/auth/`, etc.
 - **File naming convention.** Component files (`.tsx` exporting a React component) use PascalCase: `LoginPage.tsx`, `FormField.tsx`. Non-component files use kebab-case: `auth-store.ts`, `login-schema.ts`. Exceptions: shadcn/ui primitives stay kebab-case (`button.tsx`, `input.tsx`), context/provider modules that export both component and hook stay kebab-case (`auth-context.tsx`, `theme-provider.tsx`), and route files follow TanStack Router convention.
-- **Lazy-load heavy crypto modules.** `argon2-browser` (WASM, ~200KB+) and `@scure/bip39` (2048-word dictionary) must be dynamically imported via `await import(...)` only when the user is actually authenticating or recovering. Never import them at the top level of a module that loads on app startup.
+- **Lazy-load heavy crypto modules.** `argon2-browser` (WASM, ~200KB+) and `@scure/bip39` (2048-word dictionary) must be dynamically imported via `await import(...)` only when the user is actually authenticating or recovering. Never import them at the top level of a module that loads on app startup. **Important:** always import `argon2-browser/dist/argon2-bundled.min.js`, not `argon2-browser` — the default import tries to load a `.wasm` file which Vite cannot handle; the bundled build embeds WASM as base64 in JS.
 
 ---
 
@@ -250,7 +250,7 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 - Create `src/app/styles/globals.css` with Tailwind v4 directives (`@import "tailwindcss"`, `@custom-variant dark`, `@theme inline`) + shadcn CSS variables
 - Create `ThemeProvider` component in `src/shared/lib/theme-provider.tsx` (defaults to dark, persists to localStorage)
 - Create base `AppLayout` component with dark theme
-- Configure Vite code splitting: `argon2-browser` → `crypto-argon2` chunk, `@scure/bip39` → `crypto-bip39` chunk via `manualChunks`
+- Configure Vite code splitting: `argon2-browser` → `crypto-argon2` chunk, `@scure/bip39` → `crypto-bip39` chunk via `manualChunks`. **Note:** `argon2-browser` must be imported as `argon2-browser/dist/argon2-bundled.min.js` — the default import loads a `.wasm` file which Vite cannot handle. The bundled build embeds WASM as base64 in JS. Add a module declaration in `src/env.d.ts` mapping the bundled path to `argon2-browser` types.
 - Set up ESLint with `eslint-config-prettier` to disable conflicting formatting rules; configure `react-refresh/only-export-components` rule to allow constant exports (`allowConstantExport: true`), named exports for `useTheme` and `buttonVariants` (`allowExportNames`), and disable the rule for `src/test/**` files
 - Set up Prettier with `prettier-plugin-tailwindcss` for deterministic class sorting, single quotes, trailing commas, no semicolons
 
@@ -645,9 +645,9 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
   - `generateSalt(): Uint8Array<ArrayBuffer>` — generate 16-byte random salt
 - `Argon2Params` type in `src/shared/types/crypto.types.ts`
 - Worker message types (`Argon2DeriveRequest`, `Argon2DeriveResult`, `Argon2DeriveError`, `Argon2WorkerResponse`) in shared types — used by both the main module and the worker
-- **Web Worker** (`argon2id.worker.ts`) — handles `argon2-browser` lazy-loading and Argon2id computation. The main thread sends `{password, salt, params}` to the worker and receives the derived key back. The Web Worker lazy-loads `argon2-browser` via dynamic `import()` and caches the module reference for subsequent calls.
+- **Web Worker** (`argon2id.worker.ts`) — handles `argon2-browser` lazy-loading and Argon2id computation. The main thread sends `{password, salt, params}` to the worker and receives the derived key back. The Web Worker lazy-loads `argon2-browser/dist/argon2-bundled.min.js` via dynamic `import()` (not the default `argon2-browser` import — the default tries to load a `.wasm` file which Vite cannot handle; the bundled build embeds WASM as base64 in JS) and caches the module reference for subsequent calls.
 - `Argon2Error` class extending `CryptoError` — wraps all Argon2id derivation and Worker errors with i18n key `crypto:errors.argon2Failed`
-- **Code splitting:** Ensure `argon2-browser` is in its own Vite chunk by using dynamic `import('argon2-browser')` inside the Web Worker. This keeps the WASM binary out of the initial bundle.
+- **Code splitting:** Ensure `argon2-browser` is in its own Vite chunk by using dynamic `import('argon2-browser/dist/argon2-bundled.min.js')` inside the Web Worker. This keeps the WASM binary out of the initial bundle. The bundled build is required because Vite cannot handle the `.wasm` file that the default `argon2-browser` import tries to load.
 
 **Tests:**
 - Same password + same salt → same output (deterministic)
@@ -853,7 +853,7 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
   - `hexDecode(hex: string): Uint8Array` — decode hex string back to Uint8Array for crypto operations
   - `zeroFill(buffer: Uint8Array): void` — securely overwrite array with zeros
 - `src/app/flows/auth-flow.ts`
-  - `signUpUser(username: string, password: string): Promise<AuthResult & { mnemonic: string }>` — orchestrates the full registration flow: derives keys, signs up via auth adapter, uploads registration data, populates crypto store with hex-encoded keys, returns auth result with mnemonic. Sets auth store loading state. On upload failure after successful signup, attempts best-effort cleanup via `authAdapter.logout()`
+  - `signUpUser(username: string, password: string): Promise<string>` — orchestrates the full registration flow: derives keys, signs up via auth adapter, uploads registration data, populates crypto store with hex-encoded keys, returns mnemonic as a string. Sets auth store loading state. On upload failure after successful signup, attempts best-effort cleanup via `authAdapter.logout()`
   - `loginUser`, `logoutUser`, `restoreSession`, `subscribeToAuthChanges` — move from `features/auth/model/auth-credentials.ts` (and delete). These functions will be replaced by proper flow-level implementations in Steps 21–23.
 - Update `IAuthAdapter.signup` to remove `keySalt` parameter — salts are stored in the `keys` table by `supabase-registration.ts`, not in `user_metadata`
 - Fix SQL salt CHECK constraints: salt columns use `CHECK (length(...) = 32)` (16 bytes → 32 hex chars), not 64
@@ -870,13 +870,14 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 
 ---
 
-### Step 20 — Registration UI
+### Step 20 — Registration UI ✅
 
 **Goal:** Registration page with password strength indicator and mnemonic display.
 
 **Code:**
-- Update `src/features/auth/ui/RegisterPage.tsx`:
-  - `signUpUser` returns `{ ...AuthResult, mnemonic: string }` — the flow already produces the mnemonic. `AuthForm` currently discards the return value of `onSubmit`, so Step 20 must capture the mnemonic from `signUpUser`'s return value and pass it to `MnemonicDialog`.
+- Inline forms directly into `LoginPage.tsx` and `RegisterPage.tsx` (no shared `AuthForm` wrapper — each page owns its own form logic and layout). Extract shared password validation logic to `src/shared/auth/password-utils.ts`.
+- `RegisterPage.tsx`:
+  - `signUpUser` returns `mnemonic: string` — capture the mnemonic from `signUpUser`'s return value and pass it to `MnemonicDialog`.
   - Show Argon2id derivation progress (spinner or progress indicator)
   - On success: show mnemonic in a `<Dialog>` with:
     - 12-word mnemonic displayed in groups of 3

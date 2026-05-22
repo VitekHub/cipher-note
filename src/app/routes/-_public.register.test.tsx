@@ -4,15 +4,23 @@ import userEvent from '@testing-library/user-event'
 import React from 'react'
 
 const { mockHandleRegister } = vi.hoisted(() => ({
-  mockHandleRegister: vi.fn().mockResolvedValue({
-    user: { id: '1', username: 'newuser', createdAt: '2024-01-01' },
-    session: { accessToken: 'tok', expiresAt: 0 },
-    mnemonic: 'word0 word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11',
-  }),
+  mockHandleRegister: vi
+    .fn()
+    .mockResolvedValue('word0 word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11'),
 }))
 
 vi.mock('sonner', () => ({
   toast: { error: vi.fn(), success: vi.fn() },
+}))
+
+vi.mock('@/shared/lib/use-debounced-value', () => ({
+  useDebouncedValue: (value: unknown) => value,
+}))
+
+vi.mock('@/shared/api/supabase-client', () => ({
+  getSupabase: () => ({
+    rpc: vi.fn().mockResolvedValue({ data: true, error: null }),
+  }),
 }))
 
 vi.mock('@tanstack/react-router', () => ({
@@ -44,11 +52,14 @@ describe('RegisterPage', () => {
     render(<RegisterPage onSubmit={mockHandleRegister} />)
 
     await user.type(screen.getByLabelText(/username/i), 'testuser')
+    await waitFor(() => {
+      expect(screen.getByText(/username is available/i)).toBeInTheDocument()
+    })
     await user.type(screen.getByLabelText(/^password$/i), 'short')
     await user.click(screen.getByRole('button', { name: /create account/i }))
 
     await waitFor(() => {
-      expect(screen.getByText(/at least 8 characters/i)).toBeInTheDocument()
+      expect(screen.getByText('Password must be at least 8 characters')).toBeInTheDocument()
     })
   })
 
@@ -57,6 +68,9 @@ describe('RegisterPage', () => {
     render(<RegisterPage onSubmit={mockHandleRegister} />)
 
     await user.type(screen.getByLabelText(/username/i), 'testuser')
+    await waitFor(() => {
+      expect(screen.getByText(/username is available/i)).toBeInTheDocument()
+    })
     await user.type(screen.getByLabelText(/^password$/i), 'testpass123')
     await user.type(screen.getByLabelText(/confirm password/i), 'different123')
     await user.click(screen.getByRole('button', { name: /create account/i }))
@@ -85,6 +99,9 @@ describe('RegisterPage', () => {
     render(<RegisterPage onSubmit={mockHandleRegister} />)
 
     await user.type(screen.getByLabelText(/username/i), 'testuser')
+    await waitFor(() => {
+      expect(screen.getByText(/username is available/i)).toBeInTheDocument()
+    })
     await user.type(screen.getByLabelText(/^password$/i), 'testpass123')
     await user.type(screen.getByLabelText(/confirm password/i), 'testpass123')
     await user.click(screen.getByRole('button', { name: /create account/i }))
@@ -100,6 +117,9 @@ describe('RegisterPage', () => {
     render(<RegisterPage onSubmit={mockHandleRegister} />)
 
     await user.type(screen.getByLabelText(/username/i), 'testuser')
+    await waitFor(() => {
+      expect(screen.getByText(/username is available/i)).toBeInTheDocument()
+    })
     await user.type(screen.getByLabelText(/^password$/i), 'testpass123')
     await user.type(screen.getByLabelText(/confirm password/i), 'testpass123')
     await user.click(screen.getByRole('button', { name: /create account/i }))

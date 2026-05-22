@@ -25,7 +25,7 @@ let argon2Promise: Promise<Argon2Module> | null = null
 
 function loadArgon2(): Promise<Argon2Module> {
   if (!argon2Promise) {
-    argon2Promise = import('argon2-browser').then((m) => m.default as Argon2Module)
+    argon2Promise = import('argon2-browser/dist/argon2-bundled.min.js').then((m) => m.default as Argon2Module)
   }
   return argon2Promise
 }

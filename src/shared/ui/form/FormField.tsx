@@ -19,7 +19,7 @@ function FormField({ id, label, error, children }: FormFieldProps) {
   return (
     <div className="space-y-2">
       <Label htmlFor={id}>{label}</Label>
-      {inputWithAria}
+      <div className="h-8">{inputWithAria}</div>
       {error ? (
         <p id={errorId} className="text-destructive text-sm" role="alert">
           {error}
