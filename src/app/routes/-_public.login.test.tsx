@@ -3,13 +3,79 @@ import { render, screen, waitFor } from '@/test/utils'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
 
-vi.mock('@/shared/crypto/derive-placeholder', () => ({
-  deriveCredentials: vi.fn().mockResolvedValue({
+vi.mock('@/shared/crypto/split-kdf', () => ({
+  deriveLoginCredentials: vi.fn().mockResolvedValue({
     authHash: 'a'.repeat(64),
-    passwordKey: 'b'.repeat(64),
-    keySalt: 'c'.repeat(64),
-    authSalt: 'd'.repeat(64),
+    passwordKey: new Uint8Array(32).fill(0x07),
   }),
+  deriveAuthCredentials: vi.fn().mockResolvedValue({
+    authHash: 'a'.repeat(64),
+    passwordKey: new Uint8Array(32).fill(0x07),
+    authSalt: new Uint8Array(16).fill(0x01),
+    keySalt: new Uint8Array(16).fill(0x02),
+  }),
+}))
+
+vi.mock('@/shared/api/supabase-keys', () => ({
+  getLoginSalts: vi.fn().mockResolvedValue({
+    authSalt: '01'.repeat(16),
+    keySalt: '02'.repeat(16),
+  }),
+  getMasterKeyEnvelope: vi.fn().mockResolvedValue({
+    authSalt: '01'.repeat(16),
+    keySalt: '02'.repeat(16),
+    wrappedMasterKey: '05'.repeat(48),
+    masterKeyIV: '06'.repeat(12),
+  }),
+  getFieldKeys: vi
+    .fn()
+    .mockResolvedValue([{ fieldName: 'note', version: 1, wrappedKey: 'aa'.repeat(48), keyIV: 'bb'.repeat(12) }]),
+}))
+
+vi.mock('@/features/encryption/model/login', () => ({
+  deriveLoginKeys: vi.fn().mockResolvedValue({
+    masterKey: new Uint8Array(32).fill(0x03),
+    kek: {},
+    fieldKeys: new Map([['note', new Uint8Array(32).fill(0x10)]]),
+  }),
+}))
+
+vi.mock('@/features/encryption/model/vault-lock', () => ({
+  lockVault: vi.fn(),
+  unlockVault: vi.fn().mockResolvedValue(undefined),
+}))
+
+vi.mock('@/shared/crypto/memory', () => ({
+  hexEncode: vi.fn((data: Uint8Array) =>
+    Array.from(data)
+      .map((b: number) => b.toString(16).padStart(2, '0'))
+      .join(''),
+  ),
+  hexDecode: vi.fn((hex: string) => {
+    const bytes = new Uint8Array(hex.length / 2)
+    for (let i = 0; i < hex.length; i += 2) {
+      bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16)
+    }
+    return bytes
+  }),
+  encodeFieldKeysToHex: vi.fn((fieldKeys: Map<string, Uint8Array>) => {
+    const result: Record<string, string> = {}
+    for (const [name, key] of fieldKeys) {
+      result[name] = Array.from(key)
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('')
+    }
+    return result
+  }),
+}))
+
+vi.mock('@/shared/crypto/aes-gcm', () => ({
+  exportKey: vi.fn().mockResolvedValue(new Uint8Array(32).fill(0x04)),
+  importKey: vi.fn(),
+  encrypt: vi.fn(),
+  decrypt: vi.fn(),
+  generateIV: vi.fn(),
+  generateKey: vi.fn(),
 }))
 
 vi.mock('@/shared/auth/supabase-adapter', () => ({
@@ -35,6 +101,7 @@ vi.mock('@tanstack/react-router', () => ({
 
 import { LoginPage } from '@/features/auth/ui/LoginPage'
 import { authAdapter } from '@/shared/auth/supabase-adapter'
+import { AuthError, AuthErrorCode } from '@/shared/auth/auth-errors'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { toast } from 'sonner'
 
@@ -71,7 +138,7 @@ describe('LoginPage', () => {
     await user.click(screen.getByRole('button', { name: /log in/i }))
 
     await waitFor(() => {
-      expect(screen.getByText(/3-32 lowercase/i)).toBeInTheDocument()
+      expect(screen.getByText(/3-32 letters/i)).toBeInTheDocument()
     })
   })
 
@@ -105,7 +172,7 @@ describe('LoginPage', () => {
   })
 
   it('shows error toast on login failure', async () => {
-    vi.mocked(authAdapter.login).mockRejectedValueOnce(new Error('Invalid login credentials'))
+    vi.mocked(authAdapter.login).mockRejectedValueOnce(new AuthError(AuthErrorCode.INVALID_CREDENTIALS))
     const user = userEvent.setup()
     render(<LoginPage />)
 

@@ -8,6 +8,7 @@ import type {
 } from '@/shared/auth/auth.types'
 import { getSupabase } from '@/shared/api/supabase-client'
 import { toSupabaseEmail, fromSupabaseEmail } from '@/shared/auth/username-utils'
+import { AuthError, AuthErrorCode, isNetworkError } from '@/shared/auth/auth-errors'
 
 class SupabaseAuthAdapter implements IAuthAdapter {
   async login(username: string, authHash: string): Promise<AuthResult> {
@@ -17,8 +18,8 @@ class SupabaseAuthAdapter implements IAuthAdapter {
       password: authHash,
     })
 
-    if (error) throw error
-    if (!data.user || !data.session) throw new Error('Login failed: no user or session returned')
+    if (error) throw wrapSupabaseAuthError(error)
+    if (!data.user || !data.session) throw new AuthError(AuthErrorCode.INVALID_CREDENTIALS)
 
     return mapSupabaseToAuthResult(data.user, data.session)
   }
@@ -35,10 +36,10 @@ class SupabaseAuthAdapter implements IAuthAdapter {
       },
     })
 
-    if (error) throw error
-    if (!data.user) throw new Error('Signup failed: no user returned')
+    if (error) throw wrapSupabaseAuthError(error)
+    if (!data.user) throw new AuthError(AuthErrorCode.UNEXPECTED)
     if (!data.session) {
-      throw new Error('Signup requires email confirmation. Please check your email to confirm your account.')
+      throw new AuthError(AuthErrorCode.UNEXPECTED)
     }
 
     return mapSupabaseToAuthResult(data.user, data.session)
@@ -46,19 +47,19 @@ class SupabaseAuthAdapter implements IAuthAdapter {
 
   async logout(): Promise<void> {
     const { error } = await getSupabase().auth.signOut()
-    if (error) throw error
+    if (error) throw wrapSupabaseAuthError(error)
   }
 
   async getSession(): Promise<AuthResult | null> {
     const { data, error } = await getSupabase().auth.getSession()
-    if (error) throw error
+    if (error) throw wrapSupabaseAuthError(error)
     if (!data.session) return null
 
     return mapSupabaseToAuthResult(data.session.user, data.session)
   }
 
   async recoverPassword(_username: string, _recoveryData: RecoveryCredentials): Promise<void> {
-    throw new Error('Password recovery is not yet implemented')
+    throw new AuthError(AuthErrorCode.UNEXPECTED)
   }
 
   onAuthStateChange(callback: AuthStateChangeCallback): AuthUnsubscribe {
@@ -98,3 +99,21 @@ export function mapSupabaseToAuthResult(
 }
 
 export const authAdapter = new SupabaseAuthAdapter()
+
+function wrapSupabaseAuthError(error: unknown): AuthError {
+  if (isNetworkError(error)) {
+    return new AuthError(AuthErrorCode.NETWORK_ERROR, { cause: error instanceof Error ? error : undefined })
+  }
+
+  if (typeof error === 'object' && error !== null && 'status' in error && 'code' in error) {
+    const authError = error as { status: number; code: string }
+    if (authError.status === 400 && authError.code === 'invalid_credentials') {
+      return new AuthError(AuthErrorCode.INVALID_CREDENTIALS, { cause: error as Error })
+    }
+    if (authError.status === 409 || authError.status === 422 || authError.code === 'user_already_exists') {
+      return new AuthError(AuthErrorCode.USERNAME_TAKEN, { cause: error as Error })
+    }
+  }
+
+  return new AuthError(AuthErrorCode.UNEXPECTED, { cause: error instanceof Error ? error : undefined })
+}

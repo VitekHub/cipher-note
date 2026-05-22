@@ -30,6 +30,7 @@ vi.mock('@tanstack/react-router', () => ({
 }))
 
 import { RegisterPage } from '@/features/auth/ui/RegisterPage'
+import { AuthError, AuthErrorCode } from '@/shared/auth/auth-errors'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { toast } from 'sonner'
 
@@ -90,7 +91,7 @@ describe('RegisterPage', () => {
     await user.click(screen.getByRole('button', { name: /create account/i }))
 
     await waitFor(() => {
-      expect(screen.getByText(/lowercase letters/i)).toBeInTheDocument()
+      expect(screen.getByText(/letters/i)).toBeInTheDocument()
     })
   })
 
@@ -112,7 +113,7 @@ describe('RegisterPage', () => {
   })
 
   it('shows error toast on registration failure', async () => {
-    mockHandleRegister.mockRejectedValueOnce(new Error('User already registered'))
+    mockHandleRegister.mockRejectedValueOnce(new AuthError(AuthErrorCode.USERNAME_TAKEN))
     const user = userEvent.setup()
     render(<RegisterPage onSubmit={mockHandleRegister} />)
 

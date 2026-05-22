@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@/test/utils'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
+import { AuthError, AuthErrorCode } from '@/shared/auth/auth-errors'
 
 vi.mock('sonner', () => ({
   toast: { error: vi.fn(), success: vi.fn() },
@@ -72,7 +73,7 @@ describe('RegisterPage', () => {
 
   it('shows error toast on submit failure', async () => {
     const user = userEvent.setup()
-    const onSubmit = vi.fn().mockRejectedValue(new Error('User already registered'))
+    const onSubmit = vi.fn().mockRejectedValue(new AuthError(AuthErrorCode.USERNAME_TAKEN))
     const { toast } = await import('sonner')
 
     render(<RegisterPage onSubmit={onSubmit} />)

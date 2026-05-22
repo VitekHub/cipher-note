@@ -167,6 +167,7 @@ See `IMPLEMENTATION-PLAN.md` for the full 36-step plan.
 - Step 18 (Crypto Integration Tests) — complete
 - Step 19 (Registration Crypto Flow) — complete
 - Step 20 (Registration UI) — complete
+- Step 21 (Login Crypto Flow) — complete
 
 ### Implementation Notes
 
@@ -176,7 +177,6 @@ Non-obvious decisions not visible from code alone:
 - **Crypto store `toggleVaultLock`**: TEMP action that flips `isVaultLocked` — remove after Step 22 when real vault unlock is wired
 - **Test file naming**: prefix with `-` in `src/app/routes/` to exclude from TanStack Router route tree generation
 - **Test setup**: shared setup (`src/test/setup.ts`) resets `useAuthStore` (with `isRestoringSession: false`), `useCryptoStore`, and `useUiStore` (including `sidebarWidth: 240`) in `afterEach`. Router mocking (`@tanstack/react-router`) is done per-file in each test that needs it, not centralized
-- **Crypto placeholder**: `derive-placeholder.ts` uses SHA-256 — still actively imported by `auth-flow.ts` `loginUser` as a stand-in until the real login flow is wired in (Step 21)
 - **Argon2id Web Worker**: `argon2id.ts` delegates all derivation to `argon2id.worker.ts` via `postMessage`. The worker lazy-loads `argon2-browser/dist/argon2-bundled.min.js` (not the default `argon2-browser` import — the default tries to load a `.wasm` file which Vite cannot handle; the bundled build embeds WASM as base64 in JS). Tests mock the Worker constructor; actual Argon2id computation is tested in E2E (Step 36).
 - **FieldCard children pattern**: uses render function `() => ReactNode` so editors aren't mounted when vault is locked
 - **FieldCard i18n keys**: `FIELD_I18N_KEYS` is a static record (not template literals) so i18next-parser can discover them
@@ -189,3 +189,6 @@ Non-obvious decisions not visible from code alone:
 - **Crypto integration tests mock `deriveKey` re-consumption**: In `crypto-integration.test.ts`, `unwrapMasterKeyWithRecovery` requires a fresh `deriveKey` mock even after `wrapMasterKeyWithRecovery` consumed one during setup. The `setupRegistration` helper uses `mockResolvedValueOnce` which is consumed, so the test must re-mock before calling unwrap.
 - **`deriveRegistrationKeys` is a pure crypto function**: in `features/encryption/model/registration.ts`, it has no side effects (no auth, no DB, no store writes). The orchestration (signup + upload + store population) lives in `auth-flow.ts` `signUpUser`. Do not add side effects to this function.
 - **`signUpUser` error cleanup**: on any error after `deriveRegistrationKeys` succeeds, attempts `authAdapter.logout()` as best-effort cleanup (harmless if no session exists, since Supabase signOut with no session is a no-op).
+- **Login salt fetch is pre-auth**: `get_login_salts(p_username)` is a SECURITY DEFINER RPC callable by anonymous users, rate-limited (5 req/2 min/IP). Salts must be fetched before auth to derive `authHash` for Supabase Auth, but the `keys` table is RLS-protected. After auth succeeds, `getMasterKeyEnvelope` and `getFieldKeys` fetch wrapped key material through standard RLS-protected queries.
+- **Auth error codes fold username format into invalid credentials**: `AuthErrorCode.INVALID_USERNAME_FORMAT` doesn't exist — `supabase-keys.ts` throws `INVALID_CREDENTIALS` for invalid username format. This is deliberate: showing a different error for "wrong format" vs "wrong password" would leak whether a username exists.
+- **Network errors can bypass the adapter boundary**: `getAuthErrorMessage` in `auth-error-messages.ts` has an `isNetworkError` fallback because raw `TypeError('Failed to fetch')` from the browser can reach the UI without being wrapped by the adapter. The adapter wraps what it can, but the fallback catches the rest.

@@ -9,7 +9,7 @@ import { AuthLayout } from '@/features/auth/ui/AuthLayout'
 import { FormField } from '@/shared/ui/form/FormField'
 import { Input } from '@/shared/ui/input'
 import { Button } from '@/shared/ui/button'
-import { getAuthErrorMessage } from '@/features/auth/model/auth-errors'
+import { getAuthErrorMessage } from '@/features/auth/model/auth-error-messages'
 import { isSafeRedirect } from '@/features/auth/ui/url-utils'
 import { toast } from 'sonner'
 

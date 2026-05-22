@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mapSupabaseToAuthResult } from './supabase-adapter'
+import { AuthError, AuthErrorCode } from '@/shared/auth/auth-errors'
 
 function createMockSupabaseUser(
   overrides: {
@@ -114,7 +115,7 @@ describe('SupabaseAuthAdapter — signup', () => {
     vi.clearAllMocks()
   })
 
-  it('throws a clear error when session is null (email confirmation required)', async () => {
+  it('throws UNEXPECTED when session is null', async () => {
     const { authAdapter } = await import('./supabase-adapter')
 
     mockSignUp.mockResolvedValue({
@@ -125,10 +126,16 @@ describe('SupabaseAuthAdapter — signup', () => {
       error: null,
     })
 
-    await expect(authAdapter.signup('alice', 'hash')).rejects.toThrow('email confirmation')
+    try {
+      await authAdapter.signup('alice', 'hash')
+      expect.unreachable('should have thrown')
+    } catch (e) {
+      expect(e).toBeInstanceOf(AuthError)
+      expect((e as AuthError).code).toBe(AuthErrorCode.UNEXPECTED)
+    }
   })
 
-  it('throws when user is null', async () => {
+  it('throws UNEXPECTED when user is null', async () => {
     const { authAdapter } = await import('./supabase-adapter')
 
     mockSignUp.mockResolvedValue({
@@ -136,7 +143,13 @@ describe('SupabaseAuthAdapter — signup', () => {
       error: null,
     })
 
-    await expect(authAdapter.signup('alice', 'hash')).rejects.toThrow('no user returned')
+    try {
+      await authAdapter.signup('alice', 'hash')
+      expect.unreachable('should have thrown')
+    } catch (e) {
+      expect(e).toBeInstanceOf(AuthError)
+      expect((e as AuthError).code).toBe(AuthErrorCode.UNEXPECTED)
+    }
   })
 
   it('returns AuthResult on successful signup', async () => {

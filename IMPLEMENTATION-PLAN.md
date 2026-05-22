@@ -53,7 +53,7 @@ When the user logs in and unlocks their vault, the Master Key, KEK, and field ke
 All backend-specific code lives behind interfaces in `shared/`. Features import interface types, never implementations directly. Swapping backends means writing new adapters, not rewriting features.
 
 - `shared/auth/` — Auth interface (`login`, `logout`, `getSession`, `signup`, `recoverPassword`). Supabase Auth adapter today; custom JWT or OPAQUE adapter later.
-- `shared/api/` — Data access interface (`getKeys`, `saveField`, `getField`, etc.). Supabase client queries today; REST calls to Hono API later.
+- `shared/api/` — Data access interface (`getMasterKeyEnvelope`, `saveField`, `getField`, etc.). Supabase client queries today; REST calls to Hono API later.
 - `shared/realtime/` — Realtime interface (`subscribe`, `unsubscribe`, `onFieldChange`). Supabase Realtime today; raw WebSocket to Hono server later.
 
 ---
@@ -85,6 +85,7 @@ cipher-note-react/
       auth/
         model/
           auth-store.ts        # Zustand: session, user, isAuthenticated
+          auth-error-messages.ts # getAuthErrorMessage: AuthErrorCode → i18n key
           register-schema.ts   # Zod validation
           login-schema.ts      # Zod validation
         ui/
@@ -162,13 +163,14 @@ cipher-note-react/
       api/
         api.types.ts          # IApiAdapter interface
         supabase-client.ts    # Supabase client initialization only
-        supabase-keys.ts      # Keys CRUD (getKeys, getFieldKeys, saveWrappedKey)
+        supabase-keys.ts      # Keys CRUD (getMasterKeyEnvelope, getFieldKeys, saveWrappedKey)
         supabase-fields.ts    # Fields CRUD (getField, saveField)
         supabase-recovery.ts  # Recovery data CRUD (saveRecoveryData, getRecoveryData)
         supabase-registration.ts # Registration data upload (uploadRegistrationData)
         # future: hono-client.ts
       auth/
         auth.types.ts         # IAuthAdapter interface
+        auth-errors.ts        # AuthError, AuthErrorCode, isAuthError, isNetworkError
         supabase-adapter.ts   # Supabase Auth implementation
         auth-context.tsx       # React context for auth adapter
         username-utils.ts     # toSupabaseEmail, fromSupabaseEmail
@@ -335,7 +337,7 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
   - `src/features/settings/model/ui-store.ts` — sidebarOpen, activeField. **Do NOT store `language` here** — `i18next` is the source of truth for language state. Only store UI state that i18next doesn't manage.
 - Create adapter interfaces:
   - `src/shared/auth/auth.types.ts` — `IAuthAdapter` interface: `login(username, authHash)`, `logout()`, `getSession()`, `signup(username, authHash)`, `recoverPassword()`
-  - `src/shared/api/api.types.ts` — `IApiAdapter` interface: `getKeys(userId)`, `getFieldKeys(userId)`, `getField(userId, fieldName)`, `saveField(userId, fieldName, blob, iv)`, `saveWrappedKey(userId, data)`, `getRecovery(userId)`
+  - `src/shared/api/api.types.ts` — `IApiAdapter` interface: `getMasterKeyEnvelope(userId)`, `getFieldKeys(userId)`, `getField(userId, fieldName)`, `saveField(userId, fieldName, blob, iv)`, `saveWrappedKey(userId, data)`, `getRecovery(userId)`
   - `src/shared/realtime/realtime.types.ts` — `IRealtimeAdapter` interface: `subscribe(userId, callbacks)`, `unsubscribe()`
 - Create `src/shared/types/crypto.types.ts` — TypeScript types for all crypto operations (WrappedKey, FieldKey, EncryptedField, KeyVersion, etc.)
 
@@ -425,7 +427,7 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
   - Redirect to `/dashboard` on success
   - Error handling via error mapping module with toast notifications
 - Auth operations module (in `features/auth/model/`) — extracted async functions for register, login, logout: derive credentials via temporary placeholder, call auth adapter, update auth store
-- Error mapping module (in `features/auth/model/`) — map Supabase error messages to i18n keys (invalid credentials, username taken, network error)
+- Error mapping module (in `features/auth/model/`) — `AuthError` with `AuthErrorCode` enum (in `shared/auth/auth-errors.ts`), mapped to i18n keys by `getAuthErrorMessage` (in `features/auth/model/auth-error-messages.ts`)
 - Shared form field component (in `features/auth/ui/`) — Label + children + error message
 - AuthLayout — shared layout for auth pages (centered card)
 - Zod schemas for registration and login forms
@@ -438,7 +440,7 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 - Component tests: submit button disabled during loading
 - Component tests: error toast shown on auth failure
 - Unit tests: auth operations module (register, login, logout)
-- Unit tests: error mapping (Supabase errors → correct i18n keys)
+- Unit tests: error mapping (AuthError codes → correct i18n keys, network error fallback, CryptoError fallback)
 - Unit tests: credential derivation placeholder
 
 ---
@@ -901,36 +903,40 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 
 ---
 
-### Step 21 — Login Crypto Flow
+### Step 21 — Login Crypto Flow ✅
 
 **Goal:** Wire up the full login flow: derive keys, unwrap, verify.
 
 **Code:**
-- `src/features/encryption/model/login.ts`:
-  - `loginUser(username: string, password: string): Promise<LoginResult>`
-    1. Fetch auth_salt, key_salt from server (via API adapter)
-    2. Derive login credentials: auth_hash + password_key
-    3. Authenticate with Supabase Auth (auth_hash as "password")
-    4. Fetch wrapped master key from server
-    5. Unwrap master key with password_key
-    6. Derive KEK from master key
-    7. Fetch wrapped field keys from server
-    8. Unwrap field keys with KEK
-    9. Store master key, KEK, field keys in crypto store (Zustand, memory only)
-    10. Return success with user info
-- `LoginResult` type: user info, unlocked vault state
-- Handle error cases: wrong password (unwrap fails), network error, corrupted data
-- `src/features/encryption/model/vault-lock.ts`:
-  - `lockVault(): void` — zero all keys in crypto store, set isVaultLocked = true, **purge TanStack Query cache for all field data** (call `queryClient.removeQueries({ queryKey: ['field'] })`)
-  - `unlockVault(password: string): Promise<void>` — re-run login flow, set isVaultLocked = false
+- Login crypto module (pure function, no side effects):
+  - `deriveLoginKeys(passwordKey, wrappedMasterKey, masterKeyIV, serverFieldKeys): Promise<LoginResult>` — takes already-derived passwordKey (avoids double Argon2id), unwraps master key, derives KEK, unwraps field keys. Hex-decodes server field key data internally.
+  - `LoginResult` type: `{ masterKey, kek (CryptoKey), fieldKeys (Map) }` — no authHash (caller already has it)
+- Auth flow orchestration (in existing auth-flow module):
+  - `loginUser(username, password)` — fetches salts via pre-auth RPC, derives credentials, authenticates, fetches key material, unwraps via `deriveLoginKeys`, populates crypto store with hex-encoded keys
+  - `logoutUser` — calls `lockVault()` before resetting auth store
+  - `subscribeToAuthChanges` — calls `lockVault()` when auth state becomes null (sign-out from another tab)
+- Vault lock/unlock module:
+  - `lockVault(): void` — delegates to crypto store's `lockVault()` (zeros keys, purges TanStack Query cache)
+  - `unlockVault(password): Promise<void>` — fetches key material (user already authenticated), re-derives credentials, unwraps via `deriveLoginKeys`, populates crypto store
+- Supabase data access module for keys:
+  - `getLoginSalts(username): Promise<LoginSalts>` — calls SECURITY DEFINER RPC `get_login_salts` (pre-auth, rate-limited)
+  - `getMasterKeyEnvelope(userId): Promise<ServerKeys>` — queries `keys` table (post-auth, RLS-protected)
+  - `getFieldKeys(userId): Promise<ServerFieldKey[]>` — queries `field_keys` table
+- Database migration: `get_login_salts(p_username)` RPC — SECURITY DEFINER, rate-limited (5 req/2 min/IP), case-insensitive username lookup joining `users` → `keys`
+- Remove `derive-placeholder.ts` — replace with real login flow
+
+**Key design decision:** Salts must be fetched before authentication (to derive authHash for Supabase Auth), but the `keys` table is RLS-protected. Solution: a `SECURITY DEFINER` RPC function that returns only `auth_salt` and `key_salt` (not wrapped key material) with rate limiting, callable by anonymous users.
 
 **Tests:**
-- Unit: `loginUser` with correct password unwraps all keys correctly
-- Unit: `loginUser` with wrong password fails at auth step
+- Unit: `deriveLoginKeys` round-trip (register → wrap → unwrap → keys match)
+- Unit: `deriveLoginKeys` with wrong passwordKey throws DecryptionError
+- Unit: `deriveLoginKeys` with corrupted wrappedMasterKey throws
 - Unit: `lockVault` zeros all keys in store
-- Unit: `unlockVault` restores keys to store
-- Integration: register user → login → verify keys match
-- Integration: wrong password → auth fails → vault stays locked
+- Unit: `unlockVault` with valid password populates crypto store
+- Unit: `unlockVault` without authenticated user throws
+- Unit: `getLoginSalts`, `getMasterKeyEnvelope`, `getFieldKeys` server data access
+- Unit: auth-flow `loginUser` calls correct sequence of operations
+- Unit: auth-flow `logoutUser` calls `lockVault()` before resetting store
 
 ---
 
@@ -939,21 +945,22 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 **Goal:** Login page with vault unlock flow.
 
 **Code:**
-- Update `src/pages/login/LoginPage.tsx`:
-  - On submit: call `loginUser(username, password)`
+- Update LoginPage:
+  - On submit: call `loginUser(username, password)` (already does full crypto flow — salts, auth, key unwrap, store population)
   - Show loading state during Argon2id derivation
-  - On success: redirect to `/dashboard`
-  - On error: show error message (wrong password, network error)
-- `src/features/encryption/ui/VaultUnlockDialog.tsx`:
+  - On success: redirect to `/dashboard` (vault is already unlocked)
+  - On error: show error message with i18n mapping (wrong password, salts not found, network error, corrupted data)
+- `VaultUnlockDialog.tsx`:
   - Modal dialog shown when vault is locked (user is authenticated but vault is locked)
-  - Password input to unlock vault
+  - Password input to unlock vault — calls `unlockVault(password)` from vault-lock module
   - "Unlock" button
-  - "Lock vault" button in sidebar/header to lock vault manually
+  - "Lock vault" button in sidebar/header — calls `lockVault()` from vault-lock module
   - Auto-lock after inactivity timeout (configurable, default 15 minutes)
-- `src/features/encryption/model/vault-timeout.ts`:
+- `vault-timeout.ts`:
   - Reset timer on user activity (mouse move, keypress)
   - Lock vault when timer expires
 - Wire vault state into dashboard layout (VaultIndicator component)
+- Remove `toggleVaultLock` TEMP action from crypto store (replaced by real `lockVault`/`unlockVault`)
 
 **Tests:**
 - Component test: login form shows loading during Argon2id
@@ -967,27 +974,23 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 
 ### Step 23 — Crypto Session Store (Zustand) + Query Cache Purge
 
-**Goal:** Zustand store for in-memory cryptographic keys. Never persisted. TanStack Query cache purged on vault lock.
+**Goal:** Verify and finalize the Zustand crypto store — already has hex-encoded keys, `lockVault()` with query cache purge, `setKeys`, `updateActivity`, and `selectFieldKey`.
 
 **Code:**
-- `src/features/encryption/model/crypto-store.ts` (enhance existing store):
-  - State: `masterKey`, `kek`, `fieldKeys: Record<string, string>` (hex-encoded strings, NOT Uint8Array or Map), `isVaultLocked`, `lastActivity`
-  - Actions: `setKeys(masterKey, kek, fieldKeys)`, `lockVault()`, `updateActivity()`, `getFieldKey(fieldName)`
-  - `lockVault()` zeros all key material using `cryptoZeroFill(key)` — overwrites Uint8Array with zeros, then clears all state fields and sets `isVaultLocked = true`
-  - **Critical:** `lockVault()` must also call `queryClient.removeQueries({ queryKey: ['field'] })` to purge all decrypted field content from TanStack Query's cache. Without this, decrypted plaintext remains in memory after vault lock. The `queryClient` reference is obtained from the React component tree or passed in during store initialization.
+- Remove `toggleVaultLock` TEMP action from crypto store (replaced by real `lockVault`/`unlockVault` in vault-lock module)
 - `src/shared/crypto/memory.ts`:
-  - `copyToUint8Array(data: ArrayBuffer | Uint8Array): Uint8Array` — safe copy for storing in Zustand
+  - Add `copyToUint8Array(data: ArrayBuffer | Uint8Array): Uint8Array` — safe copy for storing in Zustand
 - Verify that no crypto keys appear in localStorage, sessionStorage, or IndexedDB
+- Wire `setQueryClient(client)` call in app providers so `lockVault()` can purge the TanStack Query cache
 
 **Tests:**
 - Unit: `setKeys` stores all keys correctly (hex-encoded)
-- Unit: `getFieldKey('note')` returns correct hex-encoded key
-- Unit: `lockVault` zeros all keys and sets isVaultLocked = true
-- Unit: after `lockVault`, `getFieldKey` returns null/undefined
+- Unit: `selectFieldKey('note')` returns correct hex-encoded key
+- Unit: `lockVault` resets all keys and sets isVaultLocked = true
+- Unit: after `lockVault`, `selectFieldKey` returns null/undefined
 - Unit: `lockVault` removes all TanStack Query cache entries for field data
 - Integration: login → setKeys → verify keys in store → lockVault → verify keys zeroed AND query cache empty
 - Security: verify no keys in localStorage/sessionStorage after login
-- Security: verify decrypted field content is not in TanStack Query cache after vault lock
 
 ---
 
@@ -1000,7 +1003,7 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 **Code:**
 - `src/shared/api/supabase-client.ts` — Supabase client initialization and export only (no business logic)
 - `src/shared/api/supabase-keys.ts` — Keys CRUD:
-  - `getKeys(userId: string): Promise<ServerKeys>` — fetch auth_salt, key_salt, wrapped_master_key, master_key_iv
+  - `getMasterKeyEnvelope(userId: string): Promise<ServerKeys>` — fetch auth_salt, key_salt, wrapped_master_key, master_key_iv
   - `getFieldKeys(userId: string): Promise<ServerFieldKey[]>` — fetch all wrapped field keys with versions
   - `saveWrappedKey(userId: string, data: WrappedKeyData): Promise<void>` — save/update wrapped key data
 - `src/shared/api/supabase-fields.ts` — Fields CRUD:

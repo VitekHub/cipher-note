@@ -10,6 +10,9 @@
     "corruptedData": "Your data appears corrupted. Please contact support.",
     "wrongPassword": "Wrong password",
     "argon2Failed": "Key derivation failed. Please try again.",
-    "mnemonicFailed": "Invalid seed phrase. Please check your seed phrase and try again."
+    "mnemonicFailed": "Invalid seed phrase. Please check your seed phrase and try again.",
+    "loginSaltsNotFound": "Account not found. Please check your username.",
+    "keysNotFound": "Encryption keys not found. Please contact support.",
+    "unwrapFailed": "Failed to decrypt your vault. Your data may be corrupted."
   }
 }
