@@ -3,35 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Check, X } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 import { Popover, PopoverArrow, PopoverPortal, PopoverPositioner } from '@/shared/ui/popover'
-
-interface CriterionResult {
-  key: string
-  met: boolean
-}
-
-interface StrengthResult {
-  score: number
-  criteria: CriterionResult[]
-}
-
-const CRITERIA_CONFIG = [
-  { key: 'minLength', test: (p: string) => p.length >= 8 },
-  { key: 'uppercase', test: (p: string) => /[A-Z]/.test(p) },
-  { key: 'lowercase', test: (p: string) => /[a-z]/.test(p) },
-  { key: 'digitOrSpecial', test: (p: string) => /[\d\W_]/.test(p) },
-] as const
-
-function calculateStrength(password: string): StrengthResult {
-  const criteria = CRITERIA_CONFIG.map(({ key, test }) => ({ key, met: test(password) }))
-  const score = criteria.filter((c) => c.met).length
-  return { score, criteria }
-}
-
-function getStrengthLevel(score: number, minLengthMet: boolean) {
-  if (!minLengthMet || score <= 1) return 'weak' as const
-  if (score <= 2) return 'fair' as const
-  return 'strong' as const
-}
+import { calculateStrength, getStrengthLevel, testMinLength } from '@/shared/auth/password-utils'
 
 function getBarColor(index: number, score: number, minLengthMet: boolean) {
   if (index > score) return 'bg-muted'
@@ -58,7 +30,7 @@ function PasswordStrength({ password, open, onOpenChange, anchorRef }: PasswordS
   const { t } = useTranslation('auth')
 
   const { score, criteria } = useMemo(() => calculateStrength(password), [password])
-  const minLengthMet = criteria[0].met
+  const minLengthMet = testMinLength(password)
   const level = getStrengthLevel(score, minLengthMet)
 
   return (

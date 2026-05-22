@@ -34,12 +34,17 @@ describe('PasswordStrength', () => {
     expect(screen.getByText('Weak')).toBeInTheDocument()
   })
 
-  it('shows "Fair" for 8+ char password meeting 2 criteria', () => {
+  it('shows "Weak" for 8 char password meeting 1 criteria', () => {
     render(<TestWrapper password="password" />)
+    expect(screen.getByText('Weak')).toBeInTheDocument()
+  })
+
+  it('shows "Fair" for 12+ char password meeting 2 criteria', () => {
+    render(<TestWrapper password="biggerpassword" />)
     expect(screen.getByText('Fair')).toBeInTheDocument()
   })
 
-  it('shows "Strong" for 8+ char password meeting 3-4 criteria', () => {
+  it('shows "Strong" for 8+ char password meeting 3 criteria', () => {
     render(<TestWrapper password="Password1!" />)
     expect(screen.getByText('Strong')).toBeInTheDocument()
   })
