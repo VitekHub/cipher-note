@@ -10,6 +10,9 @@
     "corruptedData": "Vaše data se zdají být poškozena. Kontaktujte prosím podporu.",
     "wrongPassword": "Špatné heslo",
     "argon2Failed": "Odvození klíče selhalo. Zkuste to prosím znovu.",
-    "mnemonicFailed": "Neplatná seed fráze. Zkontrolujte prosím seed frázi a zkuste to znovu."
+    "mnemonicFailed": "Neplatná seed fráze. Zkontrolujte prosím seed frázi a zkuste to znovu.",
+    "loginSaltsNotFound": "Účet nenalezen. Zkontrolujte prosím uživatelské jméno.",
+    "keysNotFound": "Šifrovací klíče nenalezeny. Kontaktujte prosím podporu.",
+    "unwrapFailed": "Selhalo dešifrování trezoru. Vaše data mohou být poškozena."
   }
 }

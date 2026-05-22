@@ -901,36 +901,40 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 
 ---
 
-### Step 21 — Login Crypto Flow
+### Step 21 — Login Crypto Flow ✅
 
 **Goal:** Wire up the full login flow: derive keys, unwrap, verify.
 
 **Code:**
-- `src/features/encryption/model/login.ts`:
-  - `loginUser(username: string, password: string): Promise<LoginResult>`
-    1. Fetch auth_salt, key_salt from server (via API adapter)
-    2. Derive login credentials: auth_hash + password_key
-    3. Authenticate with Supabase Auth (auth_hash as "password")
-    4. Fetch wrapped master key from server
-    5. Unwrap master key with password_key
-    6. Derive KEK from master key
-    7. Fetch wrapped field keys from server
-    8. Unwrap field keys with KEK
-    9. Store master key, KEK, field keys in crypto store (Zustand, memory only)
-    10. Return success with user info
-- `LoginResult` type: user info, unlocked vault state
-- Handle error cases: wrong password (unwrap fails), network error, corrupted data
-- `src/features/encryption/model/vault-lock.ts`:
-  - `lockVault(): void` — zero all keys in crypto store, set isVaultLocked = true, **purge TanStack Query cache for all field data** (call `queryClient.removeQueries({ queryKey: ['field'] })`)
-  - `unlockVault(password: string): Promise<void>` — re-run login flow, set isVaultLocked = false
+- Login crypto module (pure function, no side effects):
+  - `deriveLoginKeys(passwordKey, wrappedMasterKey, masterKeyIV, serverFieldKeys): Promise<LoginResult>` — takes already-derived passwordKey (avoids double Argon2id), unwraps master key, derives KEK, unwraps field keys. Hex-decodes server field key data internally.
+  - `LoginResult` type: `{ masterKey, kek (CryptoKey), fieldKeys (Map) }` — no authHash (caller already has it)
+- Auth flow orchestration (in existing auth-flow module):
+  - `loginUser(username, password)` — fetches salts via pre-auth RPC, derives credentials, authenticates, fetches key material, unwraps via `deriveLoginKeys`, populates crypto store with hex-encoded keys
+  - `logoutUser` — now calls `lockVault()` before resetting auth store
+  - `subscribeToAuthChanges` — calls `lockVault()` when auth state becomes null (sign-out from another tab)
+- Vault lock/unlock module:
+  - `lockVault(): void` — delegates to crypto store's `lockVault()` (zeros keys, purges TanStack Query cache)
+  - `unlockVault(password): Promise<void>` — fetches key material (user already authenticated), re-derives credentials, unwraps via `deriveLoginKeys`, populates crypto store
+- Supabase data access module for keys:
+  - `getLoginSalts(username): Promise<LoginSalts>` — calls SECURITY DEFINER RPC `get_login_salts` (pre-auth, rate-limited)
+  - `getKeys(userId): Promise<ServerKeys>` — queries `keys` table (post-auth, RLS-protected)
+  - `getFieldKeys(userId): Promise<ServerFieldKey[]>` — queries `field_keys` table
+- Database migration: `get_login_salts(p_username)` RPC — SECURITY DEFINER, rate-limited (5 req/2 min/IP), case-insensitive username lookup joining `users` → `keys`
+- `derive-placeholder.ts` removed — replaced by real login flow
+
+**Key design decision:** Salts must be fetched before authentication (to derive authHash for Supabase Auth), but the `keys` table is RLS-protected. Solution: a `SECURITY DEFINER` RPC function that returns only `auth_salt` and `key_salt` (not wrapped key material) with rate limiting, callable by anonymous users.
 
 **Tests:**
-- Unit: `loginUser` with correct password unwraps all keys correctly
-- Unit: `loginUser` with wrong password fails at auth step
+- Unit: `deriveLoginKeys` round-trip (register → wrap → unwrap → keys match)
+- Unit: `deriveLoginKeys` with wrong passwordKey throws DecryptionError
+- Unit: `deriveLoginKeys` with corrupted wrappedMasterKey throws
 - Unit: `lockVault` zeros all keys in store
-- Unit: `unlockVault` restores keys to store
-- Integration: register user → login → verify keys match
-- Integration: wrong password → auth fails → vault stays locked
+- Unit: `unlockVault` with valid password populates crypto store
+- Unit: `unlockVault` without authenticated user throws
+- Unit: `getLoginSalts`, `getKeys`, `getFieldKeys` server data access
+- Unit: auth-flow `loginUser` calls correct sequence of operations
+- Unit: auth-flow `logoutUser` calls `lockVault()` before resetting store
 
 ---
 
@@ -939,21 +943,22 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 **Goal:** Login page with vault unlock flow.
 
 **Code:**
-- Update `src/pages/login/LoginPage.tsx`:
-  - On submit: call `loginUser(username, password)`
+- Update LoginPage:
+  - On submit: call `loginUser(username, password)` (already does full crypto flow — salts, auth, key unwrap, store population)
   - Show loading state during Argon2id derivation
-  - On success: redirect to `/dashboard`
-  - On error: show error message (wrong password, network error)
-- `src/features/encryption/ui/VaultUnlockDialog.tsx`:
+  - On success: redirect to `/dashboard` (vault is already unlocked)
+  - On error: show error message with i18n mapping (wrong password, salts not found, network error, corrupted data)
+- `VaultUnlockDialog.tsx`:
   - Modal dialog shown when vault is locked (user is authenticated but vault is locked)
-  - Password input to unlock vault
+  - Password input to unlock vault — calls `unlockVault(password)` from vault-lock module
   - "Unlock" button
-  - "Lock vault" button in sidebar/header to lock vault manually
+  - "Lock vault" button in sidebar/header — calls `lockVault()` from vault-lock module
   - Auto-lock after inactivity timeout (configurable, default 15 minutes)
-- `src/features/encryption/model/vault-timeout.ts`:
+- `vault-timeout.ts`:
   - Reset timer on user activity (mouse move, keypress)
   - Lock vault when timer expires
 - Wire vault state into dashboard layout (VaultIndicator component)
+- Remove `toggleVaultLock` TEMP action from crypto store (replaced by real `lockVault`/`unlockVault`)
 
 **Tests:**
 - Component test: login form shows loading during Argon2id
@@ -967,27 +972,23 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 
 ### Step 23 — Crypto Session Store (Zustand) + Query Cache Purge
 
-**Goal:** Zustand store for in-memory cryptographic keys. Never persisted. TanStack Query cache purged on vault lock.
+**Goal:** Verify and finalize the Zustand crypto store — already has hex-encoded keys, `lockVault()` with query cache purge, `setKeys`, `updateActivity`, and `selectFieldKey`.
 
 **Code:**
-- `src/features/encryption/model/crypto-store.ts` (enhance existing store):
-  - State: `masterKey`, `kek`, `fieldKeys: Record<string, string>` (hex-encoded strings, NOT Uint8Array or Map), `isVaultLocked`, `lastActivity`
-  - Actions: `setKeys(masterKey, kek, fieldKeys)`, `lockVault()`, `updateActivity()`, `getFieldKey(fieldName)`
-  - `lockVault()` zeros all key material using `cryptoZeroFill(key)` — overwrites Uint8Array with zeros, then clears all state fields and sets `isVaultLocked = true`
-  - **Critical:** `lockVault()` must also call `queryClient.removeQueries({ queryKey: ['field'] })` to purge all decrypted field content from TanStack Query's cache. Without this, decrypted plaintext remains in memory after vault lock. The `queryClient` reference is obtained from the React component tree or passed in during store initialization.
+- Remove `toggleVaultLock` TEMP action from crypto store (replaced by real `lockVault`/`unlockVault` in vault-lock module)
 - `src/shared/crypto/memory.ts`:
-  - `copyToUint8Array(data: ArrayBuffer | Uint8Array): Uint8Array` — safe copy for storing in Zustand
+  - Add `copyToUint8Array(data: ArrayBuffer | Uint8Array): Uint8Array` — safe copy for storing in Zustand
 - Verify that no crypto keys appear in localStorage, sessionStorage, or IndexedDB
+- Wire `setQueryClient(client)` call in app providers so `lockVault()` can purge the TanStack Query cache
 
 **Tests:**
 - Unit: `setKeys` stores all keys correctly (hex-encoded)
-- Unit: `getFieldKey('note')` returns correct hex-encoded key
-- Unit: `lockVault` zeros all keys and sets isVaultLocked = true
-- Unit: after `lockVault`, `getFieldKey` returns null/undefined
+- Unit: `selectFieldKey('note')` returns correct hex-encoded key
+- Unit: `lockVault` resets all keys and sets isVaultLocked = true
+- Unit: after `lockVault`, `selectFieldKey` returns null/undefined
 - Unit: `lockVault` removes all TanStack Query cache entries for field data
 - Integration: login → setKeys → verify keys in store → lockVault → verify keys zeroed AND query cache empty
 - Security: verify no keys in localStorage/sessionStorage after login
-- Security: verify decrypted field content is not in TanStack Query cache after vault lock
 
 ---
 

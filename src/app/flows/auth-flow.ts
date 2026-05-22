@@ -3,16 +3,15 @@ import { useCryptoStore } from '@/features/encryption/model/crypto-store'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { authAdapter } from '@/shared/auth/supabase-adapter'
 import { uploadRegistrationData } from '@/shared/api/supabase-registration'
-import { deriveCredentials } from '@/shared/crypto/derive-placeholder'
-import { hexEncode } from '@/shared/crypto/memory'
+import { getLoginSalts, getKeys, getFieldKeys } from '@/shared/api/supabase-keys'
+import { deriveLoginCredentials } from '@/shared/crypto/split-kdf'
+import { deriveLoginKeys } from '@/features/encryption/model/login'
+import { hexDecode, hexEncode } from '@/shared/crypto/memory'
+import { exportKey } from '@/shared/crypto/aes-gcm'
+import { lockVault } from '@/features/encryption/model/vault-lock'
 
 function encodeFieldKeysToHex(fieldKeys: Map<string, Uint8Array>): Record<string, string> {
-  const mapEntries = Array.from(fieldKeys.entries())
-  const hexEntries = mapEntries.map(([name, key]) => {
-    const hexKey = hexEncode(key)
-    return [name, hexKey]
-  })
-  return Object.fromEntries(hexEntries)
+  return Object.fromEntries(Array.from(fieldKeys.entries()).map(([name, key]) => [name, hexEncode(key)]))
 }
 
 /**
@@ -56,16 +55,49 @@ export async function signUpUser(username: string, password: string): Promise<st
 }
 
 export async function loginUser(username: string, password: string) {
-  const store = useAuthStore.getState()
-  store.setLoading(true)
+  const authStore = useAuthStore.getState()
+  authStore.setLoading(true)
 
   try {
-    const creds = await deriveCredentials(username, password)
-    const result = await authAdapter.login(username, creds.authHash)
-    store.setAuth(result.user, result.session)
-    return result
+    // 1. Fetch salts (pre-auth, via RPC)
+    const salts = await getLoginSalts(username)
+
+    // 2. Derive authHash + passwordKey from password + salts
+    const { authHash, passwordKey } = await deriveLoginCredentials(
+      password,
+      hexDecode(salts.authSalt),
+      hexDecode(salts.keySalt),
+    )
+
+    // 3. Authenticate with Supabase Auth
+    const authResult = await authAdapter.login(username, authHash)
+
+    // 4. Fetch wrapped key material (post-auth, RLS-protected)
+    const [serverKeys, serverFieldKeys] = await Promise.all([
+      getKeys(authResult.user.id),
+      getFieldKeys(authResult.user.id),
+    ])
+
+    // 5. Unwrap all keys (pure crypto)
+    const loginResult = await deriveLoginKeys(
+      passwordKey,
+      hexDecode(serverKeys.wrappedMasterKey),
+      hexDecode(serverKeys.masterKeyIV),
+      serverFieldKeys,
+    )
+
+    // 6. Hex-encode and store in crypto store
+    const kekBytes = await exportKey(loginResult.kek)
+    useCryptoStore
+      .getState()
+      .setKeys(hexEncode(loginResult.masterKey), hexEncode(kekBytes), encodeFieldKeysToHex(loginResult.fieldKeys))
+
+    // 7. Set auth state
+    authStore.setAuth(authResult.user, authResult.session)
+
+    return authResult
   } finally {
-    store.setLoading(false)
+    authStore.setLoading(false)
   }
 }
 
@@ -78,6 +110,7 @@ export async function logoutUser() {
   } catch {
     // Server signOut may fail (no session, network error) - clear local state regardless
   } finally {
+    lockVault()
     store.reset()
   }
 }
@@ -122,6 +155,7 @@ export function subscribeToAuthChanges(): () => void {
     if (result) {
       useAuthStore.getState().setAuth(result.user, result.session)
     } else {
+      lockVault()
       useAuthStore.getState().reset()
     }
   })

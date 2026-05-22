@@ -4,7 +4,11 @@ const mockSetLoading = vi.fn()
 const mockSetAuth = vi.fn()
 const mockSetRestoringSession = vi.fn()
 const mockReset = vi.fn()
+const mockSetKeys = vi.fn(() => {
+  cryptoStoreState.isVaultLocked = false
+})
 
+// Mock registration module
 vi.mock('@/features/encryption/model/registration', () => ({
   deriveRegistrationKeys: vi.fn().mockResolvedValue({
     authHash: 'a'.repeat(64),
@@ -29,27 +33,90 @@ vi.mock('@/features/encryption/model/registration', () => ({
   }),
 }))
 
+// Mock login crypto module
+vi.mock('@/features/encryption/model/login', () => ({
+  deriveLoginKeys: vi.fn().mockResolvedValue({
+    masterKey: new Uint8Array(32).fill(0x03),
+    kek: {}, // CryptoKey mock
+    fieldKeys: new Map([
+      ['note', new Uint8Array(32).fill(0x10)],
+      ['website', new Uint8Array(32).fill(0x20)],
+      ['email', new Uint8Array(32).fill(0x30)],
+    ]),
+  }),
+}))
+
+// Mock vault-lock module
+vi.mock('@/features/encryption/model/vault-lock', () => ({
+  lockVault: vi.fn(),
+  unlockVault: vi.fn().mockResolvedValue(undefined),
+}))
+
+// Mock Supabase registration
 vi.mock('@/shared/api/supabase-registration', () => ({
   uploadRegistrationData: vi.fn().mockResolvedValue(undefined),
 }))
 
+// Mock Supabase keys
+vi.mock('@/shared/api/supabase-keys', () => ({
+  getLoginSalts: vi.fn().mockResolvedValue({
+    authSalt: '01'.repeat(16),
+    keySalt: '02'.repeat(16),
+  }),
+  getKeys: vi.fn().mockResolvedValue({
+    authSalt: '01'.repeat(16),
+    keySalt: '02'.repeat(16),
+    wrappedMasterKey: '05'.repeat(48),
+    masterKeyIV: '06'.repeat(12),
+  }),
+  getFieldKeys: vi.fn().mockResolvedValue([
+    { fieldName: 'note', version: 1, wrappedKey: 'aa'.repeat(48), keyIV: 'bb'.repeat(12) },
+    { fieldName: 'website', version: 1, wrappedKey: 'cc'.repeat(48), keyIV: 'dd'.repeat(12) },
+    { fieldName: 'email', version: 1, wrappedKey: 'ee'.repeat(48), keyIV: 'ff'.repeat(12) },
+  ]),
+}))
+
+// Mock Split KDF
+vi.mock('@/shared/crypto/split-kdf', () => ({
+  deriveLoginCredentials: vi.fn().mockResolvedValue({
+    authHash: 'a'.repeat(64),
+    passwordKey: new Uint8Array(32).fill(0x07),
+  }),
+  deriveAuthCredentials: vi.fn().mockResolvedValue({
+    authHash: 'a'.repeat(64),
+    passwordKey: new Uint8Array(32).fill(0x07),
+    authSalt: new Uint8Array(16).fill(0x01),
+    keySalt: new Uint8Array(16).fill(0x02),
+  }),
+}))
+
+// Mock crypto memory
 vi.mock('@/shared/crypto/memory', () => ({
   hexEncode: vi.fn((data: Uint8Array) =>
     Array.from(data)
       .map((b: number) => b.toString(16).padStart(2, '0'))
       .join(''),
   ),
-}))
-
-vi.mock('@/shared/crypto/derive-placeholder', () => ({
-  deriveCredentials: vi.fn().mockResolvedValue({
-    authHash: 'a'.repeat(64),
-    passwordKey: 'b'.repeat(64),
-    keySalt: 'c'.repeat(64),
-    authSalt: 'd'.repeat(64),
+  hexDecode: vi.fn((hex: string) => {
+    const bytes = new Uint8Array(hex.length / 2)
+    for (let i = 0; i < hex.length; i += 2) {
+      bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16)
+    }
+    return bytes
   }),
 }))
 
+// Mock AES-GCM
+vi.mock('@/shared/crypto/aes-gcm', () => ({
+  exportKey: vi.fn().mockResolvedValue(new Uint8Array(32).fill(0x04)),
+  importKey: vi.fn(),
+  encrypt: vi.fn(),
+  decrypt: vi.fn(),
+  generateIV: vi.fn(),
+  generateKey: vi.fn(),
+}))
+
+// Mock auth adapter
 vi.mock('@/shared/auth/supabase-adapter', () => ({
   authAdapter: {
     signup: vi.fn().mockResolvedValue({
@@ -66,6 +133,7 @@ vi.mock('@/shared/auth/supabase-adapter', () => ({
   },
 }))
 
+// Mock auth store
 vi.mock('@/features/auth/model/auth-store', () => ({
   useAuthStore: {
     getState: vi.fn(() => ({
@@ -79,25 +147,41 @@ vi.mock('@/features/auth/model/auth-store', () => ({
   },
 }))
 
+// Mock crypto store
+const cryptoStoreState = {
+  masterKey: null as string | null,
+  kek: null as string | null,
+  fieldKeys: {} as Record<string, string>,
+  isVaultLocked: true,
+  lastActivity: 0,
+  setKeys: mockSetKeys,
+  lockVault: vi.fn(),
+}
+
+vi.mock('@/features/encryption/model/crypto-store', () => ({
+  useCryptoStore: {
+    getState: vi.fn(() => cryptoStoreState),
+    setState: vi.fn(),
+  },
+}))
+
 import { signUpUser, loginUser, logoutUser, restoreSession, subscribeToAuthChanges } from '@/app/flows/auth-flow'
 import { deriveRegistrationKeys } from '@/features/encryption/model/registration'
+import { deriveLoginKeys } from '@/features/encryption/model/login'
+import { lockVault as lockVaultMock } from '@/features/encryption/model/vault-lock'
 import { useCryptoStore } from '@/features/encryption/model/crypto-store'
 import { hexEncode } from '@/shared/crypto/memory'
+import { exportKey } from '@/shared/crypto/aes-gcm'
 import { authAdapter } from '@/shared/auth/supabase-adapter'
 import { uploadRegistrationData } from '@/shared/api/supabase-registration'
-import { deriveCredentials } from '@/shared/crypto/derive-placeholder'
+import { getLoginSalts, getKeys, getFieldKeys } from '@/shared/api/supabase-keys'
+import { deriveLoginCredentials } from '@/shared/crypto/split-kdf'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 
 describe('signUpUser', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    useCryptoStore.setState({
-      masterKey: null,
-      kek: null,
-      fieldKeys: {},
-      isVaultLocked: true,
-      lastActivity: 0,
-    })
+    cryptoStoreState.isVaultLocked = true
   })
 
   it('derives registration keys with password', async () => {
@@ -164,14 +248,69 @@ describe('loginUser', () => {
     vi.clearAllMocks()
   })
 
-  it('derives credentials and calls login', async () => {
+  it('fetches salts, derives credentials, and authenticates', async () => {
     await loginUser('testuser', 'testpass123')
-    expect(deriveCredentials).toHaveBeenCalledWith('testuser', 'testpass123')
+
+    expect(getLoginSalts).toHaveBeenCalledWith('testuser')
+    expect(deriveLoginCredentials).toHaveBeenCalledWith('testpass123', expect.any(Uint8Array), expect.any(Uint8Array))
     expect(authAdapter.login).toHaveBeenCalledWith('testuser', 'a'.repeat(64))
   })
 
-  it('sets loading false after completion', async () => {
+  it('fetches keys and field keys after authentication', async () => {
     await loginUser('testuser', 'testpass123')
+
+    expect(getKeys).toHaveBeenCalledWith('1')
+    expect(getFieldKeys).toHaveBeenCalledWith('1')
+  })
+
+  it('calls deriveLoginKeys with passwordKey and decoded key material', async () => {
+    await loginUser('testuser', 'testpass123')
+
+    expect(deriveLoginKeys).toHaveBeenCalledWith(
+      expect.any(Uint8Array), // passwordKey
+      expect.any(Uint8Array), // hexDecode(wrappedMasterKey)
+      expect.any(Uint8Array), // hexDecode(masterKeyIV)
+      expect.any(Array), // serverFieldKeys
+    )
+  })
+
+  it('populates crypto store with hex-encoded keys', async () => {
+    await loginUser('testuser', 'testpass123')
+
+    expect(exportKey).toHaveBeenCalled()
+    expect(mockSetKeys).toHaveBeenCalled()
+  })
+
+  it('sets auth state on success', async () => {
+    await loginUser('testuser', 'testpass123')
+
+    expect(mockSetAuth).toHaveBeenCalledWith(
+      { id: '1', username: 'test', createdAt: '' },
+      { accessToken: 'tok', expiresAt: 0 },
+    )
+  })
+
+  it('sets loading true at start and false on completion', async () => {
+    await loginUser('testuser', 'testpass123')
+
+    expect(mockSetLoading).toHaveBeenCalledWith(true)
+    expect(mockSetLoading).toHaveBeenCalledWith(false)
+  })
+
+  it('does not populate crypto store when auth fails', async () => {
+    vi.mocked(authAdapter.login).mockRejectedValueOnce(new Error('Invalid login credentials'))
+
+    await expect(loginUser('testuser', 'wrongpass')).rejects.toThrow()
+
+    expect(mockSetKeys).not.toHaveBeenCalled()
+    expect(mockSetAuth).not.toHaveBeenCalled()
+  })
+
+  it('sets loading false even on failure', async () => {
+    vi.mocked(authAdapter.login).mockRejectedValueOnce(new Error('Invalid login credentials'))
+
+    await expect(loginUser('testuser', 'wrongpass')).rejects.toThrow()
+
     expect(mockSetLoading).toHaveBeenCalledWith(false)
   })
 })
@@ -181,9 +320,20 @@ describe('logoutUser', () => {
     vi.clearAllMocks()
   })
 
-  it('calls adapter logout and resets store', async () => {
+  it('calls adapter logout, locks vault, and resets store', async () => {
     await logoutUser()
+
     expect(authAdapter.logout).toHaveBeenCalled()
+    expect(lockVaultMock).toHaveBeenCalled()
+    expect(mockReset).toHaveBeenCalled()
+  })
+
+  it('locks vault and resets store even when adapter logout fails', async () => {
+    vi.mocked(authAdapter.logout).mockRejectedValueOnce(new Error('Network error'))
+
+    await logoutUser()
+
+    expect(lockVaultMock).toHaveBeenCalled()
     expect(mockReset).toHaveBeenCalled()
   })
 })
@@ -319,7 +469,7 @@ describe('subscribeToAuthChanges', () => {
     )
   })
 
-  it('callback calls reset on null result', () => {
+  it('callback calls lockVault and reset on null result', () => {
     let capturedCallback: ((result: unknown) => void) | undefined
     vi.mocked(authAdapter.onAuthStateChange).mockImplementation((cb) => {
       capturedCallback = cb as (result: unknown) => void
@@ -329,6 +479,7 @@ describe('subscribeToAuthChanges', () => {
     subscribeToAuthChanges()
     capturedCallback!(null)
 
+    expect(lockVaultMock).toHaveBeenCalled()
     expect(mockReset).toHaveBeenCalled()
   })
 })

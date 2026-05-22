@@ -80,3 +80,9 @@ export interface RegistrationResult {
   recoveryData: RecoveryData
   mnemonic: string
 }
+
+export interface LoginResult {
+  masterKey: Uint8Array<ArrayBuffer>
+  kek: CryptoKey
+  fieldKeys: Map<string, Uint8Array<ArrayBuffer>>
+}
