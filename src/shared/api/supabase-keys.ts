@@ -1,5 +1,6 @@
 import { getSupabase } from '@/shared/api/supabase-client'
 import { USERNAME_PATTERN } from '@/shared/auth/username-utils'
+import { AuthError, AuthErrorCode, isNetworkError } from '@/shared/auth/auth-errors'
 import type { ServerKeys, ServerFieldKey } from '@/shared/types/api.types'
 
 export interface LoginSalts {
@@ -14,15 +15,15 @@ export interface LoginSalts {
  */
 export async function getLoginSalts(username: string): Promise<LoginSalts> {
   if (!USERNAME_PATTERN.test(username)) {
-    throw new Error('Invalid username format')
+    throw new AuthError(AuthErrorCode.INVALID_CREDENTIALS)
   }
 
   const supabase = getSupabase()
   const { data, error } = await supabase.rpc('get_login_salts', { p_username: username })
 
-  if (error) throw error
+  if (error) throw wrapApiError(error)
   if (!data || data.length === 0) {
-    throw new Error('Login salts not found for this username')
+    throw new AuthError(AuthErrorCode.INVALID_CREDENTIALS)
   }
 
   const row = data[0]
@@ -41,8 +42,8 @@ export async function getKeys(userId: string): Promise<ServerKeys> {
     .eq('user_id', userId)
     .single()
 
-  if (error) throw error
-  if (!data) throw new Error('Keys not found')
+  if (error) throw wrapApiError(error)
+  if (!data) throw new AuthError(AuthErrorCode.KEYS_NOT_FOUND)
 
   return {
     authSalt: data.auth_salt,
@@ -62,9 +63,9 @@ export async function getFieldKeys(userId: string): Promise<ServerFieldKey[]> {
     .select('field_name, version, wrapped_key, key_iv')
     .eq('user_id', userId)
 
-  if (error) throw error
+  if (error) throw wrapApiError(error)
   if (!data) {
-    throw new Error('Field keys not found')
+    throw new AuthError(AuthErrorCode.KEYS_NOT_FOUND)
   }
 
   return data.map((row) => ({
@@ -73,4 +74,11 @@ export async function getFieldKeys(userId: string): Promise<ServerFieldKey[]> {
     wrappedKey: row.wrapped_key,
     keyIV: row.key_iv,
   }))
+}
+
+function wrapApiError(error: unknown): AuthError {
+  if (isNetworkError(error)) {
+    return new AuthError(AuthErrorCode.NETWORK_ERROR, { cause: error instanceof Error ? error : undefined })
+  }
+  return new AuthError(AuthErrorCode.UNEXPECTED, { cause: error instanceof Error ? error : undefined })
 }

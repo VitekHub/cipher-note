@@ -101,6 +101,7 @@ vi.mock('@tanstack/react-router', () => ({
 
 import { LoginPage } from '@/features/auth/ui/LoginPage'
 import { authAdapter } from '@/shared/auth/supabase-adapter'
+import { AuthError, AuthErrorCode } from '@/shared/auth/auth-errors'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { toast } from 'sonner'
 
@@ -171,7 +172,7 @@ describe('LoginPage', () => {
   })
 
   it('shows error toast on login failure', async () => {
-    vi.mocked(authAdapter.login).mockRejectedValueOnce(new Error('Invalid login credentials'))
+    vi.mocked(authAdapter.login).mockRejectedValueOnce(new AuthError(AuthErrorCode.INVALID_CREDENTIALS))
     const user = userEvent.setup()
     render(<LoginPage />)
 

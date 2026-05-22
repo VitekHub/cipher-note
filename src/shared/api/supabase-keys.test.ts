@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { AuthError, AuthErrorCode } from '@/shared/auth/auth-errors'
 
 // Mock Supabase client
 const mockFrom = vi.fn()
@@ -45,28 +46,40 @@ describe('getLoginSalts', () => {
     await expect(getLoginSalts('testuser')).rejects.toThrow()
   })
 
-  it('throws when no data returned', async () => {
+  it('throws INVALID_CREDENTIALS when no data returned', async () => {
     mockRpc.mockResolvedValueOnce({
       data: [],
       error: null,
     })
 
-    await expect(getLoginSalts('nonexistent')).rejects.toThrow('Login salts not found')
+    try {
+      await getLoginSalts('nonexistent')
+      expect.unreachable('should have thrown')
+    } catch (e) {
+      expect(e).toBeInstanceOf(AuthError)
+      expect((e as AuthError).code).toBe(AuthErrorCode.INVALID_CREDENTIALS)
+    }
   })
 
-  it('throws when data is null', async () => {
+  it('throws INVALID_CREDENTIALS when data is null', async () => {
     mockRpc.mockResolvedValueOnce({
       data: null,
       error: null,
     })
 
-    await expect(getLoginSalts('nonexistent')).rejects.toThrow('Login salts not found')
+    try {
+      await getLoginSalts('nonexistent')
+      expect.unreachable('should have thrown')
+    } catch (e) {
+      expect(e).toBeInstanceOf(AuthError)
+      expect((e as AuthError).code).toBe(AuthErrorCode.INVALID_CREDENTIALS)
+    }
   })
 
   it('throws without calling RPC when username format is invalid', async () => {
-    await expect(getLoginSalts('ab')).rejects.toThrow('Invalid username format')
-    await expect(getLoginSalts('user@name')).rejects.toThrow('Invalid username format')
-    await expect(getLoginSalts('')).rejects.toThrow('Invalid username format')
+    await expect(getLoginSalts('ab')).rejects.toThrow(AuthError)
+    await expect(getLoginSalts('user@name')).rejects.toThrow(AuthError)
+    await expect(getLoginSalts('')).rejects.toThrow(AuthError)
 
     expect(mockRpc).not.toHaveBeenCalled()
   })
@@ -130,13 +143,19 @@ describe('getKeys', () => {
     await expect(getKeys('user-1')).rejects.toThrow()
   })
 
-  it('throws when no data found', async () => {
+  it('throws KEYS_NOT_FOUND when no data found', async () => {
     mockSingle.mockResolvedValueOnce({
       data: null,
       error: null,
     })
 
-    await expect(getKeys('user-1')).rejects.toThrow('Keys not found')
+    try {
+      await getKeys('user-1')
+      expect.unreachable('should have thrown')
+    } catch (e) {
+      expect(e).toBeInstanceOf(AuthError)
+      expect((e as AuthError).code).toBe(AuthErrorCode.KEYS_NOT_FOUND)
+    }
   })
 })
 
@@ -184,13 +203,19 @@ describe('getFieldKeys', () => {
     expect(result).toEqual([])
   })
 
-  it('throws when data is null', async () => {
+  it('throws KEYS_NOT_FOUND when data is null', async () => {
     mockEq.mockResolvedValueOnce({
       data: null,
       error: null,
     })
 
-    await expect(getFieldKeys('user-1')).rejects.toThrow('Field keys not found')
+    try {
+      await getFieldKeys('user-1')
+      expect.unreachable('should have thrown')
+    } catch (e) {
+      expect(e).toBeInstanceOf(AuthError)
+      expect((e as AuthError).code).toBe(AuthErrorCode.KEYS_NOT_FOUND)
+    }
   })
 
   it('throws when query returns error', async () => {

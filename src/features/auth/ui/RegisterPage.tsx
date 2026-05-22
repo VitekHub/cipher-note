@@ -13,7 +13,7 @@ import { Button } from '@/shared/ui/button'
 import { MnemonicDialog } from '@/features/auth/ui/MnemonicDialog'
 import { PasswordStrength } from '@/features/auth/ui/PasswordStrength'
 import { UsernameAvailability } from '@/features/auth/ui/UsernameAvailability'
-import { getAuthErrorMessage } from '@/features/auth/model/auth-errors'
+import { getAuthErrorMessage } from '@/features/auth/model/auth-error-messages'
 import { toast } from 'sonner'
 
 interface RegisterPageProps {

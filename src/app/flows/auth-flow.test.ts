@@ -186,6 +186,7 @@ import { uploadRegistrationData } from '@/shared/api/supabase-registration'
 import { getLoginSalts, getKeys, getFieldKeys } from '@/shared/api/supabase-keys'
 import { deriveLoginCredentials } from '@/shared/crypto/split-kdf'
 import { useAuthStore } from '@/features/auth/model/auth-store'
+import { AuthError, AuthErrorCode } from '@/shared/auth/auth-errors'
 
 describe('signUpUser', () => {
   beforeEach(() => {
@@ -307,7 +308,7 @@ describe('loginUser', () => {
   })
 
   it('does not populate crypto store when auth fails', async () => {
-    vi.mocked(authAdapter.login).mockRejectedValueOnce(new Error('Invalid login credentials'))
+    vi.mocked(authAdapter.login).mockRejectedValueOnce(new AuthError(AuthErrorCode.INVALID_CREDENTIALS))
 
     await expect(loginUser('testuser', 'wrongpass')).rejects.toThrow()
 
@@ -316,7 +317,7 @@ describe('loginUser', () => {
   })
 
   it('sets loading false even on failure', async () => {
-    vi.mocked(authAdapter.login).mockRejectedValueOnce(new Error('Invalid login credentials'))
+    vi.mocked(authAdapter.login).mockRejectedValueOnce(new AuthError(AuthErrorCode.INVALID_CREDENTIALS))
 
     await expect(loginUser('testuser', 'wrongpass')).rejects.toThrow()
 
@@ -334,9 +335,9 @@ describe('loginUser', () => {
   })
 
   it('does not populate crypto store when fetching keys fails after auth succeeds', async () => {
-    vi.mocked(getKeys).mockRejectedValueOnce(new Error('Network error'))
+    vi.mocked(getKeys).mockRejectedValueOnce(new AuthError(AuthErrorCode.NETWORK_ERROR))
 
-    await expect(loginUser('testuser', 'testpass123')).rejects.toThrow('Network error')
+    await expect(loginUser('testuser', 'testpass123')).rejects.toThrow(AuthError)
 
     expect(mockSetKeys).not.toHaveBeenCalled()
     expect(mockSetAuth).not.toHaveBeenCalled()

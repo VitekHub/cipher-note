@@ -85,6 +85,7 @@ cipher-note-react/
       auth/
         model/
           auth-store.ts        # Zustand: session, user, isAuthenticated
+          auth-error-messages.ts # getAuthErrorMessage: AuthErrorCode → i18n key
           register-schema.ts   # Zod validation
           login-schema.ts      # Zod validation
         ui/
@@ -169,6 +170,7 @@ cipher-note-react/
         # future: hono-client.ts
       auth/
         auth.types.ts         # IAuthAdapter interface
+        auth-errors.ts        # AuthError, AuthErrorCode, isAuthError, isNetworkError
         supabase-adapter.ts   # Supabase Auth implementation
         auth-context.tsx       # React context for auth adapter
         username-utils.ts     # toSupabaseEmail, fromSupabaseEmail
@@ -425,7 +427,7 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
   - Redirect to `/dashboard` on success
   - Error handling via error mapping module with toast notifications
 - Auth operations module (in `features/auth/model/`) — extracted async functions for register, login, logout: derive credentials via temporary placeholder, call auth adapter, update auth store
-- Error mapping module (in `features/auth/model/`) — map Supabase error messages to i18n keys (invalid credentials, username taken, network error)
+- Error mapping module (in `features/auth/model/`) — `AuthError` with `AuthErrorCode` enum (in `shared/auth/auth-errors.ts`), mapped to i18n keys by `getAuthErrorMessage` (in `features/auth/model/auth-error-messages.ts`)
 - Shared form field component (in `features/auth/ui/`) — Label + children + error message
 - AuthLayout — shared layout for auth pages (centered card)
 - Zod schemas for registration and login forms
@@ -438,7 +440,7 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 - Component tests: submit button disabled during loading
 - Component tests: error toast shown on auth failure
 - Unit tests: auth operations module (register, login, logout)
-- Unit tests: error mapping (Supabase errors → correct i18n keys)
+- Unit tests: error mapping (AuthError codes → correct i18n keys, network error fallback, CryptoError fallback)
 - Unit tests: credential derivation placeholder
 
 ---
