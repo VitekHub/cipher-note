@@ -875,8 +875,9 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 **Goal:** Registration page with password strength indicator and mnemonic display.
 
 **Code:**
-- Update `src/features/auth/ui/RegisterPage.tsx`:
-  - `signUpUser` returns `mnemonic: string` — the flow already produces the mnemonic. `AuthForm` currently discards the return value of `onSubmit`, so Step 20 must capture the mnemonic from `signUpUser`'s return value and pass it to `MnemonicDialog`.
+- Inline forms directly into `LoginPage.tsx` and `RegisterPage.tsx` (no shared `AuthForm` wrapper — each page owns its own form logic and layout). Extract shared password validation logic to `src/shared/auth/password-utils.ts`.
+- `RegisterPage.tsx`:
+  - `signUpUser` returns `mnemonic: string` — capture the mnemonic from `signUpUser`'s return value and pass it to `MnemonicDialog`.
   - Show Argon2id derivation progress (spinner or progress indicator)
   - On success: show mnemonic in a `<Dialog>` with:
     - 12-word mnemonic displayed in groups of 3

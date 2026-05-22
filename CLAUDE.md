@@ -8,6 +8,47 @@ Cipher Note is an end-to-end encrypted note-taking app built with Vite + React +
 
 This app will never need backward compatibility with previous versions. The database is always reset on changes. Do not add migration paths, version checks, or compatibility shims for old data formats.
 
+## Architecture
+
+### Tech Stack
+React 19 · TypeScript (strict, `erasableSyntaxOnly`, `verbatimModuleSyntax`) · Vite 8 · Tailwind CSS v4 · shadcn/ui (base-nova) · TanStack Router (file-based) · TanStack Query 5 · Zustand 5 (with devtools) · react-hook-form + Zod 4 · i18next (en + cs) · Supabase (local Docker) · Web Crypto API + argon2-browser
+
+### Auth (Split KDF / Zero-Knowledge)
+- Users log in with a **username** (mapped to `{username}@ciphernote.internal` for Supabase Auth, which requires an email).
+- Password never leaves the client. **Split KDF** derives two independent values:
+  1. `authHash` → sent as the "password" to Supabase Auth (always 64 hex chars)
+  2. `passwordKey` → used locally to unwrap the master key
+- Argon2id runs in a **Web Worker** (`argon2id.worker.ts`). `@scure/bip39` and `argon2-browser` are lazy-loaded, never top-level imports.
+- `derive-placeholder.ts` is INSECURE (SHA-256 based) — for dev only, must be replaced before production.
+
+### Crypto Key Hierarchy
+```
+Password → Split KDF → authHash (Supabase) + passwordKey (unwrap master key)
+Master Key → HKDF("wrap") → KEK (wraps field keys) | HKDF("sign") → Signing Key Seed
+Field Keys (one per field) → wrapped by KEK with AAD(fieldName, version)
+Recovery: BIP-39 mnemonic → Argon2id → recovery KEK → wraps master key
+```
+- All keys: 32 bytes (256 bits), salts: 16 bytes. Argon2id params: m=47104, t=3, p=1.
+- Zustand crypto store uses **hex-encoded strings** (not Uint8Array) for reactivity.
+- Vault lock purges Zustand keys + TanStack Query cache.
+
+### App Hierarchy
+```
+main.tsx → AppProviders (QueryClientProvider > AuthProvider > RouterProvider)
+  → __root.tsx (ThemeProvider + Toaster)
+    → _public (GuestOnly, redirects to /dashboard if authed)
+    → _authenticated (RequireAuth, redirects to /login if not authed)
+```
+
+### Database (Supabase / Postgres 17)
+- `users` (mirrors auth.users via trigger), `keys`, `field_keys` (versioned), `encrypted_fields`, `recovery`
+- All tables use RLS — users can only access their own rows
+- No DELETE policy on `recovery` (updatable but not removable)
+- Username availability: `check_username_availability()` RPC with IP-based rate limiting
+
+### Adapter Pattern
+Backend abstracted behind interfaces: `IAuthAdapter`, `IApiAdapter`, `IRealtimeAdapter` (not yet implemented). Current implementations use Supabase.
+
 ## Key Conventions
 
 ### File Organization
@@ -25,6 +66,9 @@ This app will never need backward compatibility with previous versions. The data
 - Target 100-200 lines per file. Maximum 300 lines.
 - If a file exceeds 300 lines, split it.
 - Prefer deep folder hierarchies over wide shallow files.
+
+### Prettier
+- No semicolons, single quotes, trailing commas, 120 print width, tailwindcss plugin.
 
 ### Testing
 - Tests are colocated with source: `aes-gcm.ts` -> `aes-gcm.test.ts` in the same directory.
@@ -58,6 +102,7 @@ This app will never need backward compatibility with previous versions. The data
 ### State Management
 - Zustand for client state (auth store, crypto store, UI store).
 - TanStack Query for server state (fields, keys).
+- Zustand stores use **devtools middleware** with named actions (e.g., `'auth/setUser'`).
 - NEVER store `language` preference in Zustand — `i18next` is the source of truth.
 
 ### Code Style
@@ -78,14 +123,26 @@ This app will never need backward compatibility with previous versions. The data
 
 ## Development Commands
 
-```bash
-pnpm dev          # Start dev server
-pnpm build        # Type check + build
-pnpm test         # Run tests in watch mode
-pnpm test:run     # Run tests once
-pnpm typecheck    # Type check only
-pnpm lint         # Run ESLint
-```
+| Command | Purpose |
+|---------|---------|
+| `pnpm dev` | Start Supabase Docker + Vite dev server |
+| `pnpm dev:reset` | Reset DB (re-run migrations + seed) then start dev |
+| `pnpm build` | `tsc -b && vite build` |
+| `pnpm test` | Vitest in watch mode |
+| `pnpm test:run` | Vitest single run |
+| `pnpm test:ui` | Vitest UI |
+| `pnpm coverage` | Vitest with v8 coverage |
+| `pnpm typecheck` | `tsc --noEmit` |
+| `pnpm lint` | ESLint |
+| `pnpm format` | Prettier write |
+| `pnpm format:check` | Prettier check |
+| `pnpm supabase:start` | Start local Supabase (requires Docker) |
+| `pnpm supabase:status` | Show Supabase URLs + keys |
+| `pnpm supabase:reset` | Reset DB with migrations + seed |
+
+**Run a single test:** `pnpm test:run -- src/features/auth/model/auth-store.test.ts`
+
+**Setup:** `pnpm install` → `pnpm supabase:start` → copy `.env.local.example` to `.env.local` → fill `VITE_SUPABASE_ANON_KEY` from `pnpm supabase:status` → `pnpm dev`
 
 ## Current Progress
 

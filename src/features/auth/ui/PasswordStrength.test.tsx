@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@/test/utils'
-import React, { useRef } from 'react'
+import { useRef } from 'react'
 import { PasswordStrength } from './PasswordStrength'
 
 function TestWrapper({ password, open = true }: { password: string; open?: boolean }) {
