@@ -15,7 +15,7 @@ vi.mock('@/shared/api/supabase-client', () => ({
   }),
 }))
 
-import { getLoginSalts, getKeys, getFieldKeys } from '@/shared/api/supabase-keys'
+import { getLoginSalts, getMasterKeyEnvelope, getFieldKeys } from '@/shared/api/supabase-keys'
 
 describe('getLoginSalts', () => {
   beforeEach(() => {
@@ -96,7 +96,7 @@ describe('getLoginSalts', () => {
   })
 })
 
-describe('getKeys', () => {
+describe('getMasterKeyEnvelope', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
@@ -121,7 +121,7 @@ describe('getKeys', () => {
       error: null,
     })
 
-    const result = await getKeys('user-1')
+    const result = await getMasterKeyEnvelope('user-1')
 
     expect(mockFrom).toHaveBeenCalledWith('keys')
     expect(mockSelect).toHaveBeenCalledWith('auth_salt, key_salt, wrapped_master_key, master_key_iv')
@@ -140,7 +140,7 @@ describe('getKeys', () => {
       error: { message: 'Query error' },
     })
 
-    await expect(getKeys('user-1')).rejects.toThrow()
+    await expect(getMasterKeyEnvelope('user-1')).rejects.toThrow()
   })
 
   it('throws KEYS_NOT_FOUND when no data found', async () => {
@@ -150,7 +150,7 @@ describe('getKeys', () => {
     })
 
     try {
-      await getKeys('user-1')
+      await getMasterKeyEnvelope('user-1')
       expect.unreachable('should have thrown')
     } catch (e) {
       expect(e).toBeInstanceOf(AuthError)

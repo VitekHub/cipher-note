@@ -16,7 +16,7 @@ async function deriveCredentials(
   password: string,
   authSalt: Uint8Array<ArrayBuffer>,
   keySalt: Uint8Array<ArrayBuffer>,
-) {
+): Promise<LoginCredentials> {
   const [authHash, passwordKey] = await Promise.all([
     deriveAuthHash(password, authSalt),
     derivePasswordKey(password, keySalt),
@@ -46,17 +46,11 @@ export async function deriveLoginCredentials(
   authSalt: Uint8Array<ArrayBuffer>,
   keySalt: Uint8Array<ArrayBuffer>,
 ): Promise<LoginCredentials> {
-  const { authHash, passwordKey } = await deriveCredentials(password, authSalt, keySalt)
-
-  return { authHash, passwordKey }
+  return deriveCredentials(password, authSalt, keySalt)
 }
 
 /**
  * Change the user's password by re-wrapping the master key.
- *
- * 1. Derive old password key → unwrap master key
- * 2. Generate new salts and derive new credentials
- * 3. Re-wrap master key with new password key
  *
  * The master key itself is never changed - only its wrapping.
  * Field keys encrypted with the KEK are completely unaffected.

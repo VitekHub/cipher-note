@@ -21,7 +21,7 @@ vi.mock('@/shared/api/supabase-keys', () => ({
     authSalt: '01'.repeat(16),
     keySalt: '02'.repeat(16),
   }),
-  getKeys: vi.fn().mockResolvedValue({
+  getMasterKeyEnvelope: vi.fn().mockResolvedValue({
     authSalt: '01'.repeat(16),
     keySalt: '02'.repeat(16),
     wrappedMasterKey: '05'.repeat(48),

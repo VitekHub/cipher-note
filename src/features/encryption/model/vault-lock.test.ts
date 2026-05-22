@@ -45,7 +45,7 @@ vi.mock('@/shared/crypto/split-kdf', () => ({
 
 // Mock Supabase keys
 vi.mock('@/shared/api/supabase-keys', () => ({
-  getKeys: vi.fn().mockResolvedValue({
+  getMasterKeyEnvelope: vi.fn().mockResolvedValue({
     authSalt: '01'.repeat(16),
     keySalt: '02'.repeat(16),
     wrappedMasterKey: '05'.repeat(48),
@@ -97,7 +97,7 @@ import { lockVault, unlockVault } from '@/features/encryption/model/vault-lock'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { deriveLoginKeys } from '@/features/encryption/model/login'
 import { deriveLoginCredentials } from '@/shared/crypto/split-kdf'
-import { getKeys, getFieldKeys } from '@/shared/api/supabase-keys'
+import { getMasterKeyEnvelope, getFieldKeys } from '@/shared/api/supabase-keys'
 
 describe('lockVault', () => {
   beforeEach(() => {
@@ -118,7 +118,7 @@ describe('unlockVault', () => {
   it('derives credentials and populates crypto store', async () => {
     await unlockVault('test-password-123')
 
-    expect(getKeys).toHaveBeenCalledWith('user-1')
+    expect(getMasterKeyEnvelope).toHaveBeenCalledWith('user-1')
     expect(getFieldKeys).toHaveBeenCalledWith('user-1')
     expect(deriveLoginCredentials).toHaveBeenCalledWith(
       'test-password-123',
@@ -147,8 +147,8 @@ describe('unlockVault', () => {
     )
   })
 
-  it('does not populate crypto store when getKeys fails', async () => {
-    vi.mocked(getKeys).mockRejectedValueOnce(new Error('Network error'))
+  it('does not populate crypto store when getMasterKeyEnvelope fails', async () => {
+    vi.mocked(getMasterKeyEnvelope).mockRejectedValueOnce(new Error('Network error'))
 
     await expect(unlockVault('test-password-123')).rejects.toThrow('Network error')
 

@@ -53,7 +53,7 @@ When the user logs in and unlocks their vault, the Master Key, KEK, and field ke
 All backend-specific code lives behind interfaces in `shared/`. Features import interface types, never implementations directly. Swapping backends means writing new adapters, not rewriting features.
 
 - `shared/auth/` — Auth interface (`login`, `logout`, `getSession`, `signup`, `recoverPassword`). Supabase Auth adapter today; custom JWT or OPAQUE adapter later.
-- `shared/api/` — Data access interface (`getKeys`, `saveField`, `getField`, etc.). Supabase client queries today; REST calls to Hono API later.
+- `shared/api/` — Data access interface (`getMasterKeyEnvelope`, `saveField`, `getField`, etc.). Supabase client queries today; REST calls to Hono API later.
 - `shared/realtime/` — Realtime interface (`subscribe`, `unsubscribe`, `onFieldChange`). Supabase Realtime today; raw WebSocket to Hono server later.
 
 ---
@@ -163,7 +163,7 @@ cipher-note-react/
       api/
         api.types.ts          # IApiAdapter interface
         supabase-client.ts    # Supabase client initialization only
-        supabase-keys.ts      # Keys CRUD (getKeys, getFieldKeys, saveWrappedKey)
+        supabase-keys.ts      # Keys CRUD (getMasterKeyEnvelope, getFieldKeys, saveWrappedKey)
         supabase-fields.ts    # Fields CRUD (getField, saveField)
         supabase-recovery.ts  # Recovery data CRUD (saveRecoveryData, getRecoveryData)
         supabase-registration.ts # Registration data upload (uploadRegistrationData)
@@ -337,7 +337,7 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
   - `src/features/settings/model/ui-store.ts` — sidebarOpen, activeField. **Do NOT store `language` here** — `i18next` is the source of truth for language state. Only store UI state that i18next doesn't manage.
 - Create adapter interfaces:
   - `src/shared/auth/auth.types.ts` — `IAuthAdapter` interface: `login(username, authHash)`, `logout()`, `getSession()`, `signup(username, authHash)`, `recoverPassword()`
-  - `src/shared/api/api.types.ts` — `IApiAdapter` interface: `getKeys(userId)`, `getFieldKeys(userId)`, `getField(userId, fieldName)`, `saveField(userId, fieldName, blob, iv)`, `saveWrappedKey(userId, data)`, `getRecovery(userId)`
+  - `src/shared/api/api.types.ts` — `IApiAdapter` interface: `getMasterKeyEnvelope(userId)`, `getFieldKeys(userId)`, `getField(userId, fieldName)`, `saveField(userId, fieldName, blob, iv)`, `saveWrappedKey(userId, data)`, `getRecovery(userId)`
   - `src/shared/realtime/realtime.types.ts` — `IRealtimeAdapter` interface: `subscribe(userId, callbacks)`, `unsubscribe()`
 - Create `src/shared/types/crypto.types.ts` — TypeScript types for all crypto operations (WrappedKey, FieldKey, EncryptedField, KeyVersion, etc.)
 
@@ -913,17 +913,17 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
   - `LoginResult` type: `{ masterKey, kek (CryptoKey), fieldKeys (Map) }` — no authHash (caller already has it)
 - Auth flow orchestration (in existing auth-flow module):
   - `loginUser(username, password)` — fetches salts via pre-auth RPC, derives credentials, authenticates, fetches key material, unwraps via `deriveLoginKeys`, populates crypto store with hex-encoded keys
-  - `logoutUser` — now calls `lockVault()` before resetting auth store
+  - `logoutUser` — calls `lockVault()` before resetting auth store
   - `subscribeToAuthChanges` — calls `lockVault()` when auth state becomes null (sign-out from another tab)
 - Vault lock/unlock module:
   - `lockVault(): void` — delegates to crypto store's `lockVault()` (zeros keys, purges TanStack Query cache)
   - `unlockVault(password): Promise<void>` — fetches key material (user already authenticated), re-derives credentials, unwraps via `deriveLoginKeys`, populates crypto store
 - Supabase data access module for keys:
   - `getLoginSalts(username): Promise<LoginSalts>` — calls SECURITY DEFINER RPC `get_login_salts` (pre-auth, rate-limited)
-  - `getKeys(userId): Promise<ServerKeys>` — queries `keys` table (post-auth, RLS-protected)
+  - `getMasterKeyEnvelope(userId): Promise<ServerKeys>` — queries `keys` table (post-auth, RLS-protected)
   - `getFieldKeys(userId): Promise<ServerFieldKey[]>` — queries `field_keys` table
 - Database migration: `get_login_salts(p_username)` RPC — SECURITY DEFINER, rate-limited (5 req/2 min/IP), case-insensitive username lookup joining `users` → `keys`
-- `derive-placeholder.ts` removed — replaced by real login flow
+- Remove `derive-placeholder.ts` — replace with real login flow
 
 **Key design decision:** Salts must be fetched before authentication (to derive authHash for Supabase Auth), but the `keys` table is RLS-protected. Solution: a `SECURITY DEFINER` RPC function that returns only `auth_salt` and `key_salt` (not wrapped key material) with rate limiting, callable by anonymous users.
 
@@ -934,7 +934,7 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 - Unit: `lockVault` zeros all keys in store
 - Unit: `unlockVault` with valid password populates crypto store
 - Unit: `unlockVault` without authenticated user throws
-- Unit: `getLoginSalts`, `getKeys`, `getFieldKeys` server data access
+- Unit: `getLoginSalts`, `getMasterKeyEnvelope`, `getFieldKeys` server data access
 - Unit: auth-flow `loginUser` calls correct sequence of operations
 - Unit: auth-flow `logoutUser` calls `lockVault()` before resetting store
 
@@ -1003,7 +1003,7 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 **Code:**
 - `src/shared/api/supabase-client.ts` — Supabase client initialization and export only (no business logic)
 - `src/shared/api/supabase-keys.ts` — Keys CRUD:
-  - `getKeys(userId: string): Promise<ServerKeys>` — fetch auth_salt, key_salt, wrapped_master_key, master_key_iv
+  - `getMasterKeyEnvelope(userId: string): Promise<ServerKeys>` — fetch auth_salt, key_salt, wrapped_master_key, master_key_iv
   - `getFieldKeys(userId: string): Promise<ServerFieldKey[]>` — fetch all wrapped field keys with versions
   - `saveWrappedKey(userId: string, data: WrappedKeyData): Promise<void>` — save/update wrapped key data
 - `src/shared/api/supabase-fields.ts` — Fields CRUD:

@@ -1,4 +1,4 @@
-export interface ServerKeys {
+export interface ServerMasterKeyEnvelope {
   authSalt: string
   keySalt: string
   wrappedMasterKey: string

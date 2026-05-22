@@ -3,7 +3,7 @@ import { useCryptoStore } from '@/features/encryption/model/crypto-store'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { authAdapter } from '@/shared/auth/supabase-adapter'
 import { uploadRegistrationData } from '@/shared/api/supabase-registration'
-import { getLoginSalts, getKeys, getFieldKeys } from '@/shared/api/supabase-keys'
+import { getLoginSalts, getMasterKeyEnvelope, getFieldKeys } from '@/shared/api/supabase-keys'
 import { deriveLoginCredentials } from '@/shared/crypto/split-kdf'
 import { deriveLoginKeys } from '@/features/encryption/model/login'
 import { hexDecode, hexEncode, encodeFieldKeysToHex } from '@/shared/crypto/memory'
@@ -50,48 +50,34 @@ export async function signUpUser(username: string, password: string): Promise<st
   }
 }
 
+/**
+ * Logs in an existing user (salts are fetched pre-auth).
+ */
 export async function loginUser(username: string, password: string) {
   const authStore = useAuthStore.getState()
   authStore.setLoading(true)
 
   try {
-    // 1. Fetch salts (pre-auth, via RPC)
-    const salts = await getLoginSalts(username)
-
-    // 2. Derive authHash + passwordKey from password + salts
-    const { authHash, passwordKey } = await deriveLoginCredentials(
-      password,
-      hexDecode(salts.authSalt),
-      hexDecode(salts.keySalt),
-    )
-
-    // 3. Authenticate with Supabase Auth
+    // Fetch salts (pre-auth) → derive credentials → authenticate
+    const { authSalt, keySalt } = await getLoginSalts(username)
+    const { authHash, passwordKey } = await deriveLoginCredentials(password, hexDecode(authSalt), hexDecode(keySalt))
     const authResult = await authAdapter.login(username, authHash)
 
-    // 4. Fetch wrapped key material (post-auth, RLS-protected)
-    const [serverKeys, serverFieldKeys] = await Promise.all([
-      getKeys(authResult.user.id),
+    // Fetch wrapped keys (post-auth) → unwrap → store
+    const [masterKeyEnvelope, serverFieldKeys] = await Promise.all([
+      getMasterKeyEnvelope(authResult.user.id),
       getFieldKeys(authResult.user.id),
     ])
-
-    // 5. Unwrap all keys (pure crypto)
-    const loginResult = await deriveLoginKeys(
+    const { masterKey, kek, fieldKeys } = await deriveLoginKeys({
       passwordKey,
-      hexDecode(serverKeys.wrappedMasterKey),
-      hexDecode(serverKeys.masterKeyIV),
+      wrappedMasterKey: hexDecode(masterKeyEnvelope.wrappedMasterKey),
+      masterKeyIV: hexDecode(masterKeyEnvelope.masterKeyIV),
       serverFieldKeys,
-    )
+    })
+    const kekBytes = await exportKey(kek)
+    useCryptoStore.getState().setKeys(hexEncode(masterKey), hexEncode(kekBytes), encodeFieldKeysToHex(fieldKeys))
 
-    // 6. Hex-encode and store in crypto store
-    const kekBytes = await exportKey(loginResult.kek)
-    useCryptoStore
-      .getState()
-      .setKeys(hexEncode(loginResult.masterKey), hexEncode(kekBytes), encodeFieldKeysToHex(loginResult.fieldKeys))
-
-    // 7. Set auth state
     authStore.setAuth(authResult.user, authResult.session)
-
-    return authResult
   } finally {
     authStore.setLoading(false)
   }

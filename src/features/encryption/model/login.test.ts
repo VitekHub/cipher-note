@@ -59,7 +59,12 @@ describe('deriveLoginKeys', () => {
     const loginCreds = await deriveLoginCredentials('test-password-123', regResult.authSalt, regResult.keySalt)
 
     // Login: unwrap keys
-    const loginResult = await deriveLoginKeys(loginCreds.passwordKey, wrappedMasterKey, masterKeyIV, serverFieldKeys)
+    const loginResult = await deriveLoginKeys({
+      passwordKey: loginCreds.passwordKey,
+      wrappedMasterKey,
+      masterKeyIV,
+      serverFieldKeys,
+    })
 
     // Verify master key matches
     expect(loginResult.masterKey).toEqual(regResult.masterKey)
@@ -78,7 +83,14 @@ describe('deriveLoginKeys', () => {
     // Use a random wrong key
     const wrongKey = crypto.getRandomValues(new Uint8Array(32))
 
-    await expect(deriveLoginKeys(wrongKey, wrappedMasterKey, masterKeyIV, serverFieldKeys)).rejects.toThrow()
+    await expect(
+      deriveLoginKeys({
+        passwordKey: wrongKey,
+        wrappedMasterKey,
+        masterKeyIV,
+        serverFieldKeys,
+      }),
+    ).rejects.toThrow()
   })
 
   it('throws DecryptionError with corrupted wrappedMasterKey', async () => {
@@ -93,7 +105,12 @@ describe('deriveLoginKeys', () => {
     corruptedMasterKey[0] ^= 0xff // flip a byte
 
     await expect(
-      deriveLoginKeys(loginCreds.passwordKey, corruptedMasterKey, masterKeyIV, serverFieldKeys),
+      deriveLoginKeys({
+        passwordKey: loginCreds.passwordKey,
+        wrappedMasterKey: corruptedMasterKey,
+        masterKeyIV,
+        serverFieldKeys,
+      }),
     ).rejects.toThrow()
   })
 
@@ -103,7 +120,12 @@ describe('deriveLoginKeys', () => {
     const { deriveLoginCredentials } = await import('@/shared/crypto/split-kdf')
     const loginCreds = await deriveLoginCredentials('test-password-123', regResult.authSalt, regResult.keySalt)
 
-    const loginResult = await deriveLoginKeys(loginCreds.passwordKey, wrappedMasterKey, masterKeyIV, [])
+    const loginResult = await deriveLoginKeys({
+      passwordKey: loginCreds.passwordKey,
+      wrappedMasterKey,
+      masterKeyIV,
+      serverFieldKeys: [],
+    })
 
     expect(loginResult.fieldKeys.size).toBe(0)
   })
@@ -114,7 +136,12 @@ describe('deriveLoginKeys', () => {
     const { deriveLoginCredentials } = await import('@/shared/crypto/split-kdf')
     const loginCreds = await deriveLoginCredentials('test-password-123', regResult.authSalt, regResult.keySalt)
 
-    const loginResult = await deriveLoginKeys(loginCreds.passwordKey, wrappedMasterKey, masterKeyIV, serverFieldKeys)
+    const loginResult = await deriveLoginKeys({
+      passwordKey: loginCreds.passwordKey,
+      wrappedMasterKey,
+      masterKeyIV,
+      serverFieldKeys,
+    })
 
     expect(loginResult.fieldKeys.has('note')).toBe(true)
     expect(loginResult.fieldKeys.has('website')).toBe(true)
@@ -127,7 +154,12 @@ describe('deriveLoginKeys', () => {
     const { deriveLoginCredentials } = await import('@/shared/crypto/split-kdf')
     const loginCreds = await deriveLoginCredentials('test-password-123', regResult.authSalt, regResult.keySalt)
 
-    const loginResult = await deriveLoginKeys(loginCreds.passwordKey, wrappedMasterKey, masterKeyIV, serverFieldKeys)
+    const loginResult = await deriveLoginKeys({
+      passwordKey: loginCreds.passwordKey,
+      wrappedMasterKey,
+      masterKeyIV,
+      serverFieldKeys,
+    })
 
     // Verify KEK is a CryptoKey
     expect(loginResult.kek).toBeInstanceOf(CryptoKey)

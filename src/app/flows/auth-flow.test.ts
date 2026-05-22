@@ -63,7 +63,7 @@ vi.mock('@/shared/api/supabase-keys', () => ({
     authSalt: '01'.repeat(16),
     keySalt: '02'.repeat(16),
   }),
-  getKeys: vi.fn().mockResolvedValue({
+  getMasterKeyEnvelope: vi.fn().mockResolvedValue({
     authSalt: '01'.repeat(16),
     keySalt: '02'.repeat(16),
     wrappedMasterKey: '05'.repeat(48),
@@ -183,7 +183,7 @@ import { hexEncode } from '@/shared/crypto/memory'
 import { exportKey } from '@/shared/crypto/aes-gcm'
 import { authAdapter } from '@/shared/auth/supabase-adapter'
 import { uploadRegistrationData } from '@/shared/api/supabase-registration'
-import { getLoginSalts, getKeys, getFieldKeys } from '@/shared/api/supabase-keys'
+import { getLoginSalts, getMasterKeyEnvelope, getFieldKeys } from '@/shared/api/supabase-keys'
 import { deriveLoginCredentials } from '@/shared/crypto/split-kdf'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { AuthError, AuthErrorCode } from '@/shared/auth/auth-errors'
@@ -269,19 +269,19 @@ describe('loginUser', () => {
   it('fetches keys and field keys after authentication', async () => {
     await loginUser('testuser', 'testpass123')
 
-    expect(getKeys).toHaveBeenCalledWith('1')
+    expect(getMasterKeyEnvelope).toHaveBeenCalledWith('1')
     expect(getFieldKeys).toHaveBeenCalledWith('1')
   })
 
   it('calls deriveLoginKeys with passwordKey and decoded key material', async () => {
     await loginUser('testuser', 'testpass123')
 
-    expect(deriveLoginKeys).toHaveBeenCalledWith(
-      expect.any(Uint8Array), // passwordKey
-      expect.any(Uint8Array), // hexDecode(wrappedMasterKey)
-      expect.any(Uint8Array), // hexDecode(masterKeyIV)
-      expect.any(Array), // serverFieldKeys
-    )
+    expect(deriveLoginKeys).toHaveBeenCalledWith({
+      passwordKey: expect.any(Uint8Array),
+      wrappedMasterKey: expect.any(Uint8Array),
+      masterKeyIV: expect.any(Uint8Array),
+      serverFieldKeys: expect.any(Array),
+    })
   })
 
   it('populates crypto store with hex-encoded keys', async () => {
@@ -335,7 +335,7 @@ describe('loginUser', () => {
   })
 
   it('does not populate crypto store when fetching keys fails after auth succeeds', async () => {
-    vi.mocked(getKeys).mockRejectedValueOnce(new AuthError(AuthErrorCode.NETWORK_ERROR))
+    vi.mocked(getMasterKeyEnvelope).mockRejectedValueOnce(new AuthError(AuthErrorCode.NETWORK_ERROR))
 
     await expect(loginUser('testuser', 'testpass123')).rejects.toThrow(AuthError)
 

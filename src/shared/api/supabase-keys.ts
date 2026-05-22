@@ -1,7 +1,7 @@
 import { getSupabase } from '@/shared/api/supabase-client'
 import { USERNAME_PATTERN } from '@/shared/auth/username-utils'
 import { AuthError, AuthErrorCode, isNetworkError } from '@/shared/auth/auth-errors'
-import type { ServerKeys, ServerFieldKey } from '@/shared/types/api.types'
+import type { ServerMasterKeyEnvelope, ServerFieldKey } from '@/shared/types/api.types'
 
 export interface LoginSalts {
   authSalt: string
@@ -34,7 +34,7 @@ export async function getLoginSalts(username: string): Promise<LoginSalts> {
  * Fetch the user's key material (requires authenticated user).
  * Returns salts, wrapped master key, and IV.
  */
-export async function getKeys(userId: string): Promise<ServerKeys> {
+export async function getMasterKeyEnvelope(userId: string): Promise<ServerMasterKeyEnvelope> {
   const supabase = getSupabase()
   const { data, error } = await supabase
     .from('keys')
