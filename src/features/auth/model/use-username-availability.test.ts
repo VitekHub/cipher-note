@@ -24,7 +24,7 @@ describe('useUsernameAvailability', () => {
   })
 
   it('returns idle when username fails pattern validation', () => {
-    const { result } = renderHook(() => useUsernameAvailability({ username: 'ABC' }))
+    const { result } = renderHook(() => useUsernameAvailability({ username: 'user@name' }))
     expect(result.current.status).toBe('idle')
   })
 

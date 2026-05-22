@@ -62,6 +62,25 @@ describe('getLoginSalts', () => {
 
     await expect(getLoginSalts('nonexistent')).rejects.toThrow('Login salts not found')
   })
+
+  it('throws without calling RPC when username format is invalid', async () => {
+    await expect(getLoginSalts('ab')).rejects.toThrow('Invalid username format')
+    await expect(getLoginSalts('user@name')).rejects.toThrow('Invalid username format')
+    await expect(getLoginSalts('')).rejects.toThrow('Invalid username format')
+
+    expect(mockRpc).not.toHaveBeenCalled()
+  })
+
+  it('accepts uppercase usernames and calls RPC', async () => {
+    mockRpc.mockResolvedValueOnce({
+      data: [{ auth_salt: 'a1b2c3d4'.repeat(4), key_salt: 'e5f6g7h8'.repeat(4) }],
+      error: null,
+    })
+
+    await getLoginSalts('TestUser')
+
+    expect(mockRpc).toHaveBeenCalledWith('get_login_salts', { p_username: 'TestUser' })
+  })
 })
 
 describe('getKeys', () => {
@@ -165,14 +184,13 @@ describe('getFieldKeys', () => {
     expect(result).toEqual([])
   })
 
-  it('returns empty array when data is null', async () => {
+  it('throws when data is null', async () => {
     mockEq.mockResolvedValueOnce({
       data: null,
       error: null,
     })
 
-    const result = await getFieldKeys('user-1')
-    expect(result).toEqual([])
+    await expect(getFieldKeys('user-1')).rejects.toThrow('Field keys not found')
   })
 
   it('throws when query returns error', async () => {

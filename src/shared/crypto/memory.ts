@@ -30,6 +30,11 @@ export function hexDecode(hex: string): Uint8Array<ArrayBuffer> {
   return bytes as Uint8Array<ArrayBuffer>
 }
 
+/** Convert a Map of field keys to a hex-encoded Record (for Zustand store). */
+export function encodeFieldKeysToHex(fieldKeys: Map<string, Uint8Array>): Record<string, string> {
+  return Object.fromEntries(Array.from(fieldKeys.entries()).map(([name, key]) => [name, hexEncode(key)]))
+}
+
 /** Overwrite a Uint8Array with zeros. Best-effort memory clearing for key material. */
 export function zeroFill(buffer: Uint8Array): void {
   for (let i = 0; i < buffer.length; i++) {

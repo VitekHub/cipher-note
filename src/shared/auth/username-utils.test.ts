@@ -1,5 +1,46 @@
 import { describe, it, expect } from 'vitest'
-import { toSupabaseEmail, fromSupabaseEmail, isCiphernoteInternalEmail } from './username-utils'
+import { toSupabaseEmail, fromSupabaseEmail, isCiphernoteInternalEmail, USERNAME_PATTERN } from './username-utils'
+
+describe('USERNAME_PATTERN', () => {
+  it('accepts lowercase letters', () => {
+    expect(USERNAME_PATTERN.test('alice')).toBe(true)
+  })
+
+  it('accepts uppercase letters', () => {
+    expect(USERNAME_PATTERN.test('Alice')).toBe(true)
+    expect(USERNAME_PATTERN.test('TESTUSER')).toBe(true)
+  })
+
+  it('accepts digits and underscores', () => {
+    expect(USERNAME_PATTERN.test('user_123')).toBe(true)
+  })
+
+  it('accepts mixed case', () => {
+    expect(USERNAME_PATTERN.test('TestUser')).toBe(true)
+  })
+
+  it('rejects special characters', () => {
+    expect(USERNAME_PATTERN.test('user@name')).toBe(false)
+    expect(USERNAME_PATTERN.test('user name')).toBe(false)
+    expect(USERNAME_PATTERN.test('user!')).toBe(false)
+  })
+
+  it('rejects too-short usernames', () => {
+    expect(USERNAME_PATTERN.test('ab')).toBe(false)
+  })
+
+  it('rejects too-long usernames', () => {
+    expect(USERNAME_PATTERN.test('a'.repeat(33))).toBe(false)
+  })
+
+  it('accepts exactly 3 characters', () => {
+    expect(USERNAME_PATTERN.test('abc')).toBe(true)
+  })
+
+  it('accepts exactly 32 characters', () => {
+    expect(USERNAME_PATTERN.test('a'.repeat(32))).toBe(true)
+  })
+})
 
 describe('username-utils', () => {
   describe('toSupabaseEmail', () => {

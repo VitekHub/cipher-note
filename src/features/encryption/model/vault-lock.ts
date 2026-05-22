@@ -10,12 +10,8 @@ import { useAuthStore } from '@/features/auth/model/auth-store'
 import { deriveLoginKeys } from '@/features/encryption/model/login'
 import { deriveLoginCredentials } from '@/shared/crypto/split-kdf'
 import { getKeys, getFieldKeys } from '@/shared/api/supabase-keys'
-import { hexDecode, hexEncode } from '@/shared/crypto/memory'
+import { hexDecode, hexEncode, encodeFieldKeysToHex } from '@/shared/crypto/memory'
 import { exportKey } from '@/shared/crypto/aes-gcm'
-
-function encodeFieldKeysToHex(fieldKeys: Map<string, Uint8Array>): Record<string, string> {
-  return Object.fromEntries(Array.from(fieldKeys.entries()).map(([name, key]) => [name, hexEncode(key)]))
-}
 
 /**
  * Lock the vault: zero all keys in the crypto store, set isVaultLocked = true,

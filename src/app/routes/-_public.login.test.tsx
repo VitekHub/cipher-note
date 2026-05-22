@@ -58,6 +58,15 @@ vi.mock('@/shared/crypto/memory', () => ({
     }
     return bytes
   }),
+  encodeFieldKeysToHex: vi.fn((fieldKeys: Map<string, Uint8Array>) => {
+    const result: Record<string, string> = {}
+    for (const [name, key] of fieldKeys) {
+      result[name] = Array.from(key)
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('')
+    }
+    return result
+  }),
 }))
 
 vi.mock('@/shared/crypto/aes-gcm', () => ({
@@ -128,7 +137,7 @@ describe('LoginPage', () => {
     await user.click(screen.getByRole('button', { name: /log in/i }))
 
     await waitFor(() => {
-      expect(screen.getByText(/3-32 lowercase/i)).toBeInTheDocument()
+      expect(screen.getByText(/3-32 letters/i)).toBeInTheDocument()
     })
   })
 

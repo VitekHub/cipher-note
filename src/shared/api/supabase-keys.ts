@@ -1,4 +1,5 @@
 import { getSupabase } from '@/shared/api/supabase-client'
+import { USERNAME_PATTERN } from '@/shared/auth/username-utils'
 import type { ServerKeys, ServerFieldKey } from '@/shared/types/api.types'
 
 export interface LoginSalts {
@@ -9,8 +10,13 @@ export interface LoginSalts {
 /**
  * Fetch auth_salt and key_salt for a username.
  * Callable before authentication (uses SECURITY DEFINER RPC).
+ * Validates username format client-side to avoid wasting rate-limited RPC calls.
  */
 export async function getLoginSalts(username: string): Promise<LoginSalts> {
+  if (!USERNAME_PATTERN.test(username)) {
+    throw new Error('Invalid username format')
+  }
+
   const supabase = getSupabase()
   const { data, error } = await supabase.rpc('get_login_salts', { p_username: username })
 
@@ -57,7 +63,9 @@ export async function getFieldKeys(userId: string): Promise<ServerFieldKey[]> {
     .eq('user_id', userId)
 
   if (error) throw error
-  if (!data || data.length === 0) return []
+  if (!data) {
+    throw new Error('Field keys not found')
+  }
 
   return data.map((row) => ({
     fieldName: row.field_name,

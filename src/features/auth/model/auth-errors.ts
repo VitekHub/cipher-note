@@ -19,7 +19,12 @@ export function getAuthErrorMessage(error: unknown, t: TFunction<'auth'>): strin
   if (error instanceof Error) {
     const msg = error.message
 
-    if (msg === 'Invalid login credentials' || msg === 'Invalid password') {
+    if (
+      msg === 'Invalid login credentials' ||
+      msg === 'Invalid password' ||
+      msg === 'Invalid username format' ||
+      msg === 'Login salts not found for this username'
+    ) {
       return t('errors.invalidCredentials')
     }
     if (msg === 'User already registered' || msg === 'User already exists') {

@@ -72,6 +72,15 @@ vi.mock('@/shared/crypto/memory', () => ({
     }
     return bytes
   }),
+  encodeFieldKeysToHex: vi.fn((fieldKeys: Map<string, Uint8Array>) => {
+    const result: Record<string, string> = {}
+    for (const [name, key] of fieldKeys) {
+      result[name] = Array.from(key)
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('')
+    }
+    return result
+  }),
 }))
 
 // Mock AES-GCM
@@ -136,5 +145,21 @@ describe('unlockVault', () => {
       expect.any(String), // kekHex
       expect.any(Object), // fieldKeysHex
     )
+  })
+
+  it('does not populate crypto store when getKeys fails', async () => {
+    vi.mocked(getKeys).mockRejectedValueOnce(new Error('Network error'))
+
+    await expect(unlockVault('test-password-123')).rejects.toThrow('Network error')
+
+    expect(mockSetKeys).not.toHaveBeenCalled()
+  })
+
+  it('does not populate crypto store when key unwrapping fails', async () => {
+    vi.mocked(deriveLoginKeys).mockRejectedValueOnce(new Error('Decryption failed'))
+
+    await expect(unlockVault('test-password-123')).rejects.toThrow('Decryption failed')
+
+    expect(mockSetKeys).not.toHaveBeenCalled()
   })
 })

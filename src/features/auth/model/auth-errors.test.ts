@@ -41,6 +41,16 @@ describe('getAuthErrorMessage', () => {
       expect(t).toHaveBeenCalledWith('errors.invalidCredentials')
     })
 
+    it('maps "Login salts not found for this username" to invalidCredentials', () => {
+      getAuthErrorMessage(new Error('Login salts not found for this username'), t)
+      expect(t).toHaveBeenCalledWith('errors.invalidCredentials')
+    })
+
+    it('maps "Invalid username format" to invalidCredentials', () => {
+      getAuthErrorMessage(new Error('Invalid username format'), t)
+      expect(t).toHaveBeenCalledWith('errors.invalidCredentials')
+    })
+
     it('maps "User already registered" to usernameTaken', () => {
       getAuthErrorMessage(new Error('User already registered'), t)
       expect(t).toHaveBeenCalledWith('errors.usernameTaken')

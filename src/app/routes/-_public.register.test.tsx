@@ -90,7 +90,7 @@ describe('RegisterPage', () => {
     await user.click(screen.getByRole('button', { name: /create account/i }))
 
     await waitFor(() => {
-      expect(screen.getByText(/lowercase letters/i)).toBeInTheDocument()
+      expect(screen.getByText(/letters/i)).toBeInTheDocument()
     })
   })
 

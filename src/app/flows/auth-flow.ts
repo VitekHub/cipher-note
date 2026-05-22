@@ -6,13 +6,9 @@ import { uploadRegistrationData } from '@/shared/api/supabase-registration'
 import { getLoginSalts, getKeys, getFieldKeys } from '@/shared/api/supabase-keys'
 import { deriveLoginCredentials } from '@/shared/crypto/split-kdf'
 import { deriveLoginKeys } from '@/features/encryption/model/login'
-import { hexDecode, hexEncode } from '@/shared/crypto/memory'
+import { hexDecode, hexEncode, encodeFieldKeysToHex } from '@/shared/crypto/memory'
 import { exportKey } from '@/shared/crypto/aes-gcm'
 import { lockVault } from '@/features/encryption/model/vault-lock'
-
-function encodeFieldKeysToHex(fieldKeys: Map<string, Uint8Array>): Record<string, string> {
-  return Object.fromEntries(Array.from(fieldKeys.entries()).map(([name, key]) => [name, hexEncode(key)]))
-}
 
 /**
  * Registers a new user: derives keys, signs up on the server, uploads encrypted
