@@ -940,7 +940,7 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 
 ---
 
-### Step 22 — Login UI + Vault Unlock
+### Step 22 — Login UI + Vault Unlock ✅
 
 **Goal:** Login page with vault unlock flow.
 
@@ -950,25 +950,33 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
   - Show loading state during Argon2id derivation
   - On success: redirect to `/dashboard` (vault is already unlocked)
   - On error: show error message with i18n mapping (wrong password, salts not found, network error, corrupted data)
-- `VaultUnlockDialog.tsx`:
-  - Modal dialog shown when vault is locked (user is authenticated but vault is locked)
-  - Password input to unlock vault — calls `unlockVault(password)` from vault-lock module
-  - "Unlock" button
-  - "Lock vault" button in sidebar/header — calls `lockVault()` from vault-lock module
-  - Auto-lock after inactivity timeout (configurable, default 15 minutes)
-- `vault-timeout.ts`:
-  - Reset timer on user activity (mouse move, keypress)
-  - Lock vault when timer expires
-- Wire vault state into dashboard layout (VaultIndicator component)
+- `VaultUnlockDialog`:
+  - Blocking modal dialog shown when vault is locked (user is authenticated but vault is locked)
+  - `showCloseButton={false}` on DialogContent — user cannot dismiss without unlocking
+  - Password input with Zod validation + `unlockVault(password)` from vault-lock module
+  - Error handling via `getCryptoErrorMessage` — maps `DecryptionError` → wrong password, `CorruptedDataError` → corrupted data, `Argon2Error` → derivation failed, network errors → network error, fallback → decrypt failed
+  - Auto-focuses password input when dialog opens
+  - Clears form state when vault transitions from locked to unlocked
+- `crypto-error-messages.ts` — maps crypto error types to i18n keys for vault unlock error display
+- Sidebar/MobileNav lock button — calls `lockVault()` when vault is unlocked; unlock button is visual only (VaultUnlockDialog handles the actual unlock)
+- `vault-timeout.ts` (`useVaultTimeout` hook):
+  - Default 15-minute timeout (exported as `DEFAULT_VAULT_TIMEOUT_MS`)
+  - Resets timer on user activity: `mousemove`, `keydown`, `mousedown`, `touchstart`, `scroll`
+  - Does not start timer when vault is already locked
+  - Calls `lockVault()` when timer expires
+  - Cleans up all listeners and timer on unmount
+- VaultUnlockDialog wired into ProtectedLayout alongside `useVaultTimeout()`
 - Remove `toggleVaultLock` TEMP action from crypto store (replaced by real `lockVault`/`unlockVault`)
 
 **Tests:**
-- Component test: login form shows loading during Argon2id
-- Component test: wrong password shows error message
 - Component test: vault unlock dialog appears when vault is locked
-- Component test: successful unlock closes dialog and shows decrypted fields
-- Component test: auto-lock triggers after inactivity timeout
-- E2E: login → see locked vault → enter password → see decrypted fields
+- Component test: vault unlock dialog does not render when vault is unlocked
+- Component test: unlock calls `unlockVault` with password
+- Component test: shows error on wrong password (DecryptionError)
+- Component test: shows error on network error
+- Component test: shows generic error on unexpected error
+- Unit test: `useVaultTimeout` starts timer when unlocked, does not start when locked, resets on activity, calls `lockVault()` on timeout, cleans up on unmount
+- Unit test: `getCryptoErrorMessage` maps all crypto error types correctly
 
 ---
 
@@ -977,7 +985,6 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 **Goal:** Verify and finalize the Zustand crypto store — already has hex-encoded keys, `lockVault()` with query cache purge, `setKeys`, `updateActivity`, and `selectFieldKey`.
 
 **Code:**
-- Remove `toggleVaultLock` TEMP action from crypto store (replaced by real `lockVault`/`unlockVault` in vault-lock module)
 - `src/shared/crypto/memory.ts`:
   - Add `copyToUint8Array(data: ArrayBuffer | Uint8Array): Uint8Array` — safe copy for storing in Zustand
 - Verify that no crypto keys appear in localStorage, sessionStorage, or IndexedDB

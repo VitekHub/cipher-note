@@ -8,8 +8,10 @@ import { Sidebar } from '@/shared/ui/nav/Sidebar'
 import { MobileNav } from '@/shared/ui/nav/MobileNav'
 import { ResizeHandle } from '@/shared/ui/nav/ResizeHandle'
 import { VaultIndicator } from '@/features/encryption/ui/VaultIndicator'
+import { VaultUnlockDialog } from '@/features/encryption/ui/VaultUnlockDialog'
 import { useUiStore } from '@/features/settings/model/ui-store'
 import { useResizable } from '@/shared/lib/use-resizable'
+import { useVaultTimeout } from '@/features/encryption/model/vault-timeout'
 import { logoutUser } from '@/app/flows/auth-flow'
 
 function ProtectedLayout() {
@@ -26,6 +28,8 @@ function ProtectedLayout() {
     storedWidth: sidebarWidth,
     onWidthChange: setSidebarWidth,
   })
+
+  useVaultTimeout()
 
   return (
     <div className="text-foreground bg-background flex h-screen">
@@ -68,6 +72,9 @@ function ProtectedLayout() {
 
       {/* Mobile bottom navigation */}
       <MobileNav />
+
+      {/* Vault unlock dialog */}
+      <VaultUnlockDialog />
     </div>
   )
 }

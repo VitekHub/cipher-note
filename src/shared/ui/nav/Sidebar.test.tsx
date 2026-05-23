@@ -5,14 +5,19 @@ import { render, screen } from '@/test/utils'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { useCryptoStore } from '@/features/encryption/model/crypto-store'
 
-const { mockNavigate } = vi.hoisted(() => ({
+const { mockNavigate, mockLockVault } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
+  mockLockVault: vi.fn(),
 }))
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children, ...props }: Record<string, unknown> & { children?: React.ReactNode }) =>
     React.createElement('a', props, children),
   useNavigate: () => mockNavigate,
+}))
+
+vi.mock('@/features/encryption/model/vault-lock', () => ({
+  lockVault: mockLockVault,
 }))
 
 import { Sidebar } from './Sidebar'
@@ -48,6 +53,22 @@ describe('Sidebar', () => {
     useCryptoStore.setState({ isVaultLocked: true })
     render(<Sidebar />)
     expect(screen.getByRole('button', { name: /unlock vault/i })).toBeInTheDocument()
+  })
+
+  it('calls lockVault when lock button is clicked while unlocked', async () => {
+    useCryptoStore.setState({ isVaultLocked: false })
+    const user = userEvent.setup()
+    render(<Sidebar />)
+    await user.click(screen.getByRole('button', { name: /lock vault/i }))
+    expect(mockLockVault).toHaveBeenCalledOnce()
+  })
+
+  it('does not call lockVault when unlock button is clicked while locked', async () => {
+    useCryptoStore.setState({ isVaultLocked: true })
+    const user = userEvent.setup()
+    render(<Sidebar />)
+    await user.click(screen.getByRole('button', { name: /unlock vault/i }))
+    expect(mockLockVault).not.toHaveBeenCalled()
   })
 
   it('renders user info when user is set', () => {
