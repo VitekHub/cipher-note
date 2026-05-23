@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@/test/utils'
 import userEvent from '@testing-library/user-event'
 import { useCryptoStore } from '@/features/encryption/model/crypto-store'
+import { useVaultDialogStore } from '@/features/encryption/model/vault-dialog-store'
 import { DecryptionError } from '@/shared/crypto/errors'
 
 const { mockUnlockVault } = vi.hoisted(() => ({
@@ -18,16 +19,19 @@ import { VaultUnlockDialog } from './VaultUnlockDialog'
 describe('VaultUnlockDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Reset stores to clean state
+    useCryptoStore.getState().clearVault()
     useCryptoStore.setState({ isVaultLocked: true })
+    useVaultDialogStore.setState({ isUnlockDialogOpen: true })
   })
 
-  it('renders dialog when vault is locked', () => {
+  it('renders dialog when isUnlockDialogOpen is true', () => {
     render(<VaultUnlockDialog />)
     expect(screen.getByText('Vault Locked')).toBeInTheDocument()
   })
 
-  it('does not render dialog when vault is unlocked', () => {
-    useCryptoStore.setState({ isVaultLocked: false })
+  it('does not render dialog content when isUnlockDialogOpen is false', () => {
+    useVaultDialogStore.setState({ isUnlockDialogOpen: false })
     render(<VaultUnlockDialog />)
     expect(screen.queryByText('Vault Locked')).not.toBeInTheDocument()
   })
@@ -107,5 +111,43 @@ describe('VaultUnlockDialog', () => {
     await waitFor(() => {
       expect(screen.getByText('Decryption failed. Your data may be corrupted.')).toBeInTheDocument()
     })
+  })
+
+  it('shows full description', () => {
+    // State is already reset in beforeEach: isVaultLocked=true, envelope fields null
+    render(<VaultUnlockDialog />)
+    expect(
+      screen.getByText('Enter your password to unlock your vault.'),
+    ).toBeInTheDocument()
+  })
+
+  it('closes dialog and resets form when vault unlocks', async () => {
+    mockUnlockVault.mockResolvedValue(undefined)
+    useVaultDialogStore.setState({ isUnlockDialogOpen: true })
+    useCryptoStore.setState({ isVaultLocked: true })
+
+    const user = userEvent.setup()
+    render(<VaultUnlockDialog />)
+
+    await user.type(screen.getByLabelText(/password/i), 'my-password')
+    await user.click(screen.getByRole('button', { name: /unlock/i }))
+
+    // Simulate vault unlocking
+    useCryptoStore.setState({ isVaultLocked: false })
+
+    await waitFor(() => {
+      expect(useVaultDialogStore.getState().isUnlockDialogOpen).toBe(false)
+    })
+  })
+
+  it('closes dialog when close button is clicked', async () => {
+    const user = userEvent.setup()
+    render(<VaultUnlockDialog />)
+
+    // The dialog close button has aria-label "Close"
+    const closeButton = screen.getByRole('button', { name: /close/i })
+    await user.click(closeButton)
+
+    expect(useVaultDialogStore.getState().isUnlockDialogOpen).toBe(false)
   })
 })

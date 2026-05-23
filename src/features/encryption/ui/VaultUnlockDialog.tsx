@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 
 import { useCryptoStore } from '@/features/encryption/model/crypto-store'
+import { useVaultDialogStore } from '@/features/encryption/model/vault-dialog-store'
 import { unlockVault } from '@/features/encryption/model/vault-lock'
 import { getCryptoErrorMessage } from '@/features/encryption/model/crypto-error-messages'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/shared/ui/dialog'
@@ -22,6 +23,8 @@ type UnlockFormData = z.infer<typeof unlockSchema>
 function VaultUnlockDialog() {
   const { t } = useTranslation('crypto')
   const isVaultLocked = useCryptoStore((s) => s.isVaultLocked)
+  const isUnlockDialogOpen = useVaultDialogStore((s) => s.isUnlockDialogOpen)
+  const closeUnlockDialog = useVaultDialogStore((s) => s.closeUnlockDialog)
   const [error, setError] = useState<string | null>(null)
   const wasLockedRef = useRef(isVaultLocked)
 
@@ -37,11 +40,12 @@ function VaultUnlockDialog() {
 
   useEffect(() => {
     if (wasLockedRef.current && !isVaultLocked) {
+      closeUnlockDialog()
       reset({ password: '' })
       setError(null)
     }
     wasLockedRef.current = isVaultLocked
-  }, [isVaultLocked, reset])
+  }, [isVaultLocked, closeUnlockDialog, reset])
 
   async function onSubmit(data: UnlockFormData) {
     setError(null)
@@ -52,16 +56,19 @@ function VaultUnlockDialog() {
     }
   }
 
-  if (!isVaultLocked) {
-    return null
-  }
-
   return (
-    <Dialog open>
-      <DialogContent showCloseButton={false} className="sm:max-w-sm">
+    <Dialog
+      open={isUnlockDialogOpen}
+      onOpenChange={(open) => {
+        if (!open) closeUnlockDialog()
+      }}
+    >
+      <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>{t('vaultUnlock.title')}</DialogTitle>
-          <DialogDescription>{t('vaultUnlock.description')}</DialogDescription>
+          <DialogDescription>
+            {t('vaultUnlock.description')}
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

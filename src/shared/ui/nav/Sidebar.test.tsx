@@ -4,6 +4,7 @@ import React from 'react'
 import { render, screen } from '@/test/utils'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { useCryptoStore } from '@/features/encryption/model/crypto-store'
+import { useVaultDialogStore } from '@/features/encryption/model/vault-dialog-store'
 
 const { mockNavigate, mockLockVault } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
@@ -63,11 +64,13 @@ describe('Sidebar', () => {
     expect(mockLockVault).toHaveBeenCalledOnce()
   })
 
-  it('does not call lockVault when unlock button is clicked while locked', async () => {
+  it('opens unlock dialog when unlock button is clicked while locked', async () => {
     useCryptoStore.setState({ isVaultLocked: true })
+    useVaultDialogStore.setState({ isUnlockDialogOpen: false })
     const user = userEvent.setup()
     render(<Sidebar />)
     await user.click(screen.getByRole('button', { name: /unlock vault/i }))
+    expect(useVaultDialogStore.getState().isUnlockDialogOpen).toBe(true)
     expect(mockLockVault).not.toHaveBeenCalled()
   })
 

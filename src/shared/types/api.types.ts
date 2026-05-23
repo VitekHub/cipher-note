@@ -5,6 +5,10 @@ export interface ServerMasterKeyEnvelope {
   masterKeyIV: string
 }
 
+export interface CachedVaultEnvelope extends ServerMasterKeyEnvelope {
+  fieldKeys: ServerFieldKey[]
+}
+
 export interface ServerFieldKey {
   fieldName: string
   version: number

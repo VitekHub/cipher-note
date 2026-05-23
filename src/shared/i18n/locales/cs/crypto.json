@@ -7,7 +7,7 @@
   },
   "vaultUnlock": {
     "title": "Trezor uzamčen",
-    "description": "Zadejte heslo pro odemčení trezoru a získání přístupu k vašim šifrovaným datům.",
+    "description": "Zadejte heslo pro odemčení trezoru.",
     "password": "Heslo",
     "submit": "Odemknout",
     "submitting": "Odemkávání..."

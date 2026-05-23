@@ -7,7 +7,7 @@
   },
   "vaultUnlock": {
     "title": "Vault Locked",
-    "description": "Enter your password to unlock your vault and access your encrypted data.",
+    "description": "Enter your password to unlock your vault.",
     "password": "Password",
     "submit": "Unlock",
     "submitting": "Unlocking..."
