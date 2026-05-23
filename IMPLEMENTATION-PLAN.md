@@ -950,15 +950,15 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
   - Show loading state during Argon2id derivation
   - On success: redirect to `/dashboard` (vault is already unlocked)
   - On error: show error message with i18n mapping (wrong password, salts not found, network error, corrupted data)
+- `vault-dialog-store.ts` — separate Zustand store managing `isUnlockDialogOpen` state with `openUnlockDialog`/`closeUnlockDialog` actions. Decouples dialog visibility from vault lock state so the dialog can be opened/closed independently
 - `VaultUnlockDialog`:
-  - Blocking modal dialog shown when vault is locked (user is authenticated but vault is locked)
-  - `showCloseButton={false}` on DialogContent — user cannot dismiss without unlocking
-  - Password input with Zod validation + `unlockVault(password)` from vault-lock module
+  - Modal dialog controlled by `useVaultDialogStore` (not by `isVaultLocked`). User can dismiss via `onOpenChange` which calls `closeUnlockDialog()`
+  - Password input with react-hook-form + Zod validation + `unlockVault(password)` from vault-lock module
   - Error handling via `getCryptoErrorMessage` — maps `DecryptionError` → wrong password, `CorruptedDataError` → corrupted data, `Argon2Error` → derivation failed, network errors → network error, fallback → decrypt failed
-  - Auto-focuses password input when dialog opens
-  - Clears form state when vault transitions from locked to unlocked
+  - Auto-focuses password input when dialog opens (`autoFocus` on Input)
+  - Auto-closes dialog and resets form when vault transitions from locked → unlocked (uses `wasLockedRef` + `useEffect` watching `isVaultLocked`)
 - `crypto-error-messages.ts` — maps crypto error types to i18n keys for vault unlock error display
-- Sidebar/MobileNav lock button — calls `lockVault()` when vault is unlocked; unlock button is visual only (VaultUnlockDialog handles the actual unlock)
+- Sidebar/MobileNav lock button — calls `lockVault()` when vault is unlocked; unlock button calls `openUnlockDialog()` from `vault-dialog-store` (VaultUnlockDialog handles the actual unlock)
 - `vault-timeout.ts` (`useVaultTimeout` hook):
   - Default 15-minute timeout (exported as `DEFAULT_VAULT_TIMEOUT_MS`)
   - Resets timer on user activity: `mousemove`, `keydown`, `mousedown`, `touchstart`, `scroll`
@@ -966,6 +966,7 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
   - Calls `lockVault()` when timer expires
   - Cleans up all listeners and timer on unmount
 - VaultUnlockDialog wired into ProtectedLayout alongside `useVaultTimeout()`
+- `vault-lock.ts` — `lockVault()` zeros keys + sets `isVaultLocked` + purges query cache (preserves cached envelope); `clearVault()` zeros all state including cached envelope (used on logout); `unlockVault(password)` uses cached envelope when available (skips network calls), clears stale cache on `DecryptionError` and retries from server
 - Remove `toggleVaultLock` TEMP action from crypto store (replaced by real `lockVault`/`unlockVault`)
 
 **Tests:**

@@ -30,7 +30,6 @@ vi.mock('@/features/encryption/model/crypto-store', () => ({
   useCryptoStore: {
     getState: vi.fn(() => createStoreState()),
   },
-  hasCachedEnvelope: vi.fn(() => false),
 }))
 
 // Mock login crypto module
@@ -106,7 +105,7 @@ vi.mock('@/shared/crypto/aes-gcm', () => ({
 
 import { lockVault, unlockVault, clearVault } from '@/features/encryption/model/vault-lock'
 import { useAuthStore } from '@/features/auth/model/auth-store'
-import { useCryptoStore, hasCachedEnvelope } from '@/features/encryption/model/crypto-store'
+import { useCryptoStore } from '@/features/encryption/model/crypto-store'
 import { deriveLoginKeys } from '@/features/encryption/model/login'
 import { deriveLoginCredentials } from '@/shared/crypto/split-kdf'
 import { getMasterKeyEnvelope, getFieldKeys } from '@/shared/api/supabase-keys'
@@ -209,12 +208,10 @@ describe('unlockVault (network path)', () => {
 describe('unlockVault (cached envelope)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(hasCachedEnvelope).mockReturnValue(true)
     vi.mocked(useCryptoStore.getState).mockReturnValue(createStoreState({ cachedEnvelope }))
   })
 
   afterEach(() => {
-    vi.mocked(hasCachedEnvelope).mockReturnValue(false)
     vi.mocked(useCryptoStore.getState).mockReturnValue(createStoreState())
   })
 

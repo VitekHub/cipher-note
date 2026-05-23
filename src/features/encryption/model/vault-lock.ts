@@ -1,4 +1,4 @@
-import { useCryptoStore, hasCachedEnvelope } from '@/features/encryption/model/crypto-store'
+import { useCryptoStore } from '@/features/encryption/model/crypto-store'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { deriveLoginKeys } from '@/features/encryption/model/login'
 import { deriveLoginCredentials } from '@/shared/crypto/split-kdf'
@@ -6,7 +6,7 @@ import { getMasterKeyEnvelope, getFieldKeys } from '@/shared/api/supabase-keys'
 import { hexDecode, hexEncode, encodeFieldKeysToHex } from '@/shared/crypto/memory'
 import { exportKey } from '@/shared/crypto/aes-gcm'
 import { DecryptionError } from '@/shared/crypto/errors'
-import type { ServerFieldKey, ServerMasterKeyEnvelope } from '@/shared/types/api.types'
+import type { CachedVaultEnvelope } from '@/shared/types/api.types'
 
 /** Zero keys, set isVaultLocked, purge query cache. Preserves cached envelope. */
 export function lockVault(): void {
@@ -29,66 +29,46 @@ export async function unlockVault(password: string): Promise<void> {
     throw new Error('Cannot unlock vault: no authenticated user')
   }
 
-  const state = useCryptoStore.getState()
-  let masterKeyEnvelope: ServerMasterKeyEnvelope
-  let serverFieldKeys: ServerFieldKey[]
-  const usedCache = hasCachedEnvelope(state)
-
-  if (usedCache) {
-    masterKeyEnvelope = state.cachedEnvelope!
-    serverFieldKeys = state.cachedEnvelope!.fieldKeys
-  } else {
-    ;[masterKeyEnvelope, serverFieldKeys] = await Promise.all([getMasterKeyEnvelope(user.id), getFieldKeys(user.id)])
-    useCryptoStore.getState().setCachedEnvelope({ ...masterKeyEnvelope, fieldKeys: serverFieldKeys })
+  let staleCache = false
+  const cachedEnvelope = useCryptoStore.getState().cachedEnvelope
+  if (cachedEnvelope) {
+    try {
+      await unlockWithEnvelope(password, cachedEnvelope)
+    } catch (error) {
+      if (error instanceof DecryptionError) {
+        // Cached envelope may be stale (password changed in another session).
+        // Clear the stale cache and retry the full network + derivation path.
+        useCryptoStore.getState().clearVault()
+        staleCache = true
+      } else {
+        throw error
+      }
+    }
   }
 
-  try {
-    const { passwordKey } = await deriveLoginCredentials(
-      password,
-      hexDecode(masterKeyEnvelope.authSalt),
-      hexDecode(masterKeyEnvelope.keySalt),
-    )
-
-    const { masterKey, kek, fieldKeys } = await deriveLoginKeys({
-      passwordKey,
-      wrappedMasterKey: hexDecode(masterKeyEnvelope.wrappedMasterKey),
-      masterKeyIV: hexDecode(masterKeyEnvelope.masterKeyIV),
-      serverFieldKeys,
-    })
-
-    const kekBytes = await exportKey(kek)
-    useCryptoStore.getState().setKeys(hexEncode(masterKey), hexEncode(kekBytes), encodeFieldKeysToHex(fieldKeys))
-  } catch (error) {
-    if (usedCache && error instanceof DecryptionError) {
-      // Cached envelope may be stale (password changed in another session).
-      // Clear the stale cache and retry the full network + derivation path.
-      useCryptoStore.getState().clearVault()
-      return unlockVaultFromServer(password, user.id)
-    }
-    throw error
+  if (!cachedEnvelope || staleCache) {
+    const [masterKeyEnvelope, serverFieldKeys] = await Promise.all([
+      getMasterKeyEnvelope(user.id),
+      getFieldKeys(user.id),
+    ])
+    const freshEnvelope = { ...masterKeyEnvelope, fieldKeys: serverFieldKeys }
+    useCryptoStore.getState().setCachedEnvelope(freshEnvelope)
+    await unlockWithEnvelope(password, freshEnvelope)
   }
 }
 
-/**
- * Full unlock path: fetches envelope from server, caches it, derives keys.
- * Used as a retry after stale-cache decryption failure.
- */
-async function unlockVaultFromServer(password: string, userId: string): Promise<void> {
-  const [masterKeyEnvelope, serverFieldKeys] = await Promise.all([getMasterKeyEnvelope(userId), getFieldKeys(userId)])
-
-  useCryptoStore.getState().setCachedEnvelope({ ...masterKeyEnvelope, fieldKeys: serverFieldKeys })
-
+async function unlockWithEnvelope(password: string, envelope: CachedVaultEnvelope): Promise<void> {
   const { passwordKey } = await deriveLoginCredentials(
     password,
-    hexDecode(masterKeyEnvelope.authSalt),
-    hexDecode(masterKeyEnvelope.keySalt),
+    hexDecode(envelope.authSalt),
+    hexDecode(envelope.keySalt),
   )
 
   const { masterKey, kek, fieldKeys } = await deriveLoginKeys({
     passwordKey,
-    wrappedMasterKey: hexDecode(masterKeyEnvelope.wrappedMasterKey),
-    masterKeyIV: hexDecode(masterKeyEnvelope.masterKeyIV),
-    serverFieldKeys,
+    wrappedMasterKey: hexDecode(envelope.wrappedMasterKey),
+    masterKeyIV: hexDecode(envelope.masterKeyIV),
+    serverFieldKeys: envelope.fieldKeys,
   })
 
   const kekBytes = await exportKey(kek)

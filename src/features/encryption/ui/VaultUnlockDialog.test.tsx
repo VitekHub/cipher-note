@@ -116,9 +116,7 @@ describe('VaultUnlockDialog', () => {
   it('shows full description', () => {
     // State is already reset in beforeEach: isVaultLocked=true, envelope fields null
     render(<VaultUnlockDialog />)
-    expect(
-      screen.getByText('Enter your password to unlock your vault.'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('Enter your password to unlock your vault.')).toBeInTheDocument()
   })
 
   it('closes dialog and resets form when vault unlocks', async () => {

@@ -66,9 +66,7 @@ function VaultUnlockDialog() {
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>{t('vaultUnlock.title')}</DialogTitle>
-          <DialogDescription>
-            {t('vaultUnlock.description')}
-          </DialogDescription>
+          <DialogDescription>{t('vaultUnlock.description')}</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
