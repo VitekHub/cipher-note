@@ -1,16 +1,13 @@
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
 
-interface VaultDialogState {
+interface VaultDialogStore {
   isUnlockDialogOpen: boolean
-}
-
-interface VaultDialogActions {
   openUnlockDialog: () => void
   closeUnlockDialog: () => void
 }
 
-const useVaultDialogStore = create<VaultDialogState & VaultDialogActions>()(
+const useVaultDialogStore = create<VaultDialogStore>()(
   devtools(
     (set) => ({
       isUnlockDialogOpen: false,

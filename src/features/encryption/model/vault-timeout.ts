@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef } from 'react'
 
 import { useCryptoStore } from '@/features/encryption/model/crypto-store'
 import { lockVault } from '@/features/encryption/model/vault-lock'
@@ -11,15 +11,6 @@ export function useVaultTimeout(timeoutMs: number = DEFAULT_VAULT_TIMEOUT_MS): v
   const isVaultLocked = useCryptoStore((s) => s.isVaultLocked)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const resetTimeout = useCallback(() => {
-    if (timeoutRef.current !== null) {
-      clearTimeout(timeoutRef.current)
-    }
-    timeoutRef.current = setTimeout(() => {
-      lockVault()
-    }, timeoutMs)
-  }, [timeoutMs])
-
   useEffect(() => {
     if (isVaultLocked) {
       if (timeoutRef.current !== null) {
@@ -27,6 +18,15 @@ export function useVaultTimeout(timeoutMs: number = DEFAULT_VAULT_TIMEOUT_MS): v
         timeoutRef.current = null
       }
       return
+    }
+
+    function resetTimeout() {
+      if (timeoutRef.current !== null) {
+        clearTimeout(timeoutRef.current)
+      }
+      timeoutRef.current = setTimeout(() => {
+        lockVault()
+      }, timeoutMs)
     }
 
     resetTimeout()
@@ -46,5 +46,5 @@ export function useVaultTimeout(timeoutMs: number = DEFAULT_VAULT_TIMEOUT_MS): v
         document.removeEventListener(event, handler)
       }
     }
-  }, [isVaultLocked, resetTimeout])
+  }, [isVaultLocked, timeoutMs])
 }

@@ -10,7 +10,7 @@
     "description": "Zadejte heslo pro odemčení trezoru.",
     "password": "Heslo",
     "submit": "Odemknout",
-    "submitting": "Odemkávání..."
+    "submitting": "Odemykání..."
   },
   "errors": {
     "decryptFailed": "Dešifrování selhalo. Vaše data mohou být poškozena.",

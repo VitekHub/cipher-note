@@ -76,10 +76,10 @@ export async function loginUser(username: string, password: string) {
     const authResult = await authAdapter.login(username, authHash)
 
     // Fetch wrapped keys (post-auth) → unwrap → store
-    const [masterKeyEnvelope, serverFieldKeys] = await Promise.all([
-      getMasterKeyEnvelope(authResult.user.id),
-      getFieldKeys(authResult.user.id),
-    ])
+    // Sequential: both calls require an active auth session;
+    // parallel requests can race on session initialization
+    const masterKeyEnvelope = await getMasterKeyEnvelope(authResult.user.id)
+    const serverFieldKeys = await getFieldKeys(authResult.user.id)
     const { masterKey, kek, fieldKeys } = await deriveLoginKeys({
       passwordKey,
       wrappedMasterKey: hexDecode(masterKeyEnvelope.wrappedMasterKey),

@@ -47,10 +47,10 @@ export async function unlockVault(password: string): Promise<void> {
   }
 
   if (!cachedEnvelope || staleCache) {
-    const [masterKeyEnvelope, serverFieldKeys] = await Promise.all([
-      getMasterKeyEnvelope(user.id),
-      getFieldKeys(user.id),
-    ])
+    // Sequential: both calls require an active auth session;
+    // parallel requests can race on session initialization
+    const masterKeyEnvelope = await getMasterKeyEnvelope(user.id)
+    const serverFieldKeys = await getFieldKeys(user.id)
     const freshEnvelope = { ...masterKeyEnvelope, fieldKeys: serverFieldKeys }
     useCryptoStore.getState().setCachedEnvelope(freshEnvelope)
     await unlockWithEnvelope(password, freshEnvelope)

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Loader2 } from 'lucide-react'
 import { useForm } from 'react-hook-form'
@@ -47,6 +47,13 @@ function VaultUnlockDialog() {
     wasLockedRef.current = isVaultLocked
   }, [isVaultLocked, closeUnlockDialog, reset])
 
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) closeUnlockDialog()
+    },
+    [closeUnlockDialog],
+  )
+
   async function onSubmit(data: UnlockFormData) {
     setError(null)
     try {
@@ -57,12 +64,7 @@ function VaultUnlockDialog() {
   }
 
   return (
-    <Dialog
-      open={isUnlockDialogOpen}
-      onOpenChange={(open) => {
-        if (!open) closeUnlockDialog()
-      }}
-    >
+    <Dialog open={isUnlockDialogOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>{t('vaultUnlock.title')}</DialogTitle>
