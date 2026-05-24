@@ -7,6 +7,7 @@ const mockReset = vi.fn()
 const mockSetKeys = vi.fn(() => {
   cryptoStoreState.isVaultLocked = false
 })
+const mockSetEnvelope = vi.fn()
 
 // Mock registration module
 vi.mock('@/features/encryption/model/registration', () => ({
@@ -47,8 +48,12 @@ vi.mock('@/features/encryption/model/login', () => ({
 }))
 
 // Mock vault-lock module
+const { mockClearVault } = vi.hoisted(() => ({
+  mockClearVault: vi.fn(),
+}))
 vi.mock('@/features/encryption/model/vault-lock', () => ({
   lockVault: vi.fn(),
+  clearVault: mockClearVault,
   unlockVault: vi.fn().mockResolvedValue(undefined),
 }))
 
@@ -58,22 +63,27 @@ vi.mock('@/shared/api/supabase-registration', () => ({
 }))
 
 // Mock Supabase keys
+const { mockEnvelopeData, mockFieldKeysData } = vi.hoisted(() => ({
+  mockEnvelopeData: {
+    authSalt: '01'.repeat(16),
+    keySalt: '02'.repeat(16),
+    wrappedMasterKey: '05'.repeat(48),
+    masterKeyIV: '06'.repeat(12),
+  },
+  mockFieldKeysData: [
+    { fieldName: 'note', version: 1, wrappedKey: 'aa'.repeat(48), keyIV: 'bb'.repeat(12) },
+    { fieldName: 'website', version: 1, wrappedKey: 'cc'.repeat(48), keyIV: 'dd'.repeat(12) },
+    { fieldName: 'email', version: 1, wrappedKey: 'ee'.repeat(48), keyIV: 'ff'.repeat(12) },
+  ],
+}))
+
 vi.mock('@/shared/api/supabase-keys', () => ({
   getLoginSalts: vi.fn().mockResolvedValue({
     authSalt: '01'.repeat(16),
     keySalt: '02'.repeat(16),
   }),
-  getMasterKeyEnvelope: vi.fn().mockResolvedValue({
-    authSalt: '01'.repeat(16),
-    keySalt: '02'.repeat(16),
-    wrappedMasterKey: '05'.repeat(48),
-    masterKeyIV: '06'.repeat(12),
-  }),
-  getFieldKeys: vi.fn().mockResolvedValue([
-    { fieldName: 'note', version: 1, wrappedKey: 'aa'.repeat(48), keyIV: 'bb'.repeat(12) },
-    { fieldName: 'website', version: 1, wrappedKey: 'cc'.repeat(48), keyIV: 'dd'.repeat(12) },
-    { fieldName: 'email', version: 1, wrappedKey: 'ee'.repeat(48), keyIV: 'ff'.repeat(12) },
-  ]),
+  getMasterKeyEnvelope: vi.fn().mockResolvedValue(mockEnvelopeData),
+  getFieldKeys: vi.fn().mockResolvedValue(mockFieldKeysData),
 }))
 
 // Mock Split KDF
@@ -164,7 +174,9 @@ const cryptoStoreState = {
   isVaultLocked: true,
   lastActivity: 0,
   setKeys: mockSetKeys,
+  setCachedEnvelope: mockSetEnvelope,
   lockVault: vi.fn(),
+  clearVault: mockClearVault,
 }
 
 vi.mock('@/features/encryption/model/crypto-store', () => ({
@@ -177,7 +189,7 @@ vi.mock('@/features/encryption/model/crypto-store', () => ({
 import { signUpUser, loginUser, logoutUser, restoreSession, subscribeToAuthChanges } from '@/app/flows/auth-flow'
 import { deriveRegistrationKeys } from '@/features/encryption/model/registration'
 import { deriveLoginKeys } from '@/features/encryption/model/login'
-import { lockVault as lockVaultMock } from '@/features/encryption/model/vault-lock'
+import { clearVault as clearVaultMock } from '@/features/encryption/model/vault-lock'
 import { useCryptoStore } from '@/features/encryption/model/crypto-store'
 import { hexEncode } from '@/shared/crypto/memory'
 import { exportKey } from '@/shared/crypto/aes-gcm'
@@ -217,6 +229,11 @@ describe('signUpUser', () => {
     expect(hexEncode).toHaveBeenCalledWith(new Uint8Array(32).fill(0x03))
     expect(hexEncode).toHaveBeenCalledWith(new Uint8Array(32).fill(0x04))
     expect(useCryptoStore.getState().isVaultLocked).toBe(false)
+  })
+
+  it('caches envelope data after signup', async () => {
+    await signUpUser('testuser', 'testpass123')
+    expect(mockSetEnvelope).toHaveBeenCalled()
   })
 
   it('sets auth state on success', async () => {
@@ -291,6 +308,14 @@ describe('loginUser', () => {
     expect(mockSetKeys).toHaveBeenCalled()
   })
 
+  it('caches envelope data after login', async () => {
+    await loginUser('testuser', 'testpass123')
+    expect(mockSetEnvelope).toHaveBeenCalledWith({
+      ...mockEnvelopeData,
+      fieldKeys: mockFieldKeysData,
+    })
+  })
+
   it('sets auth state on success', async () => {
     await loginUser('testuser', 'testpass123')
 
@@ -349,20 +374,20 @@ describe('logoutUser', () => {
     vi.clearAllMocks()
   })
 
-  it('calls adapter logout, locks vault, and resets store', async () => {
+  it('calls adapter logout, clears vault, and resets store', async () => {
     await logoutUser()
 
     expect(authAdapter.logout).toHaveBeenCalled()
-    expect(lockVaultMock).toHaveBeenCalled()
+    expect(clearVaultMock).toHaveBeenCalled()
     expect(mockReset).toHaveBeenCalled()
   })
 
-  it('locks vault and resets store even when adapter logout fails', async () => {
+  it('clears vault and resets store even when adapter logout fails', async () => {
     vi.mocked(authAdapter.logout).mockRejectedValueOnce(new Error('Network error'))
 
     await logoutUser()
 
-    expect(lockVaultMock).toHaveBeenCalled()
+    expect(clearVaultMock).toHaveBeenCalled()
     expect(mockReset).toHaveBeenCalled()
   })
 })
@@ -498,7 +523,7 @@ describe('subscribeToAuthChanges', () => {
     )
   })
 
-  it('callback calls lockVault and reset on null result', () => {
+  it('callback calls clearVault and reset on null result', () => {
     let capturedCallback: ((result: unknown) => void) | undefined
     vi.mocked(authAdapter.onAuthStateChange).mockImplementation((cb) => {
       capturedCallback = cb as (result: unknown) => void
@@ -508,7 +533,7 @@ describe('subscribeToAuthChanges', () => {
     subscribeToAuthChanges()
     capturedCallback!(null)
 
-    expect(lockVaultMock).toHaveBeenCalled()
+    expect(clearVaultMock).toHaveBeenCalled()
     expect(mockReset).toHaveBeenCalled()
   })
 })

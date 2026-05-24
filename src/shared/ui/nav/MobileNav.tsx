@@ -4,15 +4,20 @@ import { LayoutDashboard, Lock, Unlock, Settings } from 'lucide-react'
 import { Button } from '@/shared/ui/button'
 import { NavLink } from '@/shared/ui/nav/NavLink'
 import { useCryptoStore } from '@/features/encryption/model/crypto-store'
+import { useVaultDialogStore } from '@/features/encryption/model/vault-dialog-store'
+import { lockVault } from '@/features/encryption/model/vault-lock'
 
 function MobileNav() {
   const { t } = useTranslation(['common', 'crypto'])
   const isVaultLocked = useCryptoStore((s) => s.isVaultLocked)
-  const toggleVaultLock = useCryptoStore((s) => s.toggleVaultLock)
+  const openUnlockDialog = useVaultDialogStore((s) => s.openUnlockDialog)
 
   function handleVaultLock() {
-    // TEMP: flip vault locked state for manual testing (fix in Step 22)
-    toggleVaultLock()
+    if (isVaultLocked) {
+      openUnlockDialog()
+    } else {
+      lockVault()
+    }
   }
 
   return (

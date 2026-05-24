@@ -5,6 +5,13 @@
     "lock": "Uzamknout trezor",
     "unlock": "Odemknout trezor"
   },
+  "vaultUnlock": {
+    "title": "Trezor uzamčen",
+    "description": "Zadejte heslo pro odemčení trezoru.",
+    "password": "Heslo",
+    "submit": "Odemknout",
+    "submitting": "Odemykání..."
+  },
   "errors": {
     "decryptFailed": "Dešifrování selhalo. Vaše data mohou být poškozena.",
     "corruptedData": "Vaše data se zdají být poškozena. Kontaktujte prosím podporu.",
@@ -13,6 +20,7 @@
     "mnemonicFailed": "Neplatná seed fráze. Zkontrolujte prosím seed frázi a zkuste to znovu.",
     "loginSaltsNotFound": "Účet nenalezen. Zkontrolujte prosím uživatelské jméno.",
     "keysNotFound": "Šifrovací klíče nenalezeny. Kontaktujte prosím podporu.",
-    "unwrapFailed": "Selhalo dešifrování trezoru. Vaše data mohou být poškozena."
+    "unwrapFailed": "Selhalo dešifrování trezoru. Vaše data mohou být poškozena.",
+    "networkError": "Chyba sítě. Zkuste to prosím znovu."
   }
 }

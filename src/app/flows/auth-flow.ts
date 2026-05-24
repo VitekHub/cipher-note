@@ -8,7 +8,7 @@ import { deriveLoginCredentials } from '@/shared/crypto/split-kdf'
 import { deriveLoginKeys } from '@/features/encryption/model/login'
 import { hexDecode, hexEncode, encodeFieldKeysToHex } from '@/shared/crypto/memory'
 import { exportKey } from '@/shared/crypto/aes-gcm'
-import { lockVault } from '@/features/encryption/model/vault-lock'
+import { clearVault } from '@/features/encryption/model/vault-lock'
 
 /**
  * Registers a new user: derives keys, signs up on the server, uploads encrypted
@@ -43,6 +43,18 @@ export async function signUpUser(username: string, password: string): Promise<st
     const kekHex = hexEncode(regResult.kek)
     const fieldKeysHex = encodeFieldKeysToHex(regResult.fieldKeys)
     useCryptoStore.getState().setKeys(masterKeyHex, kekHex, fieldKeysHex)
+    useCryptoStore.getState().setCachedEnvelope({
+      authSalt: hexEncode(regResult.authSalt),
+      keySalt: hexEncode(regResult.keySalt),
+      wrappedMasterKey: hexEncode(regResult.wrappedMasterKey),
+      masterKeyIV: hexEncode(regResult.masterKeyIV),
+      fieldKeys: regResult.wrappedFieldKeys.map((fk) => ({
+        fieldName: fk.fieldName,
+        version: fk.version,
+        wrappedKey: hexEncode(fk.wrappedKey),
+        keyIV: hexEncode(fk.iv),
+      })),
+    })
 
     return regResult.mnemonic
   } finally {
@@ -64,10 +76,10 @@ export async function loginUser(username: string, password: string) {
     const authResult = await authAdapter.login(username, authHash)
 
     // Fetch wrapped keys (post-auth) → unwrap → store
-    const [masterKeyEnvelope, serverFieldKeys] = await Promise.all([
-      getMasterKeyEnvelope(authResult.user.id),
-      getFieldKeys(authResult.user.id),
-    ])
+    // Sequential: both calls require an active auth session;
+    // parallel requests can race on session initialization
+    const masterKeyEnvelope = await getMasterKeyEnvelope(authResult.user.id)
+    const serverFieldKeys = await getFieldKeys(authResult.user.id)
     const { masterKey, kek, fieldKeys } = await deriveLoginKeys({
       passwordKey,
       wrappedMasterKey: hexDecode(masterKeyEnvelope.wrappedMasterKey),
@@ -76,6 +88,7 @@ export async function loginUser(username: string, password: string) {
     })
     const kekBytes = await exportKey(kek)
     useCryptoStore.getState().setKeys(hexEncode(masterKey), hexEncode(kekBytes), encodeFieldKeysToHex(fieldKeys))
+    useCryptoStore.getState().setCachedEnvelope({ ...masterKeyEnvelope, fieldKeys: serverFieldKeys })
 
     authStore.setAuth(authResult.user, authResult.session)
   } finally {
@@ -92,7 +105,7 @@ export async function logoutUser() {
   } catch {
     // Server signOut may fail (no session, network error) - clear local state regardless
   } finally {
-    lockVault()
+    clearVault()
     store.reset()
   }
 }
@@ -137,7 +150,7 @@ export function subscribeToAuthChanges(): () => void {
     if (result) {
       useAuthStore.getState().setAuth(result.user, result.session)
     } else {
-      lockVault()
+      clearVault()
       useAuthStore.getState().reset()
     }
   })

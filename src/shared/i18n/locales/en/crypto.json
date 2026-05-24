@@ -5,6 +5,13 @@
     "lock": "Lock vault",
     "unlock": "Unlock vault"
   },
+  "vaultUnlock": {
+    "title": "Vault Locked",
+    "description": "Enter your password to unlock your vault.",
+    "password": "Password",
+    "submit": "Unlock",
+    "submitting": "Unlocking..."
+  },
   "errors": {
     "decryptFailed": "Decryption failed. Your data may be corrupted.",
     "corruptedData": "Your data appears corrupted. Please contact support.",
@@ -13,6 +20,7 @@
     "mnemonicFailed": "Invalid seed phrase. Please check your seed phrase and try again.",
     "loginSaltsNotFound": "Account not found. Please check your username.",
     "keysNotFound": "Encryption keys not found. Please contact support.",
-    "unwrapFailed": "Failed to decrypt your vault. Your data may be corrupted."
+    "unwrapFailed": "Failed to decrypt your vault. Your data may be corrupted.",
+    "networkError": "Network error. Please try again."
   }
 }

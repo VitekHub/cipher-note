@@ -168,13 +168,16 @@ See `IMPLEMENTATION-PLAN.md` for the full 36-step plan.
 - Step 19 (Registration Crypto Flow) — complete
 - Step 20 (Registration UI) — complete
 - Step 21 (Login Crypto Flow) — complete
+- Step 22 (Login UI + Vault Unlock) — complete
 
 ### Implementation Notes
 
 Non-obvious decisions not visible from code alone:
 
 - **Auth store `isRestoringSession`**: defaults `true`; `reset()` does NOT touch it (logout doesn't re-trigger initialization)
-- **Crypto store `toggleVaultLock`**: TEMP action that flips `isVaultLocked` — remove after Step 22 when real vault unlock is wired
+- **Auto-lock**: `useVaultTimeout` hook in ProtectedLayout resets a 15-minute inactivity timer on user activity (mousemove, keydown, mousedown, touchstart, scroll); calls `lockVault()` on expiry
+- **VaultUnlockDialog**: uses a separate `vault-dialog-store` so the dialog can be opened/closed independently of vault lock state. This lets the user dismiss the dialog without unlocking, and lets the sidebar/mobile nav trigger `openUnlockDialog()` directly
+- **`lockVault()` vs `clearVault()`**: `lockVault()` preserves the cached envelope (so re-unlock can skip network calls), while `clearVault()` (called on logout) zeros everything including the cache. `unlockVault()` tries the cached envelope first and retries from server on `DecryptionError` (stale cache can happen if the password was changed in another session)
 - **Test file naming**: prefix with `-` in `src/app/routes/` to exclude from TanStack Router route tree generation
 - **Test setup**: shared setup (`src/test/setup.ts`) resets `useAuthStore` (with `isRestoringSession: false`), `useCryptoStore`, and `useUiStore` (including `sidebarWidth: 240`) in `afterEach`. Router mocking (`@tanstack/react-router`) is done per-file in each test that needs it, not centralized
 - **Argon2id Web Worker**: `argon2id.ts` delegates all derivation to `argon2id.worker.ts` via `postMessage`. The worker lazy-loads `argon2-browser/dist/argon2-bundled.min.js` (not the default `argon2-browser` import — the default tries to load a `.wasm` file which Vite cannot handle; the bundled build embeds WASM as base64 in JS). Tests mock the Worker constructor; actual Argon2id computation is tested in E2E (Step 36).

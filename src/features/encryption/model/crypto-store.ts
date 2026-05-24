@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
 import type { QueryClient } from '@tanstack/react-query'
+import type { CachedVaultEnvelope } from '@/shared/types/api.types'
 
 interface CryptoState {
   masterKey: string | null
@@ -8,17 +9,21 @@ interface CryptoState {
   fieldKeys: Record<string, string>
   isVaultLocked: boolean
   lastActivity: number
+  // Cached envelope data — survives lock, purged on logout
+  cachedEnvelope: CachedVaultEnvelope | null
 }
 
 interface CryptoActions {
   setKeys: (masterKey: string, kek: string, fieldKeys: Record<string, string>) => void
+  setCachedEnvelope: (envelope: CachedVaultEnvelope) => void
   lockVault: () => void
+  clearVault: () => void
   updateActivity: () => void
-  // TEMP: flip vault locked state for manual testing (remove after Step 22)
-  toggleVaultLock: () => void
 }
 
 const selectFieldKey = (fieldName: string) => (state: CryptoState) => state.fieldKeys[fieldName] ?? null
+
+const hasCachedEnvelope = (state: CryptoState) => state.cachedEnvelope !== null
 
 const initialState: CryptoState = {
   masterKey: null,
@@ -26,6 +31,7 @@ const initialState: CryptoState = {
   fieldKeys: {},
   isVaultLocked: true,
   lastActivity: 0,
+  cachedEnvelope: null,
 }
 
 let queryClientRef: QueryClient | null = null
@@ -50,22 +56,30 @@ const useCryptoStore = create<CryptoState & CryptoActions>()(
           false,
           'crypto/setKeys',
         ),
+      setCachedEnvelope: (envelope) => set({ cachedEnvelope: envelope }, false, 'crypto/setCachedEnvelope'),
       lockVault: () => {
-        set(initialState, false, 'crypto/lockVault')
+        set(
+          {
+            masterKey: null,
+            kek: null,
+            fieldKeys: {},
+            isVaultLocked: true,
+            lastActivity: 0,
+          },
+          false,
+          'crypto/lockVault',
+        )
+        queryClientRef?.removeQueries({ queryKey: ['field'] })
+      },
+      clearVault: () => {
+        set(initialState, false, 'crypto/clearVault')
         queryClientRef?.removeQueries({ queryKey: ['field'] })
       },
       updateActivity: () => set({ lastActivity: Date.now() }, false, 'crypto/updateActivity'),
-      // TEMP: flip vault locked state for manual testing (remove after Step 22)
-      toggleVaultLock: () =>
-        set(
-          (state) => ({ isVaultLocked: !state.isVaultLocked, lastActivity: Date.now() }),
-          false,
-          'crypto/toggleVaultLock',
-        ),
     }),
     { name: 'CryptoStore' },
   ),
 )
 
-export { useCryptoStore, selectFieldKey, setQueryClient }
+export { useCryptoStore, selectFieldKey, hasCachedEnvelope, setQueryClient }
 export type { CryptoState, CryptoActions }
