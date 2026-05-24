@@ -11,7 +11,7 @@ This app will never need backward compatibility with previous versions. The data
 ## Architecture
 
 ### Tech Stack
-React 19 · TypeScript (strict, `erasableSyntaxOnly`, `verbatimModuleSyntax`) · Vite 8 · Tailwind CSS v4 · shadcn/ui (base-nova) · TanStack Router (file-based) · TanStack Query 5 · Zustand 5 (with devtools) · react-hook-form + Zod 4 · i18next (en + cs) · Supabase (local Docker) · Web Crypto API + argon2-browser
+React 19 · TypeScript (strict, `erasableSyntaxOnly`, `verbatimModuleSyntax`) · Vite 8 · Tailwind CSS v4 · shadcn/ui (base-nova) · TanStack Router (file-based) · TanStack Query 5 · Zustand 5 · react-hook-form + Zod 4 · i18next (en + cs) · Supabase (local Docker) · Web Crypto API + argon2-browser
 
 ### Auth (Split KDF / Zero-Knowledge)
 - Users log in with a **username** (mapped to `{username}@ciphernote.internal` for Supabase Auth, which requires an email).
@@ -102,7 +102,7 @@ Backend abstracted behind interfaces: `IAuthAdapter`, `IApiAdapter`, `IRealtimeA
 ### State Management
 - Zustand for client state (auth store, crypto store, UI store).
 - TanStack Query for server state (fields, keys).
-- Zustand stores use **devtools middleware** with named actions (e.g., `'auth/setUser'`).
+- Zustand stores use devtools middleware with named actions **only for stores without sensitive data** (e.g., UI store, vault dialog store). Stores that hold crypto keys or auth tokens (crypto store, auth store) must NOT use devtools — the Redux DevTools extension would expose secrets in browser devtools.
 - NEVER store `language` preference in Zustand — `i18next` is the source of truth.
 
 ### Code Style
