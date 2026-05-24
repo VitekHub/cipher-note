@@ -332,8 +332,8 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 - Install `zustand`, `@tanstack/react-query`
 - Create `src/app/Providers.tsx` — QueryClientProvider + i18n provider
 - Create Zustand stores:
-  - `src/features/auth/model/auth-store.ts` — session, user, isAuthenticated
-  - `src/features/encryption/model/crypto-store.ts` — masterKey, KEK, fieldKeys, isVaultLocked (memory only, no persist). **Use plain `Record<string, string>` (hex-encoded) for fieldKeys instead of `Map<string, Uint8Array>`** — Zustand uses `Object.is` for shallow comparison, which fails on Map mutations and Uint8Array references. Hex strings are comparable by value and trigger correct re-renders.
+  - `src/features/auth/model/auth-store.ts` — session, user, isAuthenticated. **No devtools middleware** — auth tokens must not be exposed in browser DevTools.
+  - `src/features/encryption/model/crypto-store.ts` — masterKey, KEK, fieldKeys, isVaultLocked (memory only, no persist). **Use plain `Record<string, string>` (hex-encoded) for fieldKeys instead of `Map<string, Uint8Array>`** — Zustand uses `Object.is` for shallow comparison, which fails on Map mutations and Uint8Array references. Hex strings are comparable by value and trigger correct re-renders. **No devtools middleware** — crypto keys must not be exposed in browser DevTools.
   - `src/features/settings/model/ui-store.ts` — sidebarOpen, activeField. **Do NOT store `language` here** — `i18next` is the source of truth for language state. Only store UI state that i18next doesn't manage.
 - Create adapter interfaces:
   - `src/shared/auth/auth.types.ts` — `IAuthAdapter` interface: `login(username, authHash)`, `logout()`, `getSession()`, `signup(username, authHash)`, `recoverPassword()`
@@ -913,8 +913,8 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
   - `LoginResult` type: `{ masterKey, kek (CryptoKey), fieldKeys (Map) }` — no authHash (caller already has it)
 - Auth flow orchestration (in existing auth-flow module):
   - `loginUser(username, password)` — fetches salts via pre-auth RPC, derives credentials, authenticates, fetches key material, unwraps via `deriveLoginKeys`, populates crypto store with hex-encoded keys
-  - `logoutUser` — calls `lockVault()` before resetting auth store
-  - `subscribeToAuthChanges` — calls `lockVault()` when auth state becomes null (sign-out from another tab)
+  - `logoutUser` — calls `clearVault()` before resetting auth store
+  - `subscribeToAuthChanges` — calls `clearVault()` when auth state becomes null (sign-out from another tab)
 - Vault lock/unlock module:
   - `lockVault(): void` — delegates to crypto store's `lockVault()` (zeros keys, purges TanStack Query cache)
   - `unlockVault(password): Promise<void>` — fetches key material (user already authenticated), re-derives credentials, unwraps via `deriveLoginKeys`, populates crypto store
@@ -981,24 +981,27 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 
 ---
 
-### Step 23 — Crypto Session Store (Zustand) + Query Cache Purge
+### Step 23 — Crypto Session Store (Zustand) + Query Cache Purge ✅
 
-**Goal:** Verify and finalize the Zustand crypto store — already has hex-encoded keys, `lockVault()` with query cache purge, `setKeys`, `updateActivity`, and `selectFieldKey`.
+**Goal:** Verify and finalize the Zustand crypto store — already has hex-encoded keys, `lockVault()` with query cache purge, `setKeys`, `updateActivity`, and `selectFieldKey`. Remove devtools middleware from stores holding sensitive data (auth store, crypto store) since Redux DevTools would expose secrets in browser devtools.
 
 **Code:**
-- `src/shared/crypto/memory.ts`:
-  - Add `copyToUint8Array(data: ArrayBuffer | Uint8Array): Uint8Array` — safe copy for storing in Zustand
-- Verify that no crypto keys appear in localStorage, sessionStorage, or IndexedDB
-- Wire `setQueryClient(client)` call in app providers so `lockVault()` can purge the TanStack Query cache
+- Add `copyToUint8Array(data: ArrayBuffer | Uint8Array): Uint8Array<ArrayBuffer>` — safe copy of Web Crypto results into a fresh owned buffer before hex-encoding. Used in AES-GCM module for `encrypt`, `decrypt`, `exportKey` results (replacing bare `new Uint8Array(buffer)` calls)
+- Verify that `devtools` middleware is not in auth store and crypto store — these hold secrets (tokens, crypto keys) that must not be visible in browser DevTools. Only non-sensitive stores (UI store, vault dialog store) keep devtools with named actions
+- `lockVault()` (inactivity timeout) preserves cached envelope for faster re-unlock; `clearVault()` (logout) zeros everything including cached envelope. Both purge TanStack Query cache for `['field']`
+- Verify `setQueryClient(client)` is wired in app providers
+- Verify that no crypto keys appear in localStorage, sessionStorage, or IndexedDB (crypto store and auth store use no persist middleware)
 
 **Tests:**
+- Unit: `copyToUint8Array` copies ArrayBuffer and Uint8Array data, returns independent copy, handles empty input
 - Unit: `setKeys` stores all keys correctly (hex-encoded)
 - Unit: `selectFieldKey('note')` returns correct hex-encoded key
-- Unit: `lockVault` resets all keys and sets isVaultLocked = true
-- Unit: after `lockVault`, `selectFieldKey` returns null/undefined
-- Unit: `lockVault` removes all TanStack Query cache entries for field data
-- Integration: login → setKeys → verify keys in store → lockVault → verify keys zeroed AND query cache empty
-- Security: verify no keys in localStorage/sessionStorage after login
+- Unit: `lockVault` zeros keys and sets isVaultLocked = true, preserves cached envelope
+- Unit: `clearVault` zeros everything including cached envelope
+- Unit: after `lockVault`/`clearVault`, `selectFieldKey` returns null
+- Unit: `lockVault` and `clearVault` purge TanStack Query cache for `['field']`
+- Integration: `setKeys` → `clearVault` → verify all keys zeroed and query cache purged
+- Security: verify crypto store never persists keys to localStorage or sessionStorage
 
 ---
 

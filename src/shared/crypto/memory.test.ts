@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { hexEncode, hexDecode, zeroFill } from '@/shared/crypto/memory'
+import { hexEncode, hexDecode, zeroFill, copyToUint8Array } from '@/shared/crypto/memory'
 
 describe('memory', () => {
   describe('hexEncode', () => {
@@ -75,6 +75,34 @@ describe('memory', () => {
     it('accepts uppercase hex', () => {
       const result = hexDecode('DEADBEEF')
       expect(Array.from(result)).toEqual([0xde, 0xad, 0xbe, 0xef])
+    })
+  })
+
+  describe('copyToUint8Array', () => {
+    it('copies ArrayBuffer data correctly', () => {
+      const buffer = new ArrayBuffer(4)
+      const view = new Uint8Array(buffer)
+      view.set([0xde, 0xad, 0xbe, 0xef])
+      const copy = copyToUint8Array(buffer)
+      expect(Array.from(copy)).toEqual([0xde, 0xad, 0xbe, 0xef])
+    })
+
+    it('copies Uint8Array data correctly', () => {
+      const original = new Uint8Array([0x01, 0x02, 0x03])
+      const copy = copyToUint8Array(original)
+      expect(Array.from(copy)).toEqual([0x01, 0x02, 0x03])
+    })
+
+    it('returns an independent copy', () => {
+      const original = new Uint8Array([0xaa, 0xbb])
+      const copy = copyToUint8Array(original)
+      original[0] = 0xff
+      expect(copy[0]).toBe(0xaa)
+    })
+
+    it('handles empty input', () => {
+      const copy = copyToUint8Array(new Uint8Array(0))
+      expect(copy).toHaveLength(0)
     })
   })
 

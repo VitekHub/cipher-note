@@ -1,4 +1,5 @@
 import { DecryptionError } from '@/shared/crypto/errors'
+import { copyToUint8Array } from '@/shared/crypto/memory'
 import { CRYPTO_KEY_LENGTH } from '@/shared/types/crypto.types'
 
 const IV_LENGTH = 12
@@ -19,7 +20,7 @@ export async function encrypt(
   const algorithm: AesGcmParams = { name: AES_GCM_ALGORITHM, iv: usedIV }
   if (aad) algorithm.additionalData = aad
   const buffer = await crypto.subtle.encrypt(algorithm, key, plaintext)
-  return { ciphertext: new Uint8Array(buffer), iv: usedIV }
+  return { ciphertext: copyToUint8Array(buffer), iv: usedIV }
 }
 
 export async function decrypt(
@@ -32,7 +33,7 @@ export async function decrypt(
     const algorithm: AesGcmParams = { name: AES_GCM_ALGORITHM, iv }
     if (aad) algorithm.additionalData = aad
     const buffer = await crypto.subtle.decrypt(algorithm, key, ciphertext)
-    return new Uint8Array(buffer)
+    return copyToUint8Array(buffer)
   } catch (error) {
     throw new DecryptionError(undefined, { cause: error as Error })
   }
@@ -47,7 +48,7 @@ export async function importKey(rawKey: Uint8Array<ArrayBuffer>): Promise<Crypto
 
 export async function exportKey(key: CryptoKey): Promise<Uint8Array<ArrayBuffer>> {
   const buffer = await crypto.subtle.exportKey('raw', key)
-  return new Uint8Array(buffer)
+  return copyToUint8Array(buffer)
 }
 
 export async function generateKey(): Promise<CryptoKey> {

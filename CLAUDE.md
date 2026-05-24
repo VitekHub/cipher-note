@@ -169,6 +169,7 @@ See `IMPLEMENTATION-PLAN.md` for the full 36-step plan.
 - Step 20 (Registration UI) — complete
 - Step 21 (Login Crypto Flow) — complete
 - Step 22 (Login UI + Vault Unlock) — complete
+- Step 23 (Crypto Session Store in Zustand + Query Cache Purge) — complete
 
 ### Implementation Notes
 
@@ -185,6 +186,7 @@ Non-obvious decisions not visible from code alone:
 - **FieldCard i18n keys**: `FIELD_I18N_KEYS` is a static record (not template literals) so i18next-parser can discover them
 - **`useCurrentUser` hook**: wraps the auth store in `shared/auth/` so features can access user data without cross-feature imports. This is a deliberate exception to the "shared must not import from features" rule — the hook re-exports only what other features need, keeping the dependency surface narrow.
 - **`Uint8Array<ArrayBuffer>` for Web Crypto**: TS 6.0 made `Uint8Array` generic; bare `Uint8Array` expands to `Uint8Array<ArrayBufferLike>` which doesn't satisfy `BufferSource`. All `crypto.subtle` function signatures must use `Uint8Array<ArrayBuffer>`.
+- **`copyToUint8Array` only in aes-gcm.ts**: Web Crypto's `encrypt`, `decrypt`, and `exportKey` return `ArrayBuffer`, which can be neutered/transferred. `copyToUint8Array` wraps these calls and provides type narrowing to `Uint8Array<ArrayBuffer>`. Other crypto modules construct `Uint8Array` from scratch (e.g., `new Uint8Array(derivedBits)`) so they already own the buffer.
 - **Split KDF master key wrapping uses no AAD**: `changePassword` in `split-kdf.ts` uses `encrypt`/`decrypt` from `aes-gcm.ts` directly (no AAD), not `wrapKey`/`unwrapKey` from `key-wrap.ts`. The master key has no field name or version concept, so AAD is omitted. Field key wrapping still uses AAD via `key-wrap.ts`.
 - **HKDF uses `deriveBits`, not `deriveKey`**: `deriveSubKey` returns raw `Uint8Array` bytes because the KEK bytes need to be imported as an AES-GCM CryptoKey via `importKey()` separately in `deriveFullKeyHierarchy`. HKDF uses empty salt since the master key is already random.
 - **BIP-39 mnemonic functions are async**: `generateMnemonic`, `validateMnemonic`, `mnemonicToSeed` must be `async` despite the underlying `@scure/bip39` functions being synchronous, because the lazy-loading pattern (`await loadBip39()`) requires it. Same as how `argon2id.ts` wraps sync Argon2 in async.

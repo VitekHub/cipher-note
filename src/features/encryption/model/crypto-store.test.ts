@@ -158,4 +158,34 @@ describe('crypto-store', () => {
       expect(hasCachedEnvelope(useCryptoStore.getState())).toBe(false)
     })
   })
+
+  it('integration: setKeys → clearVault zeroes all keys and purges query cache', () => {
+    useCryptoStore.getState().setKeys('mk', 'kk', { note: 'nk' })
+    useCryptoStore.getState().setCachedEnvelope(sampleEnvelope)
+
+    expect(selectFieldKey('note')(useCryptoStore.getState())).toBe('nk')
+    expect(useCryptoStore.getState().isVaultLocked).toBe(false)
+
+    useCryptoStore.getState().clearVault()
+
+    expect(useCryptoStore.getState().masterKey).toBeNull()
+    expect(useCryptoStore.getState().kek).toBeNull()
+    expect(useCryptoStore.getState().fieldKeys).toEqual({})
+    expect(useCryptoStore.getState().isVaultLocked).toBe(true)
+    expect(useCryptoStore.getState().cachedEnvelope).toBeNull()
+    expect(selectFieldKey('note')(useCryptoStore.getState())).toBeNull()
+    expect(mockRemoveQueries).toHaveBeenCalledWith({ queryKey: ['field'] })
+  })
+
+  it('never persists keys to localStorage or sessionStorage', () => {
+    useCryptoStore.getState().setKeys('deadbeef', 'cafe', { note: 'key123' })
+
+    // Crypto store must not write to Web Storage — only the UI store uses persist
+    const localStorageKeys = Object.keys(localStorage)
+    const sessionStorageKeys = Object.keys(sessionStorage)
+    expect(localStorageKeys.every((k) => !k.includes('crypto') && !k.includes('auth'))).toBe(true)
+    expect(sessionStorageKeys).toEqual([])
+
+    useCryptoStore.getState().clearVault()
+  })
 })
