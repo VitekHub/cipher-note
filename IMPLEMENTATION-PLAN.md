@@ -721,11 +721,10 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
     - Given existing salts (from server), derive both keys in parallel
     - Return `{ authHash, passwordKey }`
   - `changePassword(oldPassword: string, newPassword: string, keySalt: Uint8Array<ArrayBuffer>, wrappedMasterKey: Uint8Array<ArrayBuffer>, masterKeyIV: Uint8Array<ArrayBuffer>): Promise<PasswordChangeResult>`
-    - Derive old password key → import as CryptoKey → decrypt master key (no AAD)
+    - Derive old password key → import as CryptoKey → decrypt master key (AAD = "master-key-password'")
     - Generate new auth_salt and key_salt
     - Derive new auth_hash and password_key in parallel
-    - Re-wrap master key with new password key using AES-256-GCM (no AAD)
-    - Master key wrapping uses no AAD because the master key has no field name or version concept, unlike field key wrapping which uses AAD(fieldName, version)
+    - Re-wrap master key with new password key using AES-256-GCM (AAD = "master-key-password'")
     - Return `{ newAuthHash, newAuthSalt, newKeySalt, newWrappedMasterKey, newMasterKeyIV }`
 - `AuthCredentials`, `LoginCredentials`, `PasswordChangeResult` types already exist in crypto.types.ts — no changes needed
 - `derive-placeholder.ts` remains in place until Step 21 replaces its consumer in `auth-flow.ts` `loginUser`
@@ -841,9 +840,9 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
     4. Derive key hierarchy: KEK, signing key seed
     5. Generate field keys: note, website, email (256-bit random each, version 1)
     6. Wrap field keys with KEK (AAD = field_name + version)
-    7. Wrap master key with password key (no AAD)
+    7. Wrap master key with password key (AAD = "master-key-password'")
     8. Generate recovery mnemonic
-    9. Wrap master key with recovery KEK
+    9. Wrap master key with recovery KEK (AAD = "master-key-recovery'")
     10. Export KEK CryptoKey to raw bytes (for hex-encoding into crypto store)
     11. Return all data needed to upload to server
 - `RegistrationResult` type: all wrapped keys, salts, IVs, recovery data, mnemonic. `kek` is `Uint8Array<ArrayBuffer>` (exported from CryptoKey), not `CryptoKey`

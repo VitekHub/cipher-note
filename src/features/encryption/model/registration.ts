@@ -14,7 +14,7 @@ import {
   wrapFieldKeys,
 } from '@/shared/crypto/key-hierarchy'
 import { deriveAuthCredentials } from '@/shared/crypto/split-kdf'
-import { FIELD_KEY_VERSION } from '@/shared/types/crypto.types'
+import { FIELD_KEY_VERSION, MASTER_KEY_PASSWORD_AAD } from '@/shared/types/crypto.types'
 import type { RegistrationResult } from '@/shared/types/crypto.types'
 
 export async function deriveRegistrationKeys(password: string): Promise<RegistrationResult> {
@@ -28,9 +28,14 @@ export async function deriveRegistrationKeys(password: string): Promise<Registra
   const versions = new Map(Array.from(fieldKeys.keys()).map((name) => [name, FIELD_KEY_VERSION] as const))
   const wrappedFieldKeys = await wrapFieldKeys(fieldKeys, hierarchy.kek, versions)
 
-  // Wrap master key with password key (no AAD)
+  // Wrap master key with password key (AAD prevents cross-context decryption)
   const passwordCryptoKey = await importKey(passwordKey)
-  const { ciphertext: wrappedMasterKey, iv: masterKeyIV } = await encrypt(masterKey, passwordCryptoKey)
+  const { ciphertext: wrappedMasterKey, iv: masterKeyIV } = await encrypt(
+    masterKey,
+    passwordCryptoKey,
+    undefined,
+    MASTER_KEY_PASSWORD_AAD,
+  )
 
   // Recovery: generate mnemonic and wrap master key with recovery KEK
   const mnemonic = await generateMnemonic()

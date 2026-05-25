@@ -35,15 +35,15 @@ export function encodeFieldKeysToHex(fieldKeys: Map<string, Uint8Array>): Record
   return Object.fromEntries(Array.from(fieldKeys.entries()).map(([name, key]) => [name, hexEncode(key)]))
 }
 
-/** Copy ArrayBuffer or Uint8Array data into a fresh Uint8Array<ArrayBuffer>.
- *  Use this when storing crypto operation results before hex-encoding. */
+/** Create an independent copy of ArrayBuffer or Uint8Array data as Uint8Array<ArrayBuffer>.
+ *  Always copies - never creates a view sharing the original buffer. Use when storing
+ *  Web Crypto results before hex-encoding, since those ArrayBuffers can be neutered. */
 export function copyToUint8Array(data: ArrayBuffer | Uint8Array): Uint8Array<ArrayBuffer> {
-  return new Uint8Array(data) as Uint8Array<ArrayBuffer>
+  const view = data instanceof Uint8Array ? data : new Uint8Array(data)
+  return new Uint8Array(view) as Uint8Array<ArrayBuffer>
 }
 
 /** Overwrite a Uint8Array with zeros. Best-effort memory clearing for key material. */
 export function zeroFill(buffer: Uint8Array): void {
-  for (let i = 0; i < buffer.length; i++) {
-    buffer[i] = 0
-  }
+  buffer.fill(0)
 }

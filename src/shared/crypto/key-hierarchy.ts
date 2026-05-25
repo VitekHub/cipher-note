@@ -51,7 +51,7 @@ export function generateMasterKey(): Uint8Array<ArrayBuffer> {
 export async function deriveFullKeyHierarchy(masterKey: Uint8Array<ArrayBuffer>): Promise<KeyHierarchy> {
   const [kekBytes, signingKeySeed] = await Promise.all([deriveKEK(masterKey), deriveSigningKeySeed(masterKey)])
 
-  const kek = await importKey(kekBytes)
+  const kek = await importKey(kekBytes, true)
 
   return { masterKey, kek, signingKeySeed }
 }

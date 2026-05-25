@@ -3,9 +3,14 @@ import type { WrappedKey } from '@/shared/types/crypto.types'
 
 const encoder = new TextEncoder()
 
+const MAX_FIELD_NAME_BYTES = 255
+
 export function encodeAAD(fieldName: string, version: number): Uint8Array<ArrayBuffer> {
   if (version < 0) throw new Error(`Version must be non-negative, got ${version}`)
   const nameBytes = encoder.encode(fieldName)
+  if (nameBytes.length > MAX_FIELD_NAME_BYTES) {
+    throw new Error(`Field name too long: ${nameBytes.length} bytes (max ${MAX_FIELD_NAME_BYTES})`)
+  }
   const result = new Uint8Array(2 + nameBytes.length + 4)
   const view = new DataView(result.buffer)
   view.setUint16(0, nameBytes.length, false)

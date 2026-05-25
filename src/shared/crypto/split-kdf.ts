@@ -10,6 +10,8 @@
 
 import { deriveAuthHash, derivePasswordKey, generateSalt } from '@/shared/crypto/argon2id'
 import { importKey, encrypt, decrypt, generateIV } from '@/shared/crypto/aes-gcm'
+import { zeroFill } from '@/shared/crypto/memory'
+import { MASTER_KEY_PASSWORD_AAD } from '@/shared/types/crypto.types'
 import type { AuthCredentials, LoginCredentials, PasswordChangeResult } from '@/shared/types/crypto.types'
 
 async function deriveCredentials(
@@ -65,7 +67,8 @@ export async function changePassword(
   // Derive old password key and unwrap master key
   const oldPasswordKey = await derivePasswordKey(oldPassword, keySalt)
   const oldWrappingKey = await importKey(oldPasswordKey)
-  const masterKey = await decrypt(wrappedMasterKey, oldWrappingKey, masterKeyIV)
+  zeroFill(oldPasswordKey)
+  const masterKey = await decrypt(wrappedMasterKey, oldWrappingKey, masterKeyIV, MASTER_KEY_PASSWORD_AAD)
 
   // Generate new salts and derive new credentials
   const newAuthSalt = generateSalt()
@@ -78,8 +81,15 @@ export async function changePassword(
 
   // Re-wrap master key with new password key
   const newWrappingKey = await importKey(newPasswordKey)
+  zeroFill(newPasswordKey)
   const newIV = generateIV()
-  const { ciphertext: newWrappedMasterKey, iv: newMasterKeyIV } = await encrypt(masterKey, newWrappingKey, newIV)
+  const { ciphertext: newWrappedMasterKey, iv: newMasterKeyIV } = await encrypt(
+    masterKey,
+    newWrappingKey,
+    newIV,
+    MASTER_KEY_PASSWORD_AAD,
+  )
+  zeroFill(masterKey)
 
   return {
     newAuthHash,

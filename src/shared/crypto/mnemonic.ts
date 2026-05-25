@@ -1,6 +1,6 @@
 import { deriveKey, generateSalt } from '@/shared/crypto/argon2id'
 import { importKey, encrypt, decrypt, generateIV } from '@/shared/crypto/aes-gcm'
-import { CRYPTO_KEY_LENGTH } from '@/shared/types/crypto.types'
+import { CRYPTO_KEY_LENGTH, MASTER_KEY_RECOVERY_AAD } from '@/shared/types/crypto.types'
 import { MnemonicError } from '@/shared/crypto/errors'
 import type { RecoveryData } from '@/shared/types/crypto.types'
 
@@ -92,7 +92,12 @@ export async function wrapMasterKeyWithRecovery(
   const recoveryKEK = await deriveRecoveryKEK(mnemonic, salt)
   const cryptoKey = await importKey(recoveryKEK)
   const iv = generateIV()
-  const { ciphertext: wrappedMasterKey, iv: recoveryIV } = await encrypt(masterKey, cryptoKey, iv)
+  const { ciphertext: wrappedMasterKey, iv: recoveryIV } = await encrypt(
+    masterKey,
+    cryptoKey,
+    iv,
+    MASTER_KEY_RECOVERY_AAD,
+  )
 
   return { wrappedMasterKey, recoveryIV, recoverySalt: salt }
 }
@@ -110,5 +115,5 @@ export async function unwrapMasterKeyWithRecovery(
 ): Promise<Uint8Array<ArrayBuffer>> {
   const recoveryKEK = await deriveRecoveryKEK(mnemonic, recoverySalt)
   const cryptoKey = await importKey(recoveryKEK)
-  return decrypt(wrappedMasterKey, cryptoKey, recoveryIV)
+  return decrypt(wrappedMasterKey, cryptoKey, recoveryIV, MASTER_KEY_RECOVERY_AAD)
 }

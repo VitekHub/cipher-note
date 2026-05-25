@@ -3,6 +3,7 @@ import { DecryptionError } from '@/shared/crypto/errors'
 import { deriveAuthCredentials, deriveLoginCredentials, changePassword } from '@/shared/crypto/split-kdf'
 import { importKey, encrypt, decrypt, generateIV } from '@/shared/crypto/aes-gcm'
 import { generateMasterKey } from '@/shared/crypto/key-hierarchy'
+import { MASTER_KEY_PASSWORD_AAD } from '@/shared/types/crypto.types'
 import type { AuthCredentials, LoginCredentials, PasswordChangeResult } from '@/shared/types/crypto.types'
 
 // Mock Argon2id module to avoid WASM/worker dependency in tests
@@ -120,7 +121,7 @@ describe('split-kdf', () => {
     ): Promise<{ wrappedMasterKey: Uint8Array<ArrayBuffer>; iv: Uint8Array<ArrayBuffer> }> {
       const wrappingKey = await importKey(mockBytes(32, keyFill))
       const iv = generateIV()
-      const { ciphertext } = await encrypt(masterKey, wrappingKey, iv)
+      const { ciphertext } = await encrypt(masterKey, wrappingKey, iv, MASTER_KEY_PASSWORD_AAD)
       return { wrappedMasterKey: ciphertext, iv }
     }
 
@@ -145,7 +146,12 @@ describe('split-kdf', () => {
       )
 
       const newWrappingKey = await importKey(mockBytes(32, NEW_KEY_FILL))
-      const unwrappedMasterKey = await decrypt(result.newWrappedMasterKey, newWrappingKey, result.newMasterKeyIV)
+      const unwrappedMasterKey = await decrypt(
+        result.newWrappedMasterKey,
+        newWrappingKey,
+        result.newMasterKeyIV,
+        MASTER_KEY_PASSWORD_AAD,
+      )
 
       expect(unwrappedMasterKey).toEqual(masterKey)
     })
@@ -225,7 +231,12 @@ describe('split-kdf', () => {
       const result = await changePassword('oldPw', 'newPw', mockBytes(16, 0x02), wrappedMasterKey, oldIV)
 
       const newWrappingKey = await importKey(mockBytes(32, NEW_KEY_FILL))
-      const unwrapped = await decrypt(result.newWrappedMasterKey, newWrappingKey, result.newMasterKeyIV)
+      const unwrapped = await decrypt(
+        result.newWrappedMasterKey,
+        newWrappingKey,
+        result.newMasterKeyIV,
+        MASTER_KEY_PASSWORD_AAD,
+      )
 
       expect(unwrapped).toEqual(masterKey)
     })

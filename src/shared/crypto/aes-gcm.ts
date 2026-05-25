@@ -39,11 +39,11 @@ export async function decrypt(
   }
 }
 
-export async function importKey(rawKey: Uint8Array<ArrayBuffer>): Promise<CryptoKey> {
+export async function importKey(rawKey: Uint8Array<ArrayBuffer>, extractable = false): Promise<CryptoKey> {
   if (rawKey.length !== CRYPTO_KEY_LENGTH) {
     throw new Error(`Invalid key length: expected ${CRYPTO_KEY_LENGTH} bytes, got ${rawKey.length}`)
   }
-  return crypto.subtle.importKey('raw', rawKey, { name: AES_GCM_ALGORITHM }, true, ['encrypt', 'decrypt'])
+  return crypto.subtle.importKey('raw', rawKey, { name: AES_GCM_ALGORITHM }, extractable, ['encrypt', 'decrypt'])
 }
 
 export async function exportKey(key: CryptoKey): Promise<Uint8Array<ArrayBuffer>> {

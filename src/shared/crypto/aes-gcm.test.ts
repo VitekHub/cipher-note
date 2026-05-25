@@ -110,7 +110,7 @@ describe('key management', () => {
   it('importKey and exportKey round-trip preserves key bytes', async () => {
     const originalKey = await generateKey()
     const rawBytes = await exportKey(originalKey)
-    const reimportedKey = await importKey(rawBytes)
+    const reimportedKey = await importKey(rawBytes, true)
     const reimportedBytes = await exportKey(reimportedKey)
     expect(reimportedBytes).toEqual(rawBytes)
   })
@@ -118,6 +118,12 @@ describe('key management', () => {
   it('importKey with non-32-byte key throws', async () => {
     const shortKey = new Uint8Array(16)
     await expect(importKey(shortKey)).rejects.toThrow()
+  })
+
+  it('importKey defaults to non-extractable', async () => {
+    const rawKey = crypto.getRandomValues(new Uint8Array(32))
+    const key = await importKey(rawKey)
+    await expect(exportKey(key)).rejects.toThrow()
   })
 })
 

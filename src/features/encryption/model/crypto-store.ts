@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { QueryClient } from '@tanstack/react-query'
 import type { CachedVaultEnvelope } from '@/shared/types/api.types'
+import { terminateWorker } from '@/shared/crypto/argon2id'
 
 interface CryptoState {
   masterKey: string | null
@@ -63,6 +64,7 @@ const useCryptoStore = create<CryptoState & CryptoActions>()((set) => ({
   clearVault: () => {
     set(initialState)
     queryClientRef?.removeQueries({ queryKey: ['field'] })
+    terminateWorker()
   },
   updateActivity: () => set({ lastActivity: Date.now() }),
 }))

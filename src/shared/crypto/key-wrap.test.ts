@@ -94,4 +94,9 @@ describe('encodeAAD', () => {
   it('throws on negative version', () => {
     expect(() => encodeAAD('note', -1)).toThrow('Version must be non-negative')
   })
+
+  it('throws on field name exceeding 255 bytes', () => {
+    const longName = 'a'.repeat(256)
+    expect(() => encodeAAD(longName, 1)).toThrow('Field name too long')
+  })
 })

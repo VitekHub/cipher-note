@@ -10,6 +10,7 @@ import {
 import { deriveAuthCredentials, deriveLoginCredentials, changePassword } from '@/shared/crypto/split-kdf'
 import { wrapMasterKeyWithRecovery, unwrapMasterKeyWithRecovery } from '@/shared/crypto/mnemonic'
 import { DecryptionError } from '@/shared/crypto/errors'
+import { MASTER_KEY_PASSWORD_AAD } from '@/shared/types/crypto.types'
 import type { WrappedFieldKey } from '@/shared/types/crypto.types'
 
 // Mock Argon2id module — Web Worker won't run in jsdom
@@ -65,7 +66,12 @@ async function setupRegistration() {
 
   const passwordCryptoKey = await importKey(authCreds.passwordKey)
   const iv = generateIV()
-  const { ciphertext: wrappedMasterKey, iv: masterKeyIV } = await encrypt(masterKey, passwordCryptoKey, iv)
+  const { ciphertext: wrappedMasterKey, iv: masterKeyIV } = await encrypt(
+    masterKey,
+    passwordCryptoKey,
+    iv,
+    MASTER_KEY_PASSWORD_AAD,
+  )
 
   const recoverySalt = mockBytes(16, 0x05)
   vi.mocked(generateSalt).mockReturnValueOnce(recoverySalt)
@@ -118,7 +124,12 @@ describe('crypto integration', () => {
 
       // Unwrap master key with password key
       const passwordCryptoKey = await importKey(authCreds.passwordKey)
-      const unwrappedMasterKey = await decrypt(wrappedMasterKey, passwordCryptoKey, masterKeyIV)
+      const unwrappedMasterKey = await decrypt(
+        wrappedMasterKey,
+        passwordCryptoKey,
+        masterKeyIV,
+        MASTER_KEY_PASSWORD_AAD,
+      )
       expect(unwrappedMasterKey).toEqual(masterKey)
 
       // Unwrap master key with recovery (re-mock deriveKey since it was consumed during setup)
@@ -148,7 +159,12 @@ describe('crypto integration', () => {
       expect(generateSalt).not.toHaveBeenCalled()
 
       const passwordCryptoKey = await importKey(loginCreds.passwordKey)
-      const unwrappedMasterKey = await decrypt(wrappedMasterKey, passwordCryptoKey, masterKeyIV)
+      const unwrappedMasterKey = await decrypt(
+        wrappedMasterKey,
+        passwordCryptoKey,
+        masterKeyIV,
+        MASTER_KEY_PASSWORD_AAD,
+      )
       expect(unwrappedMasterKey).toEqual(masterKey)
 
       const hierarchy = await deriveFullKeyHierarchy(unwrappedMasterKey)
@@ -190,7 +206,12 @@ describe('crypto integration', () => {
       )
 
       const newCryptoKey = await importKey(mockBytes(32, NEW_PASSWORD_KEY_FILL))
-      const unwrapped = await decrypt(result.newWrappedMasterKey, newCryptoKey, result.newMasterKeyIV)
+      const unwrapped = await decrypt(
+        result.newWrappedMasterKey,
+        newCryptoKey,
+        result.newMasterKeyIV,
+        MASTER_KEY_PASSWORD_AAD,
+      )
       expect(unwrapped).toEqual(masterKey)
 
       // Field keys still decryptable with same KEK
@@ -209,9 +230,9 @@ describe('crypto integration', () => {
 
       // Old password key cannot unwrap new wrapped master key
       const oldCryptoKey = await importKey(mockBytes(32, PASSWORD_KEY_FILL))
-      await expect(decrypt(result.newWrappedMasterKey, oldCryptoKey, result.newMasterKeyIV)).rejects.toThrow(
-        DecryptionError,
-      )
+      await expect(
+        decrypt(result.newWrappedMasterKey, oldCryptoKey, result.newMasterKeyIV, MASTER_KEY_PASSWORD_AAD),
+      ).rejects.toThrow(DecryptionError)
     })
   })
 
@@ -323,7 +344,7 @@ describe('crypto integration', () => {
       const start = Date.now()
       const loginCreds = await deriveLoginCredentials(PASSWORD, authSalt, keySalt)
       const passwordCryptoKey = await importKey(loginCreds.passwordKey)
-      const masterKey = await decrypt(wrappedMasterKey, passwordCryptoKey, masterKeyIV)
+      const masterKey = await decrypt(wrappedMasterKey, passwordCryptoKey, masterKeyIV, MASTER_KEY_PASSWORD_AAD)
       const hierarchy = await deriveFullKeyHierarchy(masterKey)
       await unwrapFieldKeys(wrappedFieldKeys, hierarchy.kek)
       const elapsed = Date.now() - start

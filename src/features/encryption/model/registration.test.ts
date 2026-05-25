@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { decrypt, importKey } from '@/shared/crypto/aes-gcm'
 import { unwrapFieldKeys } from '@/shared/crypto/key-hierarchy'
 import { unwrapMasterKeyWithRecovery } from '@/shared/crypto/mnemonic'
-import { FIELD_KEY_VERSION } from '@/shared/types/crypto.types'
+import { FIELD_KEY_VERSION, MASTER_KEY_PASSWORD_AAD } from '@/shared/types/crypto.types'
 import type { RegistrationResult } from '@/shared/types/crypto.types'
 
 // Mock Argon2id module — Web Worker won't run in jsdom
@@ -107,7 +107,7 @@ describe('deriveRegistrationKeys', () => {
   it('unwraps master key with password key', async () => {
     const passwordKey = mockBytes(32, PASSWORD_KEY_FILL)
     const cryptoKey = await importKey(passwordKey)
-    const decrypted = await decrypt(result.wrappedMasterKey, cryptoKey, result.masterKeyIV)
+    const decrypted = await decrypt(result.wrappedMasterKey, cryptoKey, result.masterKeyIV, MASTER_KEY_PASSWORD_AAD)
     expect(decrypted).toEqual(result.masterKey)
   })
 

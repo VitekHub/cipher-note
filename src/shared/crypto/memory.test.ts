@@ -93,11 +93,19 @@ describe('memory', () => {
       expect(Array.from(copy)).toEqual([0x01, 0x02, 0x03])
     })
 
-    it('returns an independent copy', () => {
+    it('returns an independent copy from Uint8Array', () => {
       const original = new Uint8Array([0xaa, 0xbb])
       const copy = copyToUint8Array(original)
       original[0] = 0xff
       expect(copy[0]).toBe(0xaa)
+    })
+
+    it('returns an independent copy from ArrayBuffer', () => {
+      const buffer = new ArrayBuffer(4)
+      new Uint8Array(buffer).set([0xde, 0xad, 0xbe, 0xef])
+      const copy = copyToUint8Array(buffer)
+      new Uint8Array(buffer)[0] = 0xff
+      expect(copy[0]).toBe(0xde)
     })
 
     it('handles empty input', () => {

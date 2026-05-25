@@ -8,6 +8,10 @@ export const CRYPTO_SALT_LENGTH = 16 as const
 
 export const FIELD_KEY_VERSION = 1 as const
 
+/** AAD context strings for master key wrapping — prevent cross-context decryption. */
+export const MASTER_KEY_PASSWORD_AAD = new TextEncoder().encode('master-key-password')
+export const MASTER_KEY_RECOVERY_AAD = new TextEncoder().encode('master-key-recovery')
+
 export interface WrappedKey {
   wrappedKey: Uint8Array<ArrayBuffer>
   iv: Uint8Array<ArrayBuffer>
