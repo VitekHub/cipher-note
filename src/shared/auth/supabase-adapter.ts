@@ -107,11 +107,14 @@ function wrapSupabaseAuthError(error: unknown): AuthError {
 
   if (typeof error === 'object' && error !== null && 'status' in error && 'code' in error) {
     const authError = error as { status: number; code: string }
+    const supabaseError = new Error(`Supabase auth error: ${authError.status} ${authError.code}`, {
+      cause: error instanceof Error ? error : undefined,
+    })
     if (authError.status === 400 && authError.code === 'invalid_credentials') {
-      return new AuthError(AuthErrorCode.INVALID_CREDENTIALS, { cause: error as Error })
+      return new AuthError(AuthErrorCode.INVALID_CREDENTIALS, { cause: supabaseError })
     }
     if (authError.status === 409 || authError.status === 422 || authError.code === 'user_already_exists') {
-      return new AuthError(AuthErrorCode.USERNAME_TAKEN, { cause: error as Error })
+      return new AuthError(AuthErrorCode.USERNAME_TAKEN, { cause: supabaseError })
     }
   }
 

@@ -1,6 +1,6 @@
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
+import { standardSchemaResolver } from '@hookform/resolvers/standard-schema'
 import { useTranslation } from 'react-i18next'
 import { Loader2 } from 'lucide-react'
 import { loginSchema, type LoginFormData } from '@/features/auth/model/login-schema'
@@ -26,7 +26,7 @@ function LoginPage({ redirectUrl }: LoginPageProps) {
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
+    resolver: standardSchemaResolver(loginSchema),
     defaultValues: { username: '', password: '' },
   })
 

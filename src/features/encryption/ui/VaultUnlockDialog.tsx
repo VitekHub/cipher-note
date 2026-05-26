@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Loader2 } from 'lucide-react'
 import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
+import { standardSchemaResolver } from '@hookform/resolvers/standard-schema'
 import { z } from 'zod'
 
 import { useCryptoStore } from '@/features/encryption/model/crypto-store'
@@ -34,7 +34,7 @@ function VaultUnlockDialog() {
     formState: { isSubmitting },
     reset,
   } = useForm<UnlockFormData>({
-    resolver: zodResolver(unlockSchema),
+    resolver: standardSchemaResolver(unlockSchema),
     defaultValues: { password: '' },
   })
 

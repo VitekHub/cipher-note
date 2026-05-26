@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const mockSetLoading = vi.fn()
-const mockSetAuth = vi.fn()
-const mockSetRestoringSession = vi.fn()
-const mockReset = vi.fn()
-const mockSetKeys = vi.fn(() => {
+const mockSetLoading = vi.fn<(isLoading: boolean) => void>()
+const mockSetAuth = vi.fn<(user: import('@/shared/types/entities/user.types').User, session: import('@/shared/types/entities/user.types').UserSession) => void>()
+const mockSetRestoringSession = vi.fn<(isRestoringSession: boolean) => void>()
+const mockReset = vi.fn<() => void>()
+const mockSetKeys = vi.fn<(masterKey: string, kek: string, fieldKeys: Record<string, string>) => void>(() => {
   cryptoStoreState.isVaultLocked = false
 })
-const mockSetEnvelope = vi.fn()
+const mockSetEnvelope = vi.fn<(envelope: import('@/shared/types/api.types').CachedVaultEnvelope) => void>()
 
 // Mock registration module
 vi.mock('@/features/encryption/model/registration', () => ({
@@ -49,12 +49,12 @@ vi.mock('@/features/encryption/model/login', () => ({
 
 // Mock vault-lock module
 const { mockClearVault } = vi.hoisted(() => ({
-  mockClearVault: vi.fn(),
+  mockClearVault: vi.fn<() => void>(),
 }))
 vi.mock('@/features/encryption/model/vault-lock', () => ({
-  lockVault: vi.fn(),
+  lockVault: vi.fn<() => void>(),
   clearVault: mockClearVault,
-  unlockVault: vi.fn().mockResolvedValue(undefined),
+  unlockVault: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
 }))
 
 // Mock Supabase registration
@@ -158,7 +158,7 @@ const cryptoStoreState = {
   lastActivity: 0,
   setKeys: mockSetKeys,
   setCachedEnvelope: mockSetEnvelope,
-  lockVault: vi.fn(),
+  lockVault: vi.fn<() => void>(),
   clearVault: mockClearVault,
 }
 
@@ -182,6 +182,7 @@ import { getLoginSalts, getMasterKeyEnvelope, getFieldKeys } from '@/shared/api/
 import { deriveLoginCredentials } from '@/shared/crypto/split-kdf'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { AuthError, AuthErrorCode } from '@/shared/auth/auth-errors'
+import type { AuthResult } from '@/shared/auth/auth.types'
 
 describe('signUpUser', () => {
   beforeEach(() => {
@@ -388,7 +389,25 @@ describe('restoreSession', () => {
       setRestoringSession: mockSetRestoringSession,
       reset: mockReset,
       isRestoringSession: true,
+      user: null,
+      session: null,
+      isLoading: false,
+      setUser: vi.fn(),
+      setSession: vi.fn(),
     })
+
+    vi.mock('@/features/auth/model/auth-store', () => ({
+      useAuthStore: {
+        getState: vi.fn(() => ({
+          setLoading: mockSetLoading,
+          setAuth: mockSetAuth,
+          setRestoringSession: mockSetRestoringSession,
+          reset: mockReset,
+          isRestoringSession: false,
+        })),
+        setState: vi.fn(),
+      },
+    }))
 
     await restoreSession()
     expect(mockSetRestoringSession).toHaveBeenCalledWith(false)
@@ -405,6 +424,11 @@ describe('restoreSession', () => {
       setRestoringSession: mockSetRestoringSession,
       reset: mockReset,
       isRestoringSession: true,
+      user: null,
+      session: null,
+      isLoading: false,
+      setUser: vi.fn(),
+      setSession: vi.fn(),
     })
 
     await restoreSession()
@@ -424,6 +448,11 @@ describe('restoreSession', () => {
       setRestoringSession: mockSetRestoringSession,
       reset: mockReset,
       isRestoringSession: true,
+      user: null,
+      session: null,
+      isLoading: false,
+      setUser: vi.fn(),
+      setSession: vi.fn(),
     })
 
     await restoreSession()
@@ -438,6 +467,11 @@ describe('restoreSession', () => {
       setRestoringSession: mockSetRestoringSession,
       reset: mockReset,
       isRestoringSession: false,
+      user: null,
+      session: null,
+      isLoading: false,
+      setUser: vi.fn(),
+      setSession: vi.fn(),
     })
 
     await restoreSession()
@@ -445,7 +479,7 @@ describe('restoreSession', () => {
   })
 
   it('deduplicates concurrent calls — second call returns early', async () => {
-    let resolveGetSession!: (value: unknown) => void
+    let resolveGetSession!: (value: AuthResult | PromiseLike<AuthResult | null> | null) => void
     vi.mocked(authAdapter.getSession).mockImplementation(
       () =>
         new Promise((resolve) => {
@@ -458,6 +492,11 @@ describe('restoreSession', () => {
       setRestoringSession: mockSetRestoringSession,
       reset: mockReset,
       isRestoringSession: true,
+      user: null,
+      session: null,
+      isLoading: false,
+      setUser: vi.fn(),
+      setSession: vi.fn(),
     })
 
     const promise1 = restoreSession()

@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useForm, useWatch } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
+import { standardSchemaResolver } from '@hookform/resolvers/standard-schema'
 import { useTranslation } from 'react-i18next'
 import { Loader2 } from 'lucide-react'
 import { registerSchema, type RegisterFormData } from '@/features/auth/model/register-schema'
@@ -30,7 +30,7 @@ function RegisterPage({ onSubmit }: RegisterPageProps) {
     control,
     formState: { errors, isSubmitting },
   } = useForm<RegisterFormData>({
-    resolver: zodResolver(registerSchema),
+    resolver: standardSchemaResolver(registerSchema),
     defaultValues: { username: '', password: '', confirmPassword: '' },
   })
 
@@ -41,7 +41,7 @@ function RegisterPage({ onSubmit }: RegisterPageProps) {
   const [mnemonic, setMnemonic] = useState<string | null>(null)
   const [showMnemonic, setShowMnemonic] = useState(false)
   const [passwordFocused, setPasswordFocused] = useState(false)
-  const cardRef = useRef<HTMLElement>(null)
+  const cardRef = useRef<HTMLDivElement>(null)
 
   const isSubmitDisabled = isSubmitting || availabilityStatus === 'checking' || availabilityStatus === 'taken'
 

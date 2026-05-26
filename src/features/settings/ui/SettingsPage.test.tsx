@@ -18,7 +18,7 @@ describe('SettingsPage', () => {
   })
 
   it('renders username from auth store in account section', () => {
-    useAuthStore.setState({ user: { id: '1', username: 'alice' } })
+    useAuthStore.setState({ user: { id: '1', username: 'alice', createdAt: '2024-01-01T00:00:00Z' } })
     render(<SettingsPage />)
     expect(screen.getByText('alice')).toBeInTheDocument()
   })

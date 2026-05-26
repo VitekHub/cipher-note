@@ -12,7 +12,7 @@ describe('AccountSection', () => {
   })
 
   it('displays username from auth store', () => {
-    useAuthStore.setState({ user: { id: '1', username: 'testuser' } })
+    useAuthStore.setState({ user: { id: '1', username: 'testuser', createdAt: '2024-01-01T00:00:00Z' } })
     render(<AccountSection />)
     expect(screen.getByText('testuser')).toBeInTheDocument()
   })

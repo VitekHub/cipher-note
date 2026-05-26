@@ -18,11 +18,17 @@ const mockClearVault = vi.fn()
 const mockSetEnvelope = vi.fn()
 
 const createStoreState = (overrides?: Partial<{ cachedEnvelope: CachedVaultEnvelope | null }>) => ({
+  masterKey: null as string | null,
+  kek: null as string | null,
+  fieldKeys: {} as Record<string, string>,
+  isVaultLocked: true,
+  lastActivity: 0,
+  cachedEnvelope: null as CachedVaultEnvelope | null,
   setKeys: mockSetKeys,
   lockVault: mockLockVault,
   clearVault: mockClearVault,
   setCachedEnvelope: mockSetEnvelope,
-  cachedEnvelope: null as CachedVaultEnvelope | null,
+  updateActivity: vi.fn(),
   ...overrides,
 })
 
@@ -212,7 +218,7 @@ describe('unlockVault (cached envelope)', () => {
       .mockRejectedValueOnce(new DecryptionError())
       .mockResolvedValueOnce({
         masterKey: new Uint8Array(32).fill(0x03),
-        kek: {},
+        kek: {} as CryptoKey,
         fieldKeys: new Map([
           ['note', new Uint8Array(32).fill(0x10)],
           ['website', new Uint8Array(32).fill(0x20)],

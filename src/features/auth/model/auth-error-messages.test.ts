@@ -1,8 +1,9 @@
+import type { TFunction } from 'i18next'
 import { describe, it, expect, vi } from 'vitest'
 import { getAuthErrorMessage } from '@/features/auth/model/auth-error-messages'
 import { AuthError, AuthErrorCode } from '@/shared/auth/auth-errors'
 
-const t = vi.fn((key: string) => key)
+const t = vi.fn((key: string) => key) as unknown as TFunction<'auth'>
 
 describe('getAuthErrorMessage', () => {
   beforeEach(() => {

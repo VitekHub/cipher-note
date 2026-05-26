@@ -2,15 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { FIELD_KEY_VERSION } from '@/shared/types/crypto.types'
 import type { RegistrationResult, RecoveryData } from '@/shared/types/crypto.types'
 
-vi.mock('@/shared/api/supabase-client', () => {
-  const insert = vi.fn().mockResolvedValue({ error: null })
-  const from = vi.fn().mockReturnValue({ insert })
-  return {
-    getSupabase: vi.fn().mockReturnValue({ from }),
-  }
-})
+const mockInsert = vi.fn().mockResolvedValue({ error: null })
+const mockFrom = vi.fn().mockReturnValue({ insert: mockInsert })
 
-import { getSupabase } from '@/shared/api/supabase-client'
+vi.mock('@/shared/api/supabase-client', () => ({
+  getSupabase: vi.fn().mockReturnValue({ from: mockFrom }),
+}))
+
 import { uploadRegistrationData } from '@/shared/api/supabase-registration'
 
 function mockBytes(length: number, fill: number): Uint8Array<ArrayBuffer> {
@@ -49,28 +47,21 @@ function makeRegistrationResult(): RegistrationResult {
   }
 }
 
-function getMockInsert() {
-  return vi.mocked(getSupabase)().from('').insert
-}
-
 describe('uploadRegistrationData', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    const supabase = vi.mocked(getSupabase)()
-    supabase.from('').insert.mockResolvedValue({ error: null })
+    mockInsert.mockResolvedValue({ error: null })
   })
 
   it('inserts into keys table with hex-encoded values', async () => {
     const data = makeRegistrationResult()
     await uploadRegistrationData(data, USER_ID)
 
-    const from = vi.mocked(getSupabase)().from
-    expect(from).toHaveBeenCalledWith('keys')
+    expect(mockFrom).toHaveBeenCalledWith('keys')
 
-    const insert = getMockInsert()
-    expect(insert).toHaveBeenCalledTimes(3)
+    expect(mockInsert).toHaveBeenCalledTimes(3)
 
-    const keysRow = insert.mock.calls[0][0]
+    const keysRow = mockInsert.mock.calls[0][0]
     expect(keysRow.user_id).toBe(USER_ID)
     expect(keysRow.auth_salt).toHaveLength(32)
     expect(keysRow.key_salt).toHaveLength(32)
@@ -82,11 +73,9 @@ describe('uploadRegistrationData', () => {
     const data = makeRegistrationResult()
     await uploadRegistrationData(data, USER_ID)
 
-    const from = vi.mocked(getSupabase)().from
-    expect(from).toHaveBeenCalledWith('field_keys')
+    expect(mockFrom).toHaveBeenCalledWith('field_keys')
 
-    const insert = getMockInsert()
-    const fieldKeysRows = insert.mock.calls[1][0]
+    const fieldKeysRows = mockInsert.mock.calls[1][0]
     expect(fieldKeysRows).toHaveLength(3)
 
     const fieldNames = fieldKeysRows.map((row: { field_name: string }) => row.field_name)
@@ -104,11 +93,9 @@ describe('uploadRegistrationData', () => {
     const data = makeRegistrationResult()
     await uploadRegistrationData(data, USER_ID)
 
-    const from = vi.mocked(getSupabase)().from
-    expect(from).toHaveBeenCalledWith('recovery')
+    expect(mockFrom).toHaveBeenCalledWith('recovery')
 
-    const insert = getMockInsert()
-    const recoveryRow = insert.mock.calls[2][0]
+    const recoveryRow = mockInsert.mock.calls[2][0]
     expect(recoveryRow.user_id).toBe(USER_ID)
     expect(recoveryRow.recovery_salt).toHaveLength(32)
     expect(recoveryRow.wrapped_master_key).toHaveLength(96)
@@ -116,16 +103,14 @@ describe('uploadRegistrationData', () => {
   })
 
   it('throws on keys insert error', async () => {
-    const insert = getMockInsert()
-    insert.mockResolvedValueOnce({ error: new Error('keys insert failed') })
+    mockInsert.mockResolvedValueOnce({ error: new Error('keys insert failed') })
     const data = makeRegistrationResult()
 
     await expect(uploadRegistrationData(data, USER_ID)).rejects.toThrow('keys insert failed')
   })
 
   it('throws on field_keys insert error', async () => {
-    const insert = getMockInsert()
-    insert
+    mockInsert
       .mockResolvedValueOnce({ error: null })
       .mockResolvedValueOnce({ error: new Error('field_keys insert failed') })
     const data = makeRegistrationResult()
@@ -134,8 +119,7 @@ describe('uploadRegistrationData', () => {
   })
 
   it('throws on recovery insert error', async () => {
-    const insert = getMockInsert()
-    insert
+    mockInsert
       .mockResolvedValueOnce({ error: null })
       .mockResolvedValueOnce({ error: null })
       .mockResolvedValueOnce({ error: new Error('recovery insert failed') })

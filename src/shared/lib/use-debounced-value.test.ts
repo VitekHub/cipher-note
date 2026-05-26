@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { renderHook, act } from '@/test/utils'
+import { renderHook, act } from '@testing-library/react'
 import { useDebouncedValue } from '@/shared/lib/use-debounced-value'
 
 describe('useDebouncedValue', () => {
@@ -12,7 +12,7 @@ describe('useDebouncedValue', () => {
   })
 
   it('returns initial value immediately without delay', () => {
-    const { result } = renderHook(({ value }) => useDebouncedValue(value, 300), {
+    const { result } = renderHook(({ value }: { value: string }) => useDebouncedValue(value, 300), {
       initialProps: { value: 'hello' },
     })
 
@@ -20,7 +20,7 @@ describe('useDebouncedValue', () => {
   })
 
   it('debounces subsequent value changes', () => {
-    const { result, rerender } = renderHook(({ value }) => useDebouncedValue(value, 300), {
+    const { result, rerender } = renderHook(({ value }: { value: string }) => useDebouncedValue(value, 300), {
       initialProps: { value: 'a' },
     })
 
@@ -41,7 +41,7 @@ describe('useDebouncedValue', () => {
   })
 
   it('returns the latest value after the delay', () => {
-    const { result, rerender } = renderHook(({ value }) => useDebouncedValue(value, 300), {
+    const { result, rerender } = renderHook(({ value }: { value: string }) => useDebouncedValue(value, 300), {
       initialProps: { value: 'a' },
     })
 
@@ -55,7 +55,7 @@ describe('useDebouncedValue', () => {
   })
 
   it('cancels the previous timer when value changes during debounce', () => {
-    const { result, rerender } = renderHook(({ value }) => useDebouncedValue(value, 300), {
+    const { result, rerender } = renderHook(({ value }: { value: string }) => useDebouncedValue(value, 300), {
       initialProps: { value: 'a' },
     })
 

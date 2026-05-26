@@ -5,7 +5,7 @@ import { useCryptoStore } from '@/features/encryption/model/crypto-store'
 import { DEFAULT_VAULT_TIMEOUT_MS } from './vault-timeout'
 
 vi.mock('@/features/encryption/model/vault-lock', () => ({
-  lockVault: vi.fn(),
+  lockVault: vi.fn<() => void>(),
 }))
 
 import { lockVault } from '@/features/encryption/model/vault-lock'

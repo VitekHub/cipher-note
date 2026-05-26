@@ -8,7 +8,7 @@ interface AuthLayoutProps {
   footer?: ReactNode
 }
 
-const AuthLayout = forwardRef<HTMLElement, AuthLayoutProps>(function AuthLayout(
+const AuthLayout = forwardRef<HTMLDivElement, AuthLayoutProps>(function AuthLayout(
   { title, description, children, footer },
   ref,
 ) {

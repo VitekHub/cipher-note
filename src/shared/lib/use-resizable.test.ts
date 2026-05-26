@@ -3,10 +3,10 @@ import { renderHook, act } from '@testing-library/react'
 import { useResizable } from './use-resizable'
 
 describe('useResizable', () => {
-  let onWidthChange: ReturnType<typeof vi.fn>
+  let onWidthChange: ReturnType<typeof vi.fn<(width: number) => void>>
 
   beforeEach(() => {
-    onWidthChange = vi.fn()
+    onWidthChange = vi.fn<(width: number) => void>()
   })
 
   it('returns stored width initially', () => {
@@ -31,7 +31,7 @@ describe('useResizable', () => {
     const handle = result.current.handleProps
 
     act(() => {
-      handle.onPointerDown(new PointerEvent('pointerdown', { clientX: 100 }) as React.PointerEvent)
+      handle.onPointerDown(new PointerEvent('pointerdown', { clientX: 100 }) as unknown as React.PointerEvent)
     })
 
     expect(result.current.isDragging).toBe(true)
@@ -56,7 +56,7 @@ describe('useResizable', () => {
     const { result } = renderHook(() => useResizable({ storedWidth: 240, onWidthChange, minWidth: 200 }))
 
     act(() => {
-      result.current.handleProps.onPointerDown(new PointerEvent('pointerdown', { clientX: 300 }) as React.PointerEvent)
+      result.current.handleProps.onPointerDown(new PointerEvent('pointerdown', { clientX: 300 }) as unknown as React.PointerEvent)
     })
 
     act(() => {
@@ -70,7 +70,7 @@ describe('useResizable', () => {
     const { result } = renderHook(() => useResizable({ storedWidth: 240, onWidthChange, maxWidth: 400 }))
 
     act(() => {
-      result.current.handleProps.onPointerDown(new PointerEvent('pointerdown', { clientX: 100 }) as React.PointerEvent)
+      result.current.handleProps.onPointerDown(new PointerEvent('pointerdown', { clientX: 100 }) as unknown as React.PointerEvent)
     })
 
     act(() => {
@@ -84,7 +84,7 @@ describe('useResizable', () => {
     const { result } = renderHook(() => useResizable({ storedWidth: 250, onWidthChange, minWidth: 150, maxWidth: 500 }))
 
     act(() => {
-      result.current.handleProps.onPointerDown(new PointerEvent('pointerdown', { clientX: 0 }) as React.PointerEvent)
+      result.current.handleProps.onPointerDown(new PointerEvent('pointerdown', { clientX: 0 }) as unknown as React.PointerEvent)
     })
 
     act(() => {
@@ -100,7 +100,7 @@ describe('useResizable', () => {
     const removeSpy = vi.spyOn(document, 'removeEventListener')
 
     act(() => {
-      result.current.handleProps.onPointerDown(new PointerEvent('pointerdown', { clientX: 100 }) as React.PointerEvent)
+      result.current.handleProps.onPointerDown(new PointerEvent('pointerdown', { clientX: 100 }) as unknown as React.PointerEvent)
     })
 
     act(() => {
@@ -116,7 +116,7 @@ describe('useResizable', () => {
     const { result } = renderHook(() => useResizable({ storedWidth: 240, onWidthChange }))
 
     act(() => {
-      result.current.handleProps.onPointerDown(new PointerEvent('pointerdown', { clientX: 100 }) as React.PointerEvent)
+      result.current.handleProps.onPointerDown(new PointerEvent('pointerdown', { clientX: 100 }) as unknown as React.PointerEvent)
     })
 
     expect(document.body.style.cursor).toBe('col-resize')

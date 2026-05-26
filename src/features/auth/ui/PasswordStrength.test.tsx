@@ -4,7 +4,7 @@ import { useRef } from 'react'
 import { PasswordStrength } from './PasswordStrength'
 
 function TestWrapper({ password, open = true }: { password: string; open?: boolean }) {
-  const anchorRef = useRef<Element>(null)
+  const anchorRef = useRef<HTMLDivElement>(null)
   return (
     <>
       <div ref={anchorRef} data-testid="anchor" />
