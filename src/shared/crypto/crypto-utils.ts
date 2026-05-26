@@ -1,9 +1,49 @@
 /**
- * Hex encoding/decoding and memory utilities for crypto key management.
+ * Hex encoding/decoding, random byte generation, and memory utilities for crypto key management.
  *
  * Crypto modules produce Uint8Array values, but Zustand stores and server API
  * types use hex-encoded strings. These functions bridge the two representations.
  */
+
+import { CRYPTO_KEY_LENGTH, CRYPTO_SALT_LENGTH, CRYPTO_IV_LENGTH } from '@/shared/types/crypto.types'
+
+const encoder = new TextEncoder()
+
+const MAX_FIELD_NAME_BYTES = 255
+
+export function encodeAAD(fieldName: string, version: number): Uint8Array<ArrayBuffer> {
+  if (version < 0) throw new Error(`Version must be non-negative, got ${version}`)
+  const nameBytes = encoder.encode(fieldName)
+  if (nameBytes.length > MAX_FIELD_NAME_BYTES) {
+    throw new Error(`Field name too long: ${nameBytes.length} bytes (max ${MAX_FIELD_NAME_BYTES})`)
+  }
+  const result = new Uint8Array(2 + nameBytes.length + 4)
+  const view = new DataView(result.buffer)
+  view.setUint16(0, nameBytes.length, false)
+  result.set(nameBytes, 2)
+  view.setUint32(2 + nameBytes.length, version, false)
+  return result
+}
+
+/** Generate `length` cryptographically random bytes as Uint8Array<ArrayBuffer>. */
+function randomBytes(length: number): Uint8Array<ArrayBuffer> {
+  return crypto.getRandomValues(new Uint8Array(length)) as Uint8Array<ArrayBuffer>
+}
+
+/** Generate a random 12-byte IV for AES-GCM. */
+export function generateIV(): Uint8Array<ArrayBuffer> {
+  return randomBytes(CRYPTO_IV_LENGTH)
+}
+
+/** Generate a random 16-byte salt for Argon2id key derivation. */
+export function generateSalt(): Uint8Array<ArrayBuffer> {
+  return randomBytes(CRYPTO_SALT_LENGTH)
+}
+
+/** Generate a random 32-byte key for AES-256. */
+export function generateKey(): Uint8Array<ArrayBuffer> {
+  return randomBytes(CRYPTO_KEY_LENGTH)
+}
 
 /** Convert a Uint8Array to a lowercase hex string. */
 export function hexEncode(data: Uint8Array): string {

@@ -101,28 +101,13 @@ vi.mock('@/shared/crypto/split-kdf', () => ({
 }))
 
 // Mock crypto memory
-vi.mock('@/shared/crypto/memory', () => ({
+vi.mock('@/shared/crypto/crypto-utils', async () => ({
+  ...(await vi.importActual('@/shared/crypto/crypto-utils')),
   hexEncode: vi.fn((data: Uint8Array) =>
     Array.from(data)
       .map((b: number) => b.toString(16).padStart(2, '0'))
       .join(''),
   ),
-  hexDecode: vi.fn((hex: string) => {
-    const bytes = new Uint8Array(hex.length / 2)
-    for (let i = 0; i < hex.length; i += 2) {
-      bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16)
-    }
-    return bytes
-  }),
-  encodeFieldKeysToHex: vi.fn((fieldKeys: Map<string, Uint8Array>) => {
-    const result: Record<string, string> = {}
-    for (const [name, key] of fieldKeys) {
-      result[name] = Array.from(key)
-        .map((b) => b.toString(16).padStart(2, '0'))
-        .join('')
-    }
-    return result
-  }),
 }))
 
 // Mock AES-GCM
@@ -131,8 +116,6 @@ vi.mock('@/shared/crypto/aes-gcm', () => ({
   importKey: vi.fn(),
   encrypt: vi.fn(),
   decrypt: vi.fn(),
-  generateIV: vi.fn(),
-  generateKey: vi.fn(),
 }))
 
 // Mock auth adapter
@@ -191,7 +174,7 @@ import { deriveRegistrationKeys } from '@/features/encryption/model/registration
 import { deriveLoginKeys } from '@/features/encryption/model/login'
 import { clearVault as clearVaultMock } from '@/features/encryption/model/vault-lock'
 import { useCryptoStore } from '@/features/encryption/model/crypto-store'
-import { hexEncode } from '@/shared/crypto/memory'
+import { hexEncode } from '@/shared/crypto/crypto-utils'
 import { exportKey } from '@/shared/crypto/aes-gcm'
 import { authAdapter } from '@/shared/auth/supabase-adapter'
 import { uploadRegistrationData } from '@/shared/api/supabase-registration'

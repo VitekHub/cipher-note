@@ -1,8 +1,8 @@
-import { deriveKey, generateSalt } from '@/shared/crypto/argon2id'
-import { importKey, encrypt, decrypt, generateIV } from '@/shared/crypto/aes-gcm'
+import { deriveKey } from '@/shared/crypto/argon2id'
+import { importKey, encrypt, decrypt } from '@/shared/crypto/aes-gcm'
 import { CRYPTO_KEY_LENGTH, MASTER_KEY_RECOVERY_AAD } from '@/shared/types/crypto.types'
 import { MnemonicError } from '@/shared/crypto/errors'
-import type { RecoveryData } from '@/shared/types/crypto.types'
+import type { RecoveryData, RecoveryWrapOptions } from '@/shared/types/crypto.types'
 
 // --- Lazy-load @scure/bip39 ---
 
@@ -86,20 +86,16 @@ export async function deriveRecoveryKEK(
 export async function wrapMasterKeyWithRecovery(
   masterKey: Uint8Array<ArrayBuffer>,
   mnemonic: string,
-  recoverySalt?: Uint8Array<ArrayBuffer>,
+  { iv, salt }: RecoveryWrapOptions,
 ): Promise<RecoveryData> {
-  const salt = recoverySalt ?? generateSalt()
   const recoveryKEK = await deriveRecoveryKEK(mnemonic, salt)
   const cryptoKey = await importKey(recoveryKEK)
-  const iv = generateIV()
-  const { ciphertext: wrappedMasterKey, iv: recoveryIV } = await encrypt(
-    masterKey,
-    cryptoKey,
+  const wrappedMasterKey = await encrypt(masterKey, cryptoKey, {
     iv,
-    MASTER_KEY_RECOVERY_AAD,
-  )
+    aad: MASTER_KEY_RECOVERY_AAD,
+  })
 
-  return { wrappedMasterKey, recoveryIV, recoverySalt: salt }
+  return { wrappedMasterKey, recoveryIV: iv, recoverySalt: salt }
 }
 
 /**
@@ -110,10 +106,9 @@ export async function wrapMasterKeyWithRecovery(
 export async function unwrapMasterKeyWithRecovery(
   wrappedMasterKey: Uint8Array<ArrayBuffer>,
   mnemonic: string,
-  recoverySalt: Uint8Array<ArrayBuffer>,
-  recoveryIV: Uint8Array<ArrayBuffer>,
+  { iv, salt }: RecoveryWrapOptions,
 ): Promise<Uint8Array<ArrayBuffer>> {
-  const recoveryKEK = await deriveRecoveryKEK(mnemonic, recoverySalt)
+  const recoveryKEK = await deriveRecoveryKEK(mnemonic, salt)
   const cryptoKey = await importKey(recoveryKEK)
-  return decrypt(wrappedMasterKey, cryptoKey, recoveryIV, MASTER_KEY_RECOVERY_AAD)
+  return decrypt(wrappedMasterKey, cryptoKey, { iv, aad: MASTER_KEY_RECOVERY_AAD })
 }

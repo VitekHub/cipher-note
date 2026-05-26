@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest'
-import { hexEncode, hexDecode, zeroFill, copyToUint8Array } from '@/shared/crypto/memory'
+import {
+  hexEncode,
+  hexDecode,
+  zeroFill,
+  copyToUint8Array,
+  generateIV,
+  generateSalt,
+  generateKey,
+  encodeAAD,
+} from '@/shared/crypto/crypto-utils'
 
 describe('memory', () => {
   describe('hexEncode', () => {
@@ -132,5 +141,83 @@ describe('memory', () => {
       zeroFill(buffer)
       expect(buffer).toHaveLength(0)
     })
+  })
+
+  describe('generateIV', () => {
+    it('returns a 12-byte Uint8Array', () => {
+      const iv = generateIV()
+      expect(iv).toBeInstanceOf(Uint8Array)
+      expect(iv).toHaveLength(12)
+    })
+
+    it('produces unique values on each call', () => {
+      const iv1 = generateIV()
+      const iv2 = generateIV()
+      expect(iv1).not.toEqual(iv2)
+    })
+  })
+
+  describe('generateSalt', () => {
+    it('returns a 16-byte Uint8Array', () => {
+      const salt = generateSalt()
+      expect(salt).toBeInstanceOf(Uint8Array)
+      expect(salt).toHaveLength(16)
+    })
+
+    it('produces unique values on each call', () => {
+      const salt1 = generateSalt()
+      const salt2 = generateSalt()
+      expect(salt1).not.toEqual(salt2)
+    })
+  })
+
+  describe('generateKey', () => {
+    it('returns a 32-byte Uint8Array', () => {
+      const key = generateKey()
+      expect(key).toBeInstanceOf(Uint8Array)
+      expect(key).toHaveLength(32)
+    })
+
+    it('produces unique values on each call', () => {
+      const key1 = generateKey()
+      const key2 = generateKey()
+      expect(key1).not.toEqual(key2)
+    })
+  })
+})
+
+describe('encodeAAD', () => {
+  it('produces different bytes for different versions of same field', () => {
+    expect(encodeAAD('note', 1)).not.toEqual(encodeAAD('note', 2))
+  })
+
+  it('produces different bytes for same version of different fields', () => {
+    expect(encodeAAD('note', 1)).not.toEqual(encodeAAD('website', 1))
+  })
+
+  it('produces different bytes for all three combinations', () => {
+    const a1 = encodeAAD('note', 1)
+    const a2 = encodeAAD('note', 2)
+    const a3 = encodeAAD('website', 1)
+    expect(a1).not.toEqual(a2)
+    expect(a1).not.toEqual(a3)
+    expect(a2).not.toEqual(a3)
+  })
+
+  it('is deterministic for same inputs', () => {
+    expect(encodeAAD('note', 1)).toEqual(encodeAAD('note', 1))
+  })
+
+  it('encodes AAD as [2-byte name length BE][name UTF-8][4-byte version BE]', () => {
+    expect(encodeAAD('ab', 1)).toEqual(new Uint8Array([0, 2, 97, 98, 0, 0, 0, 1]))
+  })
+
+  it('throws on negative version', () => {
+    expect(() => encodeAAD('note', -1)).toThrow('Version must be non-negative')
+  })
+
+  it('throws on field name exceeding 255 bytes', () => {
+    const longName = 'a'.repeat(256)
+    expect(() => encodeAAD(longName, 1)).toThrow('Field name too long')
   })
 })

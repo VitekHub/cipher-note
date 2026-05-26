@@ -68,39 +68,12 @@ vi.mock('@/shared/api/supabase-keys', () => ({
   ]),
 }))
 
-// Mock crypto memory
-vi.mock('@/shared/crypto/memory', () => ({
-  hexEncode: vi.fn((data: Uint8Array) =>
-    Array.from(data)
-      .map((b: number) => b.toString(16).padStart(2, '0'))
-      .join(''),
-  ),
-  hexDecode: vi.fn((hex: string) => {
-    const bytes = new Uint8Array(hex.length / 2)
-    for (let i = 0; i < hex.length; i += 2) {
-      bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16)
-    }
-    return bytes
-  }),
-  encodeFieldKeysToHex: vi.fn((fieldKeys: Map<string, Uint8Array>) => {
-    const result: Record<string, string> = {}
-    for (const [name, key] of fieldKeys) {
-      result[name] = Array.from(key)
-        .map((b) => b.toString(16).padStart(2, '0'))
-        .join('')
-    }
-    return result
-  }),
-}))
-
 // Mock AES-GCM
 vi.mock('@/shared/crypto/aes-gcm', () => ({
   exportKey: vi.fn().mockResolvedValue(new Uint8Array(32).fill(0x04)),
   importKey: vi.fn(),
   encrypt: vi.fn(),
   decrypt: vi.fn(),
-  generateIV: vi.fn(),
-  generateKey: vi.fn(),
 }))
 
 import { lockVault, unlockVault, clearVault } from '@/features/encryption/model/vault-lock'

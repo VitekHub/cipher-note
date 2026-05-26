@@ -18,8 +18,8 @@
  */
 
 import { importKey } from '@/shared/crypto/aes-gcm'
-import { CRYPTO_KEY_LENGTH } from '@/shared/types/crypto.types'
-import { encodeAAD, wrapKey, unwrapKey } from '@/shared/crypto/key-wrap'
+import { generateKey, generateIV, encodeAAD } from '@/shared/crypto/crypto-utils'
+import { encrypt, decrypt } from '@/shared/crypto/aes-gcm'
 import { deriveKEK, deriveSigningKeySeed } from '@/shared/crypto/hkdf'
 import type { KeyHierarchy, WrappedFieldKey } from '@/shared/types/crypto.types'
 
@@ -30,14 +30,12 @@ const FIELD_NAMES = ['note', 'website', 'email'] as const
  * Each is a 256-bit random key. Returns a Map of field name to key bytes.
  */
 export function generateFieldKeys(): Map<string, Uint8Array<ArrayBuffer>> {
-  return new Map<string, Uint8Array<ArrayBuffer>>(
-    FIELD_NAMES.map((name) => [name, crypto.getRandomValues(new Uint8Array(CRYPTO_KEY_LENGTH))]),
-  )
+  return new Map<string, Uint8Array<ArrayBuffer>>(FIELD_NAMES.map((name) => [name, generateKey()]))
 }
 
 /** Generate a 256-bit random master key. Used once during registration. */
 export function generateMasterKey(): Uint8Array<ArrayBuffer> {
-  return crypto.getRandomValues(new Uint8Array(CRYPTO_KEY_LENGTH))
+  return generateKey()
 }
 
 /**
@@ -82,7 +80,8 @@ export async function wrapFieldKeys(
       }
 
       const aad = encodeAAD(fieldName, version)
-      const { wrappedKey, iv } = await wrapKey(key, kek, aad)
+      const iv = generateIV()
+      const wrappedKey = await encrypt(key, kek, { iv, aad })
 
       return { fieldName, version, wrappedKey, iv } as WrappedFieldKey
     }),
@@ -106,7 +105,7 @@ export async function unwrapFieldKeys(
   const entries = await Promise.all(
     wrappedKeys.map(async ({ fieldName, version, wrappedKey, iv }) => {
       const aad = encodeAAD(fieldName, version)
-      const key = await unwrapKey(wrappedKey, kek, iv, aad)
+      const key = await decrypt(wrappedKey, kek, { iv, aad })
       return [fieldName, key] as [string, Uint8Array<ArrayBuffer>]
     }),
   )

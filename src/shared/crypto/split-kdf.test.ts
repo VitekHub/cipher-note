@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { DecryptionError } from '@/shared/crypto/errors'
 import { deriveAuthCredentials, deriveLoginCredentials, changePassword } from '@/shared/crypto/split-kdf'
-import { importKey, encrypt, decrypt, generateIV } from '@/shared/crypto/aes-gcm'
+import { importKey, encrypt, decrypt } from '@/shared/crypto/aes-gcm'
 import { generateMasterKey } from '@/shared/crypto/key-hierarchy'
 import { MASTER_KEY_PASSWORD_AAD } from '@/shared/types/crypto.types'
 import type { AuthCredentials, LoginCredentials, PasswordChangeResult } from '@/shared/types/crypto.types'
@@ -10,10 +10,16 @@ import type { AuthCredentials, LoginCredentials, PasswordChangeResult } from '@/
 vi.mock('@/shared/crypto/argon2id', () => ({
   deriveAuthHash: vi.fn(),
   derivePasswordKey: vi.fn(),
-  generateSalt: vi.fn(),
 }))
 
-import { deriveAuthHash, derivePasswordKey, generateSalt } from '@/shared/crypto/argon2id'
+import { deriveAuthHash, derivePasswordKey } from '@/shared/crypto/argon2id'
+
+// Mock crypto-utils module — allow generateSalt to be controlled per-test
+vi.mock('@/shared/crypto/crypto-utils', async () => ({
+  ...(await vi.importActual('@/shared/crypto/crypto-utils')),
+  generateSalt: vi.fn(),
+}))
+import { generateIV, generateSalt } from '@/shared/crypto/crypto-utils'
 
 function mockBytes(length: number, fill: number): Uint8Array<ArrayBuffer> {
   return new Uint8Array(length).fill(fill) as Uint8Array<ArrayBuffer>
@@ -121,8 +127,8 @@ describe('split-kdf', () => {
     ): Promise<{ wrappedMasterKey: Uint8Array<ArrayBuffer>; iv: Uint8Array<ArrayBuffer> }> {
       const wrappingKey = await importKey(mockBytes(32, keyFill))
       const iv = generateIV()
-      const { ciphertext } = await encrypt(masterKey, wrappingKey, iv, MASTER_KEY_PASSWORD_AAD)
-      return { wrappedMasterKey: ciphertext, iv }
+      const wrappedMasterKey = await encrypt(masterKey, wrappingKey, { iv, aad: MASTER_KEY_PASSWORD_AAD })
+      return { wrappedMasterKey, iv }
     }
 
     const OLD_KEY_FILL = 0x11
@@ -146,12 +152,10 @@ describe('split-kdf', () => {
       )
 
       const newWrappingKey = await importKey(mockBytes(32, NEW_KEY_FILL))
-      const unwrappedMasterKey = await decrypt(
-        result.newWrappedMasterKey,
-        newWrappingKey,
-        result.newMasterKeyIV,
-        MASTER_KEY_PASSWORD_AAD,
-      )
+      const unwrappedMasterKey = await decrypt(result.newWrappedMasterKey, newWrappingKey, {
+        iv: result.newMasterKeyIV,
+        aad: MASTER_KEY_PASSWORD_AAD,
+      })
 
       expect(unwrappedMasterKey).toEqual(masterKey)
     })
@@ -231,12 +235,10 @@ describe('split-kdf', () => {
       const result = await changePassword('oldPw', 'newPw', mockBytes(16, 0x02), wrappedMasterKey, oldIV)
 
       const newWrappingKey = await importKey(mockBytes(32, NEW_KEY_FILL))
-      const unwrapped = await decrypt(
-        result.newWrappedMasterKey,
-        newWrappingKey,
-        result.newMasterKeyIV,
-        MASTER_KEY_PASSWORD_AAD,
-      )
+      const unwrapped = await decrypt(result.newWrappedMasterKey, newWrappingKey, {
+        iv: result.newMasterKeyIV,
+        aad: MASTER_KEY_PASSWORD_AAD,
+      })
 
       expect(unwrapped).toEqual(masterKey)
     })

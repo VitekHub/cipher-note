@@ -15,38 +15,6 @@ function createMockWorker() {
 
 type MockWorker = ReturnType<typeof createMockWorker>
 
-// ─── generateSalt tests (no Worker needed) ───────────────────────────
-
-describe('argon2id — generateSalt', () => {
-  let generateSalt: () => Uint8Array<ArrayBuffer>
-
-  beforeEach(async () => {
-    const mod = await import('@/shared/crypto/argon2id')
-    generateSalt = mod.generateSalt
-  })
-
-  it('produces a 16-byte Uint8Array', () => {
-    const salt = generateSalt()
-    expect(salt).toBeInstanceOf(Uint8Array)
-    expect(salt.byteLength).toBe(16)
-  })
-
-  it('produces unique salts on each call', () => {
-    const hexStrings = new Set<string>()
-    for (let i = 0; i < 100; i++) {
-      const salt = generateSalt()
-      hexStrings.add(toHex(salt))
-    }
-    expect(hexStrings.size).toBe(100)
-  })
-
-  it('produces salts with random byte distribution', () => {
-    const salt = generateSalt()
-    const allZero = salt.every((b) => b === 0)
-    expect(allZero).toBe(false)
-  })
-})
-
 // ─── Worker communication tests ─────────────────────────────────────
 
 describe('argon2id — Worker communication', () => {
@@ -70,7 +38,8 @@ describe('argon2id — Worker communication', () => {
   })
 
   it('deriveKey sends correct message to worker and resolves with hash', async () => {
-    const { deriveKey, generateSalt } = await import('@/shared/crypto/argon2id')
+    const { deriveKey } = await import('@/shared/crypto/argon2id')
+    const { generateSalt } = await import('@/shared/crypto/crypto-utils')
     const salt = generateSalt()
 
     const derivePromise = deriveKey('test-password', salt)
@@ -93,7 +62,8 @@ describe('argon2id — Worker communication', () => {
   })
 
   it('deriveKey rejects with Argon2Error on worker error response', async () => {
-    const { deriveKey, generateSalt } = await import('@/shared/crypto/argon2id')
+    const { deriveKey } = await import('@/shared/crypto/argon2id')
+    const { generateSalt } = await import('@/shared/crypto/crypto-utils')
     const { Argon2Error } = await import('@/shared/crypto/errors')
     const salt = generateSalt()
 
@@ -111,7 +81,8 @@ describe('argon2id — Worker communication', () => {
   })
 
   it('deriveAuthHash returns 64-character hex string', async () => {
-    const { deriveAuthHash, generateSalt } = await import('@/shared/crypto/argon2id')
+    const { deriveAuthHash } = await import('@/shared/crypto/argon2id')
+    const { generateSalt } = await import('@/shared/crypto/crypto-utils')
     const authSalt = generateSalt()
 
     const derivePromise = deriveAuthHash('test-password', authSalt)
@@ -131,7 +102,8 @@ describe('argon2id — Worker communication', () => {
   })
 
   it('derivePasswordKey returns Uint8Array', async () => {
-    const { derivePasswordKey, generateSalt } = await import('@/shared/crypto/argon2id')
+    const { derivePasswordKey } = await import('@/shared/crypto/argon2id')
+    const { generateSalt } = await import('@/shared/crypto/crypto-utils')
     const keySalt = generateSalt()
 
     const derivePromise = derivePasswordKey('test-password', keySalt)
@@ -150,7 +122,8 @@ describe('argon2id — Worker communication', () => {
   })
 
   it('deriveKey uses default params when not specified', async () => {
-    const { deriveKey, generateSalt } = await import('@/shared/crypto/argon2id')
+    const { deriveKey } = await import('@/shared/crypto/argon2id')
+    const { generateSalt } = await import('@/shared/crypto/crypto-utils')
     const salt = generateSalt()
 
     const derivePromise = deriveKey('test-password', salt)
@@ -168,7 +141,8 @@ describe('argon2id — Worker communication', () => {
   })
 
   it('deriveKey uses custom params when provided', async () => {
-    const { deriveKey, generateSalt } = await import('@/shared/crypto/argon2id')
+    const { deriveKey } = await import('@/shared/crypto/argon2id')
+    const { generateSalt } = await import('@/shared/crypto/crypto-utils')
     const salt = generateSalt()
     const customParams: Argon2Params = {
       memory: 32768,
@@ -192,7 +166,8 @@ describe('argon2id — Worker communication', () => {
   })
 
   it('deriveAuthHash and derivePasswordKey send different salts for same password', async () => {
-    const { deriveAuthHash, derivePasswordKey, generateSalt } = await import('@/shared/crypto/argon2id')
+    const { deriveAuthHash, derivePasswordKey } = await import('@/shared/crypto/argon2id')
+    const { generateSalt } = await import('@/shared/crypto/crypto-utils')
     const authSalt = generateSalt()
     const keySalt = generateSalt()
 
@@ -243,7 +218,8 @@ describe('argon2id — Worker error handling', () => {
   })
 
   it('handles worker error events', async () => {
-    const { deriveKey, generateSalt } = await import('@/shared/crypto/argon2id')
+    const { deriveKey } = await import('@/shared/crypto/argon2id')
+    const { generateSalt } = await import('@/shared/crypto/crypto-utils')
     const { Argon2Error } = await import('@/shared/crypto/errors')
     const salt = generateSalt()
 
@@ -488,7 +464,8 @@ describe('argon2id — terminateWorker', () => {
   })
 
   it('terminates the worker and rejects pending requests', async () => {
-    const { deriveKey, generateSalt, terminateWorker } = await import('@/shared/crypto/argon2id')
+    const { deriveKey, terminateWorker } = await import('@/shared/crypto/argon2id')
+    const { generateSalt } = await import('@/shared/crypto/crypto-utils')
     const { Argon2Error } = await import('@/shared/crypto/errors')
     const salt = generateSalt()
 
@@ -507,11 +484,3 @@ describe('argon2id — terminateWorker', () => {
     expect(() => terminateWorker()).not.toThrow()
   })
 })
-
-// ─── Helpers ─────────────────────────────────────────────────────────
-
-function toHex(buf: Uint8Array): string {
-  return Array.from(buf)
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('')
-}

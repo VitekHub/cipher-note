@@ -10,7 +10,6 @@ vi.mock('@/shared/crypto/argon2id', () => ({
   deriveAuthHash: vi.fn(),
   derivePasswordKey: vi.fn(),
   deriveKey: vi.fn(),
-  generateSalt: vi.fn(),
 }))
 
 // Mock @scure/bip39 — avoid loading 2048-word dictionary
@@ -27,7 +26,14 @@ vi.mock('@scure/bip39/wordlists/english.js', () => ({
   wordlist: MOCK_WORDLIST,
 }))
 
-import { deriveAuthHash, derivePasswordKey, deriveKey, generateSalt } from '@/shared/crypto/argon2id'
+// Mock crypto-utils module — allow generateSalt to be controlled per-test
+vi.mock('@/shared/crypto/crypto-utils', async () => ({
+  ...(await vi.importActual('@/shared/crypto/crypto-utils')),
+  generateSalt: vi.fn(),
+}))
+
+import { deriveAuthHash, derivePasswordKey, deriveKey } from '@/shared/crypto/argon2id'
+import { generateSalt } from '@/shared/crypto/crypto-utils'
 import { deriveRegistrationKeys } from '@/features/encryption/model/registration'
 
 function mockBytes(length: number, fill: number): Uint8Array<ArrayBuffer> {
@@ -107,7 +113,10 @@ describe('deriveRegistrationKeys', () => {
   it('unwraps master key with password key', async () => {
     const passwordKey = mockBytes(32, PASSWORD_KEY_FILL)
     const cryptoKey = await importKey(passwordKey)
-    const decrypted = await decrypt(result.wrappedMasterKey, cryptoKey, result.masterKeyIV, MASTER_KEY_PASSWORD_AAD)
+    const decrypted = await decrypt(result.wrappedMasterKey, cryptoKey, {
+      iv: result.masterKeyIV,
+      aad: MASTER_KEY_PASSWORD_AAD,
+    })
     expect(decrypted).toEqual(result.masterKey)
   })
 
@@ -120,12 +129,10 @@ describe('deriveRegistrationKeys', () => {
   })
 
   it('unwraps master key with recovery mnemonic', async () => {
-    const masterKey = await unwrapMasterKeyWithRecovery(
-      result.recoveryData.wrappedMasterKey,
-      result.mnemonic,
-      result.recoveryData.recoverySalt,
-      result.recoveryData.recoveryIV,
-    )
+    const masterKey = await unwrapMasterKeyWithRecovery(result.recoveryData.wrappedMasterKey, result.mnemonic, {
+      iv: result.recoveryData.recoveryIV,
+      salt: result.recoveryData.recoverySalt,
+    })
     expect(masterKey).toEqual(result.masterKey)
   })
 

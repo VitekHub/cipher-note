@@ -1,5 +1,5 @@
 import { getSupabase } from '@/shared/api/supabase-client'
-import { hexEncode } from '@/shared/crypto/memory'
+import { hexEncode } from '@/shared/crypto/crypto-utils'
 import type { RegistrationResult } from '@/shared/types/crypto.types'
 
 export async function uploadRegistrationData(data: RegistrationResult, userId: string): Promise<void> {

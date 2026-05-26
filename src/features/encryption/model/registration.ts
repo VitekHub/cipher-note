@@ -6,6 +6,7 @@
  */
 
 import { importKey, encrypt, exportKey } from '@/shared/crypto/aes-gcm'
+import { generateIV, generateSalt } from '@/shared/crypto/crypto-utils'
 import { generateMnemonic, wrapMasterKeyWithRecovery } from '@/shared/crypto/mnemonic'
 import {
   generateMasterKey,
@@ -30,16 +31,15 @@ export async function deriveRegistrationKeys(password: string): Promise<Registra
 
   // Wrap master key with password key (AAD prevents cross-context decryption)
   const passwordCryptoKey = await importKey(passwordKey)
-  const { ciphertext: wrappedMasterKey, iv: masterKeyIV } = await encrypt(
-    masterKey,
-    passwordCryptoKey,
-    undefined,
-    MASTER_KEY_PASSWORD_AAD,
-  )
+  const masterKeyIV = generateIV()
+  const wrappedMasterKey = await encrypt(masterKey, passwordCryptoKey, {
+    iv: masterKeyIV,
+    aad: MASTER_KEY_PASSWORD_AAD,
+  })
 
   // Recovery: generate mnemonic and wrap master key with recovery KEK
   const mnemonic = await generateMnemonic()
-  const recoveryData = await wrapMasterKeyWithRecovery(masterKey, mnemonic)
+  const recoveryData = await wrapMasterKeyWithRecovery(masterKey, mnemonic, { iv: generateIV(), salt: generateSalt() })
 
   const kek = await exportKey(hierarchy.kek)
 

@@ -6,20 +6,31 @@ export const CRYPTO_KEY_LENGTH = 32 as const
 /** System-wide cryptographic salt length in bytes (128 bits). */
 export const CRYPTO_SALT_LENGTH = 16 as const
 
+/** System-wide cryptographic iv length in bytes (96 bits). */
+export const CRYPTO_IV_LENGTH = 12 as const
+
+/** System-wide cryptographic field key version number. */
 export const FIELD_KEY_VERSION = 1 as const
 
 /** AAD context strings for master key wrapping — prevent cross-context decryption. */
 export const MASTER_KEY_PASSWORD_AAD = new TextEncoder().encode('master-key-password')
 export const MASTER_KEY_RECOVERY_AAD = new TextEncoder().encode('master-key-recovery')
 
-export interface WrappedKey {
-  wrappedKey: Uint8Array<ArrayBuffer>
+export interface AesGcmOptions {
   iv: Uint8Array<ArrayBuffer>
+  aad: Uint8Array<ArrayBuffer>
 }
 
-export interface WrappedFieldKey extends WrappedKey {
+export interface RecoveryWrapOptions {
+  iv: Uint8Array<ArrayBuffer>
+  salt: Uint8Array<ArrayBuffer>
+}
+
+export interface WrappedFieldKey {
   fieldName: string
   version: number
+  wrappedKey: Uint8Array<ArrayBuffer>
+  iv: Uint8Array<ArrayBuffer>
 }
 
 export interface EncryptedFieldData {
