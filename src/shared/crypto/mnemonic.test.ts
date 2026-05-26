@@ -1,13 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { DecryptionError, MnemonicError } from '@/shared/crypto/errors'
-import { generateIV } from '@/shared/crypto/aes-gcm'
+import { generateIV } from '@/shared/crypto/crypto-utils'
 import { generateMasterKey } from '@/shared/crypto/key-hierarchy'
 import type { RecoveryData } from '@/shared/types/crypto.types'
 
 // Mock Argon2id module to avoid WASM/worker dependency in tests
 vi.mock('@/shared/crypto/argon2id', () => ({
   deriveKey: vi.fn(),
-  generateSalt: vi.fn(),
 }))
 
 // Mock @scure/bip39 to avoid loading 2048-word dictionary in tests
@@ -24,7 +23,7 @@ vi.mock('@scure/bip39/wordlists/english.js', () => ({
   wordlist: MOCK_WORDLIST,
 }))
 
-import { deriveKey, generateSalt } from '@/shared/crypto/argon2id'
+import { deriveKey } from '@/shared/crypto/argon2id'
 import {
   generateMnemonic,
   validateMnemonic,
@@ -136,61 +135,28 @@ describe('mnemonic', () => {
   describe('wrapMasterKeyWithRecovery', () => {
     const RECOVERY_KEK_FILL = 0x11
 
-    it('generates salt when not provided', async () => {
+    it('wraps master key and returns RecoveryData with correct structure', async () => {
       const masterKey = generateMasterKey()
-      const recoverySalt = mockBytes(16, 0x01)
-      vi.mocked(generateSalt).mockReturnValueOnce(recoverySalt)
+      const salt = mockBytes(16, 0x04)
+      const iv = generateIV()
       vi.mocked(deriveKey).mockResolvedValueOnce(mockBytes(32, RECOVERY_KEK_FILL))
 
-      await wrapMasterKeyWithRecovery(masterKey, MOCK_VALID_MNEMONIC)
+      const result: RecoveryData = await wrapMasterKeyWithRecovery(masterKey, MOCK_VALID_MNEMONIC, { iv, salt })
 
-      expect(generateSalt).toHaveBeenCalledTimes(1)
-    })
-
-    it('uses provided recovery salt', async () => {
-      const masterKey = generateMasterKey()
-      const providedSalt = mockBytes(16, 0x02)
-      vi.mocked(deriveKey).mockResolvedValueOnce(mockBytes(32, RECOVERY_KEK_FILL))
-
-      await wrapMasterKeyWithRecovery(masterKey, MOCK_VALID_MNEMONIC, providedSalt)
-
-      expect(generateSalt).not.toHaveBeenCalled()
+      expect(result.wrappedMasterKey).toBeInstanceOf(Uint8Array)
+      expect(result.recoveryIV).toEqual(iv)
+      expect(result.recoverySalt).toEqual(salt)
     })
 
     it('calls deriveKey with mnemonic and salt', async () => {
       const masterKey = generateMasterKey()
       const salt = mockBytes(16, 0x03)
+      const iv = generateIV()
       vi.mocked(deriveKey).mockResolvedValueOnce(mockBytes(32, RECOVERY_KEK_FILL))
 
-      await wrapMasterKeyWithRecovery(masterKey, MOCK_VALID_MNEMONIC, salt)
+      await wrapMasterKeyWithRecovery(masterKey, MOCK_VALID_MNEMONIC, { iv, salt })
 
       expect(deriveKey).toHaveBeenCalledWith(MOCK_VALID_MNEMONIC, salt)
-    })
-
-    it('returns RecoveryData with correct structure', async () => {
-      const masterKey = generateMasterKey()
-      const salt = mockBytes(16, 0x04)
-      vi.mocked(deriveKey).mockResolvedValueOnce(mockBytes(32, RECOVERY_KEK_FILL))
-
-      const result: RecoveryData = await wrapMasterKeyWithRecovery(masterKey, MOCK_VALID_MNEMONIC, salt)
-
-      expect(result.wrappedMasterKey).toBeInstanceOf(Uint8Array)
-      expect(result.recoveryIV).toBeInstanceOf(Uint8Array)
-      expect(result.recoveryIV.byteLength).toBe(12)
-      expect(result.recoverySalt).toBeInstanceOf(Uint8Array)
-      expect(result.recoverySalt.byteLength).toBe(16)
-    })
-
-    it('recovery salt is 16 bytes when generated', async () => {
-      const masterKey = generateMasterKey()
-      const generatedSalt = mockBytes(16, 0x05)
-      vi.mocked(generateSalt).mockReturnValueOnce(generatedSalt)
-      vi.mocked(deriveKey).mockResolvedValueOnce(mockBytes(32, RECOVERY_KEK_FILL))
-
-      const result = await wrapMasterKeyWithRecovery(masterKey, MOCK_VALID_MNEMONIC)
-
-      expect(result.recoverySalt).toEqual(generatedSalt)
-      expect(result.recoverySalt.byteLength).toBe(16)
     })
   })
 
@@ -200,32 +166,14 @@ describe('mnemonic', () => {
     it('returns original master key after wrap and unwrap', async () => {
       const masterKey = generateMasterKey()
       const salt = mockBytes(16, 0x01)
+      const iv = generateIV()
       vi.mocked(deriveKey).mockResolvedValue(mockBytes(32, RECOVERY_KEK_FILL))
 
-      const wrapped = await wrapMasterKeyWithRecovery(masterKey, MOCK_VALID_MNEMONIC, salt)
-      const unwrapped = await unwrapMasterKeyWithRecovery(
-        wrapped.wrappedMasterKey,
-        MOCK_VALID_MNEMONIC,
-        wrapped.recoverySalt,
-        wrapped.recoveryIV,
-      )
-
-      expect(unwrapped).toEqual(masterKey)
-    })
-
-    it('works with generated salt', async () => {
-      const masterKey = generateMasterKey()
-      const generatedSalt = mockBytes(16, 0x06)
-      vi.mocked(generateSalt).mockReturnValueOnce(generatedSalt)
-      vi.mocked(deriveKey).mockResolvedValue(mockBytes(32, RECOVERY_KEK_FILL))
-
-      const wrapped = await wrapMasterKeyWithRecovery(masterKey, MOCK_VALID_MNEMONIC)
-      const unwrapped = await unwrapMasterKeyWithRecovery(
-        wrapped.wrappedMasterKey,
-        MOCK_VALID_MNEMONIC,
-        wrapped.recoverySalt,
-        wrapped.recoveryIV,
-      )
+      const wrapped = await wrapMasterKeyWithRecovery(masterKey, MOCK_VALID_MNEMONIC, { iv, salt })
+      const unwrapped = await unwrapMasterKeyWithRecovery(wrapped.wrappedMasterKey, MOCK_VALID_MNEMONIC, {
+        iv: wrapped.recoveryIV,
+        salt: wrapped.recoverySalt,
+      })
 
       expect(unwrapped).toEqual(masterKey)
     })
@@ -235,46 +183,58 @@ describe('mnemonic', () => {
     it('throws DecryptionError with wrong mnemonic', async () => {
       const masterKey = generateMasterKey()
       const salt = mockBytes(16, 0x01)
+      const iv = generateIV()
 
       // Wrap with one KEK
       vi.mocked(deriveKey).mockResolvedValueOnce(mockBytes(32, 0x11))
-      const wrapped = await wrapMasterKeyWithRecovery(masterKey, 'correct mnemonic', salt)
+      const wrapped = await wrapMasterKeyWithRecovery(masterKey, 'correct mnemonic', { iv, salt })
 
       // Try to unwrap with a different KEK (wrong mnemonic derives different key)
       vi.mocked(deriveKey).mockResolvedValueOnce(mockBytes(32, 0x22))
 
       await expect(
-        unwrapMasterKeyWithRecovery(wrapped.wrappedMasterKey, 'wrong mnemonic', salt, wrapped.recoveryIV),
+        unwrapMasterKeyWithRecovery(wrapped.wrappedMasterKey, 'wrong mnemonic', {
+          iv: wrapped.recoveryIV,
+          salt: wrapped.recoverySalt,
+        }),
       ).rejects.toThrow(DecryptionError)
     })
 
     it('throws DecryptionError with tampered wrappedMasterKey', async () => {
       const masterKey = generateMasterKey()
       const salt = mockBytes(16, 0x01)
+      const iv = generateIV()
 
       vi.mocked(deriveKey).mockResolvedValue(mockBytes(32, 0x11))
-      const wrapped = await wrapMasterKeyWithRecovery(masterKey, MOCK_VALID_MNEMONIC, salt)
+      const wrapped = await wrapMasterKeyWithRecovery(masterKey, MOCK_VALID_MNEMONIC, { iv, salt })
 
       // Tamper with the wrapped key
       const tampered = new Uint8Array(wrapped.wrappedMasterKey) as Uint8Array<ArrayBuffer>
       tampered[0] ^= 0xff
 
       await expect(
-        unwrapMasterKeyWithRecovery(tampered, MOCK_VALID_MNEMONIC, salt, wrapped.recoveryIV),
+        unwrapMasterKeyWithRecovery(tampered, MOCK_VALID_MNEMONIC, {
+          iv: wrapped.recoveryIV,
+          salt: wrapped.recoverySalt,
+        }),
       ).rejects.toThrow(DecryptionError)
     })
 
     it('throws DecryptionError with wrong recoveryIV', async () => {
       const masterKey = generateMasterKey()
       const salt = mockBytes(16, 0x01)
+      const iv = generateIV()
 
       vi.mocked(deriveKey).mockResolvedValue(mockBytes(32, 0x11))
-      const wrapped = await wrapMasterKeyWithRecovery(masterKey, MOCK_VALID_MNEMONIC, salt)
+      const wrapped = await wrapMasterKeyWithRecovery(masterKey, MOCK_VALID_MNEMONIC, { iv, salt })
 
       const wrongIV = generateIV()
 
       await expect(
-        unwrapMasterKeyWithRecovery(wrapped.wrappedMasterKey, MOCK_VALID_MNEMONIC, salt, wrongIV),
+        unwrapMasterKeyWithRecovery(wrapped.wrappedMasterKey, MOCK_VALID_MNEMONIC, {
+          iv: wrongIV,
+          salt: wrapped.recoverySalt,
+        }),
       ).rejects.toThrow(DecryptionError)
     })
   })

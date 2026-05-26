@@ -6,7 +6,7 @@ import { uploadRegistrationData } from '@/shared/api/supabase-registration'
 import { getLoginSalts, getMasterKeyEnvelope, getFieldKeys } from '@/shared/api/supabase-keys'
 import { deriveLoginCredentials } from '@/shared/crypto/split-kdf'
 import { deriveLoginKeys } from '@/features/encryption/model/login'
-import { hexDecode, hexEncode, encodeFieldKeysToHex } from '@/shared/crypto/memory'
+import { hexDecode, hexEncode, encodeFieldKeysToHex } from '@/shared/crypto/crypto-utils'
 import { exportKey } from '@/shared/crypto/aes-gcm'
 import { clearVault } from '@/features/encryption/model/vault-lock'
 

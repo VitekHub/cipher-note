@@ -1,7 +1,7 @@
 import { create } from 'zustand'
-import { devtools } from 'zustand/middleware'
 import type { QueryClient } from '@tanstack/react-query'
 import type { CachedVaultEnvelope } from '@/shared/types/api.types'
+import { terminateWorker } from '@/shared/crypto/argon2id'
 
 interface CryptoState {
   masterKey: string | null
@@ -40,46 +40,34 @@ function setQueryClient(client: QueryClient) {
   queryClientRef = client
 }
 
-const useCryptoStore = create<CryptoState & CryptoActions>()(
-  devtools(
-    (set) => ({
-      ...initialState,
-      setKeys: (masterKey, kek, fieldKeys) =>
-        set(
-          {
-            masterKey,
-            kek,
-            fieldKeys,
-            isVaultLocked: false,
-            lastActivity: Date.now(),
-          },
-          false,
-          'crypto/setKeys',
-        ),
-      setCachedEnvelope: (envelope) => set({ cachedEnvelope: envelope }, false, 'crypto/setCachedEnvelope'),
-      lockVault: () => {
-        set(
-          {
-            masterKey: null,
-            kek: null,
-            fieldKeys: {},
-            isVaultLocked: true,
-            lastActivity: 0,
-          },
-          false,
-          'crypto/lockVault',
-        )
-        queryClientRef?.removeQueries({ queryKey: ['field'] })
-      },
-      clearVault: () => {
-        set(initialState, false, 'crypto/clearVault')
-        queryClientRef?.removeQueries({ queryKey: ['field'] })
-      },
-      updateActivity: () => set({ lastActivity: Date.now() }, false, 'crypto/updateActivity'),
+const useCryptoStore = create<CryptoState & CryptoActions>()((set) => ({
+  ...initialState,
+  setKeys: (masterKey, kek, fieldKeys) =>
+    set({
+      masterKey,
+      kek,
+      fieldKeys,
+      isVaultLocked: false,
+      lastActivity: Date.now(),
     }),
-    { name: 'CryptoStore' },
-  ),
-)
+  setCachedEnvelope: (envelope) => set({ cachedEnvelope: envelope }),
+  lockVault: () => {
+    set({
+      masterKey: null,
+      kek: null,
+      fieldKeys: {},
+      isVaultLocked: true,
+      lastActivity: 0,
+    })
+    queryClientRef?.removeQueries({ queryKey: ['field'] })
+  },
+  clearVault: () => {
+    set(initialState)
+    queryClientRef?.removeQueries({ queryKey: ['field'] })
+    terminateWorker()
+  },
+  updateActivity: () => set({ lastActivity: Date.now() }),
+}))
 
 export { useCryptoStore, selectFieldKey, hasCachedEnvelope, setQueryClient }
 export type { CryptoState, CryptoActions }

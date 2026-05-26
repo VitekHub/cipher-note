@@ -153,13 +153,12 @@ cipher-note-react/
         # etc. — each shadcn component in its own file, imported directly
       crypto/
         aes-gcm.ts            # AES-256-GCM encrypt/decrypt/importKey/exportKey
-        key-wrap.ts           # Key wrapping/unwrapping with AAD
         argon2id.ts           # Argon2id derivation via argon2-browser bundled build (lazy-loaded)
         hkdf.ts               # HKDF-SHA-256 sub-key derivation
         key-hierarchy.ts     # Master key → KEK → field keys orchestration
         split-kdf.ts          # Split KDF (auth + key derivation from password)
         mnemonic.ts           # BIP-39 generate/validate/wrap/unwrap (lazy-loaded)
-        memory.ts             # hexEncode, hexDecode, zeroFill, copyToUint8Array
+        crypto-utils.ts       # hexEncode, hexDecode, generateIV, generateSalt, generateKey, encodeAAD, zeroFill, copyToUint8Array
       api/
         api.types.ts          # IApiAdapter interface
         supabase-client.ts    # Supabase client initialization only
@@ -195,7 +194,7 @@ cipher-note-react/
             settings.json
             crypto.json
       types/
-        crypto.types.ts       # WrappedKey, FieldKey, EncryptedField, etc.
+        crypto.types.ts       # AesGcmOptions, RecoveryWrapOptions, WrappedFieldKey, EncryptedField, etc.
         api.types.ts          # ServerKeys, ServerFieldKey, etc.
         entities/
           user.types.ts       # User entity types
@@ -332,19 +331,19 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 - Install `zustand`, `@tanstack/react-query`
 - Create `src/app/Providers.tsx` — QueryClientProvider + i18n provider
 - Create Zustand stores:
-  - `src/features/auth/model/auth-store.ts` — session, user, isAuthenticated
-  - `src/features/encryption/model/crypto-store.ts` — masterKey, KEK, fieldKeys, isVaultLocked (memory only, no persist). **Use plain `Record<string, string>` (hex-encoded) for fieldKeys instead of `Map<string, Uint8Array>`** — Zustand uses `Object.is` for shallow comparison, which fails on Map mutations and Uint8Array references. Hex strings are comparable by value and trigger correct re-renders.
+  - `src/features/auth/model/auth-store.ts` — session, user, isAuthenticated. **No devtools middleware** — auth tokens must not be exposed in browser DevTools.
+  - `src/features/encryption/model/crypto-store.ts` — masterKey, KEK, fieldKeys, isVaultLocked (memory only, no persist). **Use plain `Record<string, string>` (hex-encoded) for fieldKeys instead of `Map<string, Uint8Array>`** — Zustand uses `Object.is` for shallow comparison, which fails on Map mutations and Uint8Array references. Hex strings are comparable by value and trigger correct re-renders. **No devtools middleware** — crypto keys must not be exposed in browser DevTools.
   - `src/features/settings/model/ui-store.ts` — sidebarOpen, activeField. **Do NOT store `language` here** — `i18next` is the source of truth for language state. Only store UI state that i18next doesn't manage.
 - Create adapter interfaces:
   - `src/shared/auth/auth.types.ts` — `IAuthAdapter` interface: `login(username, authHash)`, `logout()`, `getSession()`, `signup(username, authHash)`, `recoverPassword()`
   - `src/shared/api/api.types.ts` — `IApiAdapter` interface: `getMasterKeyEnvelope(userId)`, `getFieldKeys(userId)`, `getField(userId, fieldName)`, `saveField(userId, fieldName, blob, iv)`, `saveWrappedKey(userId, data)`, `getRecovery(userId)`
   - `src/shared/realtime/realtime.types.ts` — `IRealtimeAdapter` interface: `subscribe(userId, callbacks)`, `unsubscribe()`
-- Create `src/shared/types/crypto.types.ts` — TypeScript types for all crypto operations (WrappedKey, FieldKey, EncryptedField, KeyVersion, etc.)
+- Create `src/shared/types/crypto.types.ts` — TypeScript types for all crypto operations (AesGcmOptions, RecoveryWrapOptions, WrappedFieldKey, EncryptedField, KeyVersion, etc.)
 
 **Tests:**
 - Verify Zustand stores initialize correctly
 - Verify adapter interfaces compile (no implementation yet)
-- Verify crypto types are consistent (WrappedKey, FieldKey, etc.)
+- Verify crypto types are consistent (AesGcmOptions, WrappedFieldKey, etc.)
 - Verify fieldKeys store uses plain Record (not Map) and hex strings (not Uint8Array)
 
 ---
@@ -570,22 +569,30 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 
 ### Step 12 — AES-256-GCM Encrypt/Decrypt ✅
 
-**Goal:** Web Crypto API wrapper for AES-256-GCM encryption and decryption of field content.
+**Goal:** Web Crypto API wrapper for AES-256-GCM encryption and decryption of field content, plus shared crypto utilities for random byte generation and hex encoding.
 
 **Code:**
+- `src/shared/crypto/crypto-utils.ts`:
+  - `generateIV(): Uint8Array<ArrayBuffer>` — generate 12-byte random IV for AES-GCM
+  - `generateSalt(): Uint8Array<ArrayBuffer>` — generate 16-byte random salt for Argon2id
+  - `generateKey(): Uint8Array<ArrayBuffer>` — generate 32-byte random key for AES-256
+  - `hexEncode(data: Uint8Array): string` — encode Uint8Array as hex string for Zustand storage
+  - `hexDecode(hex: string): Uint8Array` — decode hex string back to Uint8Array for crypto operations
+  - `zeroFill(buffer: Uint8Array): void` — securely overwrite array with zeros
+  - `copyToUint8Array(data: ArrayBuffer | Uint8Array): Uint8Array<ArrayBuffer>` — safe copy of Web Crypto results into a fresh owned buffer before hex-encoding
 - `src/shared/crypto/aes-gcm.ts`:
-  - `generateIV(): Uint8Array<ArrayBuffer>` — generate 12-byte random IV using `crypto.getRandomValues`
-  - `encrypt(plaintext: Uint8Array<ArrayBuffer>, key: CryptoKey, iv?: Uint8Array<ArrayBuffer>): Promise<{ciphertext: Uint8Array<ArrayBuffer>, iv: Uint8Array<ArrayBuffer>}>`
-  - `decrypt(ciphertext: Uint8Array<ArrayBuffer>, key: CryptoKey, iv: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>>` — wraps all `crypto.subtle.decrypt` failures in `DecryptionError` (from `shared/crypto/errors`), preserving original error as `cause`
+  - `encrypt(plaintext: Uint8Array<ArrayBuffer>, key: CryptoKey, options: AesGcmOptions): Promise<Uint8Array<ArrayBuffer>>` — encrypt with explicit IV and AAD (both required). Returns ciphertext only; the caller manages the IV.
+  - `decrypt(ciphertext: Uint8Array<ArrayBuffer>, key: CryptoKey, options: AesGcmOptions): Promise<Uint8Array<ArrayBuffer>>` — wraps all `crypto.subtle.decrypt` failures in `DecryptionError` (from `shared/crypto/errors`), preserving original error as `cause`
   - `importKey(rawKey: Uint8Array<ArrayBuffer>): Promise<CryptoKey>` — validates 32-byte key length, then import as AES-GCM CryptoKey with `extractable: true`
   - `exportKey(key: CryptoKey): Promise<Uint8Array<ArrayBuffer>>` — export CryptoKey to raw bytes
-  - `generateKey(): Promise<CryptoKey>` — generate random 256-bit AES-GCM key with `extractable: true`
+- `AesGcmOptions` type in `crypto.types.ts`: `{ iv: Uint8Array<ArrayBuffer>, aad: Uint8Array<ArrayBuffer> }` — callers always provide IV and AAD explicitly, no hidden randomness
 - All operations use Web Crypto API (`crypto.subtle`)
-- IV is always 12 bytes (96 bits)
-- Use `crypto.subtle.encrypt` with `{ name: 'AES-GCM', iv }` and `crypto.subtle.decrypt` similarly
+- IV is always 12 bytes (96 bits), generated by caller via `generateIV()` from `crypto-utils.ts`
+- Use `crypto.subtle.encrypt` with `{ name: 'AES-GCM', iv, additionalData: aad }` and `crypto.subtle.decrypt` similarly
 - **TypeScript 6.0 note:** All `Uint8Array` type annotations in Web Crypto function signatures must use `Uint8Array<ArrayBuffer>` (not bare `Uint8Array` which expands to `Uint8Array<ArrayBufferLike>`). The Web Crypto API expects `BufferSource` which requires `ArrayBufferView<ArrayBuffer>`, excluding `SharedArrayBuffer`. This applies to all future crypto modules that pass `Uint8Array` to `crypto.subtle` methods.
 - **Error handling:** `decrypt` wraps all failures (wrong key, wrong IV, tampered data) in `DecryptionError` from `shared/crypto/errors.ts`, passing `undefined` for the message (uses default `'crypto:errors.decryptFailed'`) and preserving the original `OperationError` as `cause`. The `DecryptionError` constructor accepts `ErrorOptions` as a second parameter to support this.
 - **`importKey` validation:** Explicitly checks `rawKey.length !== 32` and throws a descriptive error, because the Web Crypto API accepts 128-bit keys for AES-GCM (which is valid AES but wrong for our AES-256 use case).
+- **`copyToUint8Array` usage:** Defined in `crypto-utils.ts` but only used in `aes-gcm.ts`. Web Crypto's `encrypt`, `decrypt`, and `exportKey` return `ArrayBuffer`, which can be neutered/transferred. `copyToUint8Array` wraps these calls and provides type narrowing to `Uint8Array<ArrayBuffer>`. Other crypto modules construct `Uint8Array` from scratch so they already own the buffer.
 
 **Tests:**
 - Encrypt then decrypt returns original plaintext
@@ -595,9 +602,11 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 - Tampered ciphertext (modified byte) causes decrypt to throw `DecryptionError`
 - `DecryptionError` preserves original error as `cause`
 - Round-trip with Uint8Array of various sizes (0 bytes, 1 byte, 100 bytes, 10000 bytes)
-- `generateKey()` produces 256-bit (32-byte) key
 - `importKey` / `exportKey` round-trip preserves key bytes
 - `importKey` with non-32-byte key throws error
+- AAD round-trip: encrypt with AAD, decrypt with same AAD succeeds
+- AAD mismatch: decrypt with different AAD throws `DecryptionError`
+- Different AAD values produce different ciphertexts with same IV
 
 ---
 
@@ -606,26 +615,24 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 **Goal:** AES-256-GCM key wrapping with AAD for version protection and rollback detection.
 
 **Code:**
-- Extend `encrypt` and `decrypt` in the AES-GCM module with optional `aad?: Uint8Array<ArrayBuffer>` parameter (backward-compatible: callers without AAD work identically). Use `AesGcmParams` type for the algorithm object so `additionalData` is allowed. When AAD is provided, set `algorithm.additionalData = aad`
-- `src/shared/crypto/key-wrap.ts`:
-  - `wrapKey(plaintextKey: Uint8Array<ArrayBuffer>, wrappingKey: CryptoKey, aad: Uint8Array<ArrayBuffer>): Promise<WrappedKey>`
-    - Generate random 12-byte IV
-    - Encrypt `plaintextKey` with `wrappingKey` using AES-256-GCM with AAD
-    - Return `{ wrappedKey, iv }`
-  - `unwrapKey(wrappedKey: Uint8Array<ArrayBuffer>, wrappingKey: CryptoKey, iv: Uint8Array<ArrayBuffer>, aad: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>>`
-    - Decrypt `wrappedKey` with `wrappingKey` using AES-256-GCM with AAD — throws `DecryptionError` on wrong key, wrong IV, wrong AAD, or tampered data
-    - Return raw key bytes
-  - `encodeAAD(fieldName: string, version: number): Uint8Array<ArrayBuffer>` — length-prefixed binary encoding: `[2-byte name length BE][name UTF-8 bytes][4-byte version BE]`. Collision-free regardless of field name characters
-- `WrappedKey` type in `crypto.types.ts` uses `Uint8Array<ArrayBuffer>` (not bare `Uint8Array`) for Web Crypto compatibility
+- `src/shared/crypto/crypto-utils.ts`:
+  - `encodeAAD(fieldName: string, version: number): Uint8Array<ArrayBuffer>` — length-prefixed binary encoding: `[2-byte name length BE][name UTF-8 bytes][4-byte version BE]`. Collision-free regardless of field name characters. Throws on negative version or field name exceeding 255 bytes.
+- Key wrapping is done directly with `encrypt`/`decrypt` from `aes-gcm.ts` using `AesGcmOptions` (explicit IV + AAD). Callers generate IVs via `generateIV()` and construct AAD via `encodeAAD()`. No separate `wrapKey`/`unwrapKey` functions — the `encrypt`/`decrypt` API is sufficient and avoids a thin wrapper layer.
+- `AesGcmOptions` type in `crypto.types.ts`: `{ iv: Uint8Array<ArrayBuffer>, aad: Uint8Array<ArrayBuffer> }` — used by both `encrypt` and `decrypt`
+- `WrappedFieldKey` type in `crypto.types.ts`: `{ fieldName: string, version: number, wrappedKey: Uint8Array<ArrayBuffer>, iv: Uint8Array<ArrayBuffer> }` — flat structure (no nested `WrappedKey`)
 
 **Tests:**
-- Wrap then unwrap returns original key
-- Unwrap with wrong wrapping key throws
+- `encodeAAD` produces different bytes for different versions of same field
+- `encodeAAD` produces different bytes for same version of different fields
+- `encodeAAD` is deterministic for same inputs
+- `encodeAAD` encodes as `[2-byte name length BE][name UTF-8][4-byte version BE]`
+- `encodeAAD` throws on negative version
+- `encodeAAD` throws on field name exceeding 255 bytes
+- `generateIV` produces 12-byte unique values
+- `generateSalt` produces 16-byte unique values
+- `generateKey` produces 32-byte unique values
+- Wrap then unwrap via `encrypt`/`decrypt` returns original key
 - Unwrap with wrong AAD (different version) throws — verifies rollback protection
-- Unwrap with tampered wrapped key throws
-- Unwrap with wrong IV throws
-- Different AAD values produce different wrapped keys
-- AAD encoding: `encodeAAD("note", 1)` ≠ `encodeAAD("note", 2)` ≠ `encodeAAD("website", 1)`
 
 ---
 
@@ -644,7 +651,7 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
   - `derivePasswordKey(password: string, keySalt: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>>`
     - Derive password key for wrapping the master key
     - Returns 32-byte key
-  - `generateSalt(): Uint8Array<ArrayBuffer>` — generate 16-byte random salt
+- `generateSalt()` and `generateIV()` are in `crypto-utils.ts`, not this module — Argon2id only handles derivation, not random byte generation
 - `Argon2Params` type in `src/shared/types/crypto.types.ts`
 - Worker message types (`Argon2DeriveRequest`, `Argon2DeriveResult`, `Argon2DeriveError`, `Argon2WorkerResponse`) in shared types — used by both the main module and the worker
 - **Web Worker** (`argon2id.worker.ts`) — handles `argon2-browser` lazy-loading and Argon2id computation. The main thread sends `{password, salt, params}` to the worker and receives the derived key back. The Web Worker lazy-loads `argon2-browser/dist/argon2-bundled.min.js` via dynamic `import()` (not the default `argon2-browser` import — the default tries to load a `.wasm` file which Vite cannot handle; the bundled build embeds WASM as base64 in JS) and caches the module reference for subsequent calls.
@@ -657,7 +664,6 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 - Same password + different salt → different output
 - Output is always 32 bytes
 - `deriveAuthHash` and `derivePasswordKey` with same password but different salts produce different results
-- `generateSalt()` produces 16-byte unique salts
 - Performance: derivation completes within 5 seconds on modern hardware
 
 ---
@@ -685,9 +691,10 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
     - Returns `{ masterKey, kek: CryptoKey, signingKeySeed }`
   - `wrapFieldKeys(fieldKeys: Map<string, Uint8Array<ArrayBuffer>>, kek: CryptoKey, versions: Map<string, number>): Promise<WrappedFieldKey[]>`
     - Validates version presence for each field (throws if missing)
-    - Wrap all field keys with KEK using AAD (field_name + version) in parallel via `Promise.all`
+    - Generate IV via `generateIV()` and AAD via `encodeAAD(fieldName, version)` for each key
+    - Wrap all field keys with KEK using `encrypt` from `aes-gcm.ts` with `{ iv, aad }` in parallel via `Promise.all`
   - `unwrapFieldKeys(wrappedKeys: WrappedFieldKey[], kek: CryptoKey): Promise<Map<string, Uint8Array<ArrayBuffer>>>`
-    - Unwrap all field keys in parallel via `Promise.all`, verify AAD for each (throws DecryptionError on wrong version/key)
+    - Unwrap all field keys in parallel via `decrypt` from `aes-gcm.ts` with `{ iv, aad }` — throws DecryptionError on wrong version/key
   - `KeyHierarchy` type in `src/shared/types/crypto.types.ts`
 - `WrappedFieldKey` type: `{ fieldName: string, version: number, wrappedKey: Uint8Array<ArrayBuffer>, iv: Uint8Array<ArrayBuffer> }`
 
@@ -714,18 +721,17 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 **Code:**
 - Split KDF module:
   - `deriveAuthCredentials(password: string): Promise<AuthCredentials>`
-    - Generate `auth_salt` (16 bytes) and `key_salt` (16 bytes) via `generateSalt()`
+    - Generate `auth_salt` (16 bytes) and `key_salt` (16 bytes) via `generateSalt()` from `crypto-utils.ts`
     - Derive `auth_hash` and `password_key` in parallel via `Promise.all`
     - Return `{ authHash, passwordKey, authSalt, keySalt }`
   - `deriveLoginCredentials(password: string, authSalt: Uint8Array<ArrayBuffer>, keySalt: Uint8Array<ArrayBuffer>): Promise<LoginCredentials>`
     - Given existing salts (from server), derive both keys in parallel
     - Return `{ authHash, passwordKey }`
   - `changePassword(oldPassword: string, newPassword: string, keySalt: Uint8Array<ArrayBuffer>, wrappedMasterKey: Uint8Array<ArrayBuffer>, masterKeyIV: Uint8Array<ArrayBuffer>): Promise<PasswordChangeResult>`
-    - Derive old password key → import as CryptoKey → decrypt master key (no AAD)
+    - Derive old password key → import as CryptoKey → decrypt master key (AAD = "master-key-password'")
     - Generate new auth_salt and key_salt
     - Derive new auth_hash and password_key in parallel
-    - Re-wrap master key with new password key using AES-256-GCM (no AAD)
-    - Master key wrapping uses no AAD because the master key has no field name or version concept, unlike field key wrapping which uses AAD(fieldName, version)
+    - Re-wrap master key with new password key using AES-256-GCM (AAD = "master-key-password'")
     - Return `{ newAuthHash, newAuthSalt, newKeySalt, newWrappedMasterKey, newMasterKeyIV }`
 - `AuthCredentials`, `LoginCredentials`, `PasswordChangeResult` types already exist in crypto.types.ts — no changes needed
 - `derive-placeholder.ts` remains in place until Step 21 replaces its consumer in `auth-flow.ts` `loginUser`
@@ -736,7 +742,7 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 - `changePassword`: round-trip — unwrap with old key, re-wrap with new key, verify master key unchanged
 - `changePassword`: new salts differ from old salts
 - `changePassword`: throws `DecryptionError` if wrong old password (cannot unwrap master key)
-- `changePassword`: calls `generateSalt` exactly twice for new salts
+- `changePassword`: calls `generateSalt` (from `crypto-utils`) exactly twice for new salts
 
 ---
 
@@ -750,16 +756,17 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
   - `validateMnemonic(mnemonic: string): Promise<boolean>` — validate checksum and word list
   - `mnemonicToSeed(mnemonic: string): Promise<Uint8Array<ArrayBuffer>>` — convert mnemonic to 256-bit seed (for recovery_KEK derivation)
   - `deriveRecoveryKEK(mnemonic: string, recoverySalt: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>>` — Argon2id(mnemonic_phrase, recovery_salt) → recovery KEK
-  - `wrapMasterKeyWithRecovery(masterKey: Uint8Array<ArrayBuffer>, mnemonic: string, recoverySalt?: Uint8Array<ArrayBuffer>): Promise<RecoveryData>`
-    - Generate recovery_salt if not provided
+  - `wrapMasterKeyWithRecovery(masterKey: Uint8Array<ArrayBuffer>, mnemonic: string, options: RecoveryWrapOptions): Promise<RecoveryData>`
+    - `options` contains `{ iv, salt }` — both provided by caller (generated via `generateIV()` and `generateSalt()` from `crypto-utils.ts`)
     - Derive recovery_KEK from mnemonic + salt
-    - Wrap master key with recovery_KEK using AES-256-GCM
-    - Return `{ wrappedMasterKey, recoveryIV, recoverySalt }`
-  - `unwrapMasterKeyWithRecovery(wrappedMasterKey: Uint8Array<ArrayBuffer>, mnemonic: string, recoverySalt: Uint8Array<ArrayBuffer>, recoveryIV: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>>`
+    - Wrap master key with recovery_KEK using `encrypt` from `aes-gcm.ts` with `{ iv, aad: MASTER_KEY_RECOVERY_AAD }`
+    - Return `{ wrappedMasterKey, recoveryIV: iv, recoverySalt: salt }`
+  - `unwrapMasterKeyWithRecovery(wrappedMasterKey: Uint8Array<ArrayBuffer>, mnemonic: string, options: RecoveryWrapOptions): Promise<Uint8Array<ArrayBuffer>>`
+    - `options` contains `{ iv, salt }` — same structure as wrap
     - Derive recovery_KEK from mnemonic + salt
-    - Unwrap master key
+    - Unwrap master key using `decrypt` from `aes-gcm.ts` with `{ iv, aad: MASTER_KEY_RECOVERY_AAD }`
     - Return master key bytes
-- `RecoveryData` type in crypto.types.ts
+- `RecoveryData` and `RecoveryWrapOptions` types in crypto.types.ts
 - **Code splitting:** `@scure/bip39` contains a 2048-word dictionary and must be lazy-loaded via dynamic `import()`. The `generateMnemonic`, `validateMnemonic`, and `mnemonicToSeed` functions should dynamically import `@scure/bip39` internally rather than importing it at module level. This ensures the word list is only loaded when the user is registering or recovering their account.
 
 **Tests:**
@@ -769,7 +776,6 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 - `wrapMasterKeyWithRecovery` → `unwrapMasterKeyWithRecovery` returns original master key
 - Different mnemonics cannot unwrap (wrong mnemonic throws)
 - Tampered wrapped key cannot be unwrapped (integrity check)
-- Recovery salt is 16 bytes and unique per generation
 
 ---
 
@@ -835,25 +841,24 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 **Code:**
 - `src/features/encryption/model/registration.ts`:
   - `deriveRegistrationKeys(password: string): Promise<RegistrationResult>` — pure crypto function with no side effects (no auth calls, no DB writes). The auth orchestration (signup, upload, store population) remains in the auth operations module.
-    1. Generate salts: auth_salt, key_salt
+    1. Generate salts (auth_salt, key_salt) via `generateSalt()` from `crypto-utils.ts`
     2. Derive auth credentials: auth_hash + password_key
     3. Generate master key (256-bit random)
     4. Derive key hierarchy: KEK, signing key seed
     5. Generate field keys: note, website, email (256-bit random each, version 1)
-    6. Wrap field keys with KEK (AAD = field_name + version)
-    7. Wrap master key with password key (no AAD)
+    6. Wrap field keys with KEK using `encrypt` (AAD = `encodeAAD(field_name, version)`, IV via `generateIV()`)
+    7. Wrap master key with password key using `encrypt` (AAD = `MASTER_KEY_PASSWORD_AAD`, IV via `generateIV()`)
     8. Generate recovery mnemonic
-    9. Wrap master key with recovery KEK
+    9. Wrap master key with recovery KEK using `encrypt` (AAD = `MASTER_KEY_RECOVERY_AAD`, IV via `generateIV()`)
     10. Export KEK CryptoKey to raw bytes (for hex-encoding into crypto store)
     11. Return all data needed to upload to server
 - `RegistrationResult` type: all wrapped keys, salts, IVs, recovery data, mnemonic. `kek` is `Uint8Array<ArrayBuffer>` (exported from CryptoKey), not `CryptoKey`
 - `src/shared/api/supabase-registration.ts`:
   - `uploadRegistrationData(data: RegistrationResult, userId: string): Promise<void>`
     - Call Supabase client directly to store: keys, field_keys, recovery (hex-encode all binary values)
-- `src/shared/crypto/memory.ts`:
-  - `hexEncode(data: Uint8Array): string` — encode Uint8Array as hex string for Zustand storage
-  - `hexDecode(hex: string): Uint8Array` — decode hex string back to Uint8Array for crypto operations
-  - `zeroFill(buffer: Uint8Array): void` — securely overwrite array with zeros
+- `src/shared/crypto/crypto-utils.ts` (defined in Step 12):
+  - `hexEncode` / `hexDecode` — used by registration flow to encode binary keys for Zustand storage and decode server hex strings for crypto operations
+  - `zeroFill` — securely overwrite sensitive key material after use
 - `src/app/flows/auth-flow.ts`
   - `signUpUser(username: string, password: string): Promise<string>` — orchestrates the full registration flow: derives keys, signs up via auth adapter, uploads registration data, populates crypto store with hex-encoded keys, returns mnemonic as a string. Sets auth store loading state. On upload failure after successful signup, attempts best-effort cleanup via `authAdapter.logout()`
   - `loginUser`, `logoutUser`, `restoreSession`, `subscribeToAuthChanges` — move from `features/auth/model/auth-credentials.ts` (and delete). These functions will be replaced by proper flow-level implementations in Steps 21–23.
@@ -913,8 +918,8 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
   - `LoginResult` type: `{ masterKey, kek (CryptoKey), fieldKeys (Map) }` — no authHash (caller already has it)
 - Auth flow orchestration (in existing auth-flow module):
   - `loginUser(username, password)` — fetches salts via pre-auth RPC, derives credentials, authenticates, fetches key material, unwraps via `deriveLoginKeys`, populates crypto store with hex-encoded keys
-  - `logoutUser` — calls `lockVault()` before resetting auth store
-  - `subscribeToAuthChanges` — calls `lockVault()` when auth state becomes null (sign-out from another tab)
+  - `logoutUser` — calls `clearVault()` before resetting auth store
+  - `subscribeToAuthChanges` — calls `clearVault()` when auth state becomes null (sign-out from another tab)
 - Vault lock/unlock module:
   - `lockVault(): void` — delegates to crypto store's `lockVault()` (zeros keys, purges TanStack Query cache)
   - `unlockVault(password): Promise<void>` — fetches key material (user already authenticated), re-derives credentials, unwraps via `deriveLoginKeys`, populates crypto store
@@ -981,24 +986,27 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 
 ---
 
-### Step 23 — Crypto Session Store (Zustand) + Query Cache Purge
+### Step 23 — Crypto Session Store (Zustand) + Query Cache Purge ✅
 
-**Goal:** Verify and finalize the Zustand crypto store — already has hex-encoded keys, `lockVault()` with query cache purge, `setKeys`, `updateActivity`, and `selectFieldKey`.
+**Goal:** Verify and finalize the Zustand crypto store — already has hex-encoded keys, `lockVault()` with query cache purge, `setKeys`, `updateActivity`, and `selectFieldKey`. Remove devtools middleware from stores holding sensitive data (auth store, crypto store) since Redux DevTools would expose secrets in browser devtools.
 
 **Code:**
-- `src/shared/crypto/memory.ts`:
-  - Add `copyToUint8Array(data: ArrayBuffer | Uint8Array): Uint8Array` — safe copy for storing in Zustand
-- Verify that no crypto keys appear in localStorage, sessionStorage, or IndexedDB
-- Wire `setQueryClient(client)` call in app providers so `lockVault()` can purge the TanStack Query cache
+- Verify `copyToUint8Array` (in `crypto-utils.ts`) is used in AES-GCM module for `encrypt`, `decrypt`, `exportKey` results (replacing bare `new Uint8Array(buffer)` calls)
+- Verify that `devtools` middleware is not in auth store and crypto store — these hold secrets (tokens, crypto keys) that must not be visible in browser DevTools. Only non-sensitive stores (UI store, vault dialog store) keep devtools with named actions
+- `lockVault()` (inactivity timeout) preserves cached envelope for faster re-unlock; `clearVault()` (logout) zeros everything including cached envelope. Both purge TanStack Query cache for `['field']`
+- Verify `setQueryClient(client)` is wired in app providers
+- Verify that no crypto keys appear in localStorage, sessionStorage, or IndexedDB (crypto store and auth store use no persist middleware)
 
 **Tests:**
+- Unit: `copyToUint8Array` copies ArrayBuffer and Uint8Array data, returns independent copy, handles empty input
 - Unit: `setKeys` stores all keys correctly (hex-encoded)
 - Unit: `selectFieldKey('note')` returns correct hex-encoded key
-- Unit: `lockVault` resets all keys and sets isVaultLocked = true
-- Unit: after `lockVault`, `selectFieldKey` returns null/undefined
-- Unit: `lockVault` removes all TanStack Query cache entries for field data
-- Integration: login → setKeys → verify keys in store → lockVault → verify keys zeroed AND query cache empty
-- Security: verify no keys in localStorage/sessionStorage after login
+- Unit: `lockVault` zeros keys and sets isVaultLocked = true, preserves cached envelope
+- Unit: `clearVault` zeros everything including cached envelope
+- Unit: after `lockVault`/`clearVault`, `selectFieldKey` returns null
+- Unit: `lockVault` and `clearVault` purge TanStack Query cache for `['field']`
+- Integration: `setKeys` → `clearVault` → verify all keys zeroed and query cache purged
+- Security: verify crypto store never persists keys to localStorage or sessionStorage
 
 ---
 

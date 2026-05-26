@@ -45,7 +45,7 @@ vi.mock('@/features/encryption/model/vault-lock', () => ({
   unlockVault: vi.fn().mockResolvedValue(undefined),
 }))
 
-vi.mock('@/shared/crypto/memory', () => ({
+vi.mock('@/shared/crypto/crypto-utils', () => ({
   hexEncode: vi.fn((data: Uint8Array) =>
     Array.from(data)
       .map((b: number) => b.toString(16).padStart(2, '0'))
@@ -74,8 +74,6 @@ vi.mock('@/shared/crypto/aes-gcm', () => ({
   importKey: vi.fn(),
   encrypt: vi.fn(),
   decrypt: vi.fn(),
-  generateIV: vi.fn(),
-  generateKey: vi.fn(),
 }))
 
 vi.mock('@/shared/auth/supabase-adapter', () => ({

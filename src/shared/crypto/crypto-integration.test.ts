@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { encrypt, decrypt, importKey, generateIV } from '@/shared/crypto/aes-gcm'
+import { encrypt, decrypt, importKey } from '@/shared/crypto/aes-gcm'
 import {
   generateMasterKey,
   generateFieldKeys,
@@ -10,6 +10,7 @@ import {
 import { deriveAuthCredentials, deriveLoginCredentials, changePassword } from '@/shared/crypto/split-kdf'
 import { wrapMasterKeyWithRecovery, unwrapMasterKeyWithRecovery } from '@/shared/crypto/mnemonic'
 import { DecryptionError } from '@/shared/crypto/errors'
+import { MASTER_KEY_PASSWORD_AAD } from '@/shared/types/crypto.types'
 import type { WrappedFieldKey } from '@/shared/types/crypto.types'
 
 // Mock Argon2id module — Web Worker won't run in jsdom
@@ -17,7 +18,6 @@ vi.mock('@/shared/crypto/argon2id', () => ({
   deriveAuthHash: vi.fn(),
   derivePasswordKey: vi.fn(),
   deriveKey: vi.fn(),
-  generateSalt: vi.fn(),
 }))
 
 // Mock @scure/bip39 — avoid loading 2048-word dictionary
@@ -34,11 +34,18 @@ vi.mock('@scure/bip39/wordlists/english.js', () => ({
   wordlist: MOCK_WORDLIST,
 }))
 
-import { deriveAuthHash, derivePasswordKey, deriveKey, generateSalt } from '@/shared/crypto/argon2id'
+import { deriveAuthHash, derivePasswordKey, deriveKey } from '@/shared/crypto/argon2id'
 
 function mockBytes(length: number, fill: number): Uint8Array<ArrayBuffer> {
   return new Uint8Array(length).fill(fill) as Uint8Array<ArrayBuffer>
 }
+
+// Mock crypto-utils module — allow generateSalt to be controlled per-test
+vi.mock('@/shared/crypto/crypto-utils', async () => ({
+  ...(await vi.importActual('@/shared/crypto/crypto-utils')),
+  generateSalt: vi.fn(),
+}))
+import { generateIV, generateSalt } from '@/shared/crypto/crypto-utils'
 
 const PASSWORD = 'test-password-123'
 const PASSWORD_KEY_FILL = 0x11
@@ -65,12 +72,18 @@ async function setupRegistration() {
 
   const passwordCryptoKey = await importKey(authCreds.passwordKey)
   const iv = generateIV()
-  const { ciphertext: wrappedMasterKey, iv: masterKeyIV } = await encrypt(masterKey, passwordCryptoKey, iv)
+  const wrappedMasterKey = await encrypt(masterKey, passwordCryptoKey, {
+    iv,
+    aad: MASTER_KEY_PASSWORD_AAD,
+  })
 
+  const recoveryIV = generateIV()
   const recoverySalt = mockBytes(16, 0x05)
-  vi.mocked(generateSalt).mockReturnValueOnce(recoverySalt)
   vi.mocked(deriveKey).mockResolvedValueOnce(mockBytes(32, RECOVERY_KEK_FILL))
-  const recoveryData = await wrapMasterKeyWithRecovery(masterKey, MOCK_VALID_MNEMONIC)
+  const recoveryData = await wrapMasterKeyWithRecovery(masterKey, MOCK_VALID_MNEMONIC, {
+    iv: recoveryIV,
+    salt: recoverySalt,
+  })
 
   return {
     masterKey,
@@ -79,7 +92,7 @@ async function setupRegistration() {
     fieldKeys,
     wrappedFieldKeys,
     wrappedMasterKey,
-    masterKeyIV,
+    masterKeyIV: iv,
     authSalt,
     keySalt,
     recoveryData,
@@ -118,17 +131,18 @@ describe('crypto integration', () => {
 
       // Unwrap master key with password key
       const passwordCryptoKey = await importKey(authCreds.passwordKey)
-      const unwrappedMasterKey = await decrypt(wrappedMasterKey, passwordCryptoKey, masterKeyIV)
+      const unwrappedMasterKey = await decrypt(wrappedMasterKey, passwordCryptoKey, {
+        iv: masterKeyIV,
+        aad: MASTER_KEY_PASSWORD_AAD,
+      })
       expect(unwrappedMasterKey).toEqual(masterKey)
 
       // Unwrap master key with recovery (re-mock deriveKey since it was consumed during setup)
       vi.mocked(deriveKey).mockResolvedValueOnce(mockBytes(32, RECOVERY_KEK_FILL))
-      const recoveredMasterKey = await unwrapMasterKeyWithRecovery(
-        recoveryData.wrappedMasterKey,
-        MOCK_VALID_MNEMONIC,
-        recoveryData.recoverySalt,
-        recoveryData.recoveryIV,
-      )
+      const recoveredMasterKey = await unwrapMasterKeyWithRecovery(recoveryData.wrappedMasterKey, MOCK_VALID_MNEMONIC, {
+        iv: recoveryData.recoveryIV,
+        salt: recoveryData.recoverySalt,
+      })
       expect(recoveredMasterKey).toEqual(masterKey)
     })
   })
@@ -148,7 +162,10 @@ describe('crypto integration', () => {
       expect(generateSalt).not.toHaveBeenCalled()
 
       const passwordCryptoKey = await importKey(loginCreds.passwordKey)
-      const unwrappedMasterKey = await decrypt(wrappedMasterKey, passwordCryptoKey, masterKeyIV)
+      const unwrappedMasterKey = await decrypt(wrappedMasterKey, passwordCryptoKey, {
+        iv: masterKeyIV,
+        aad: MASTER_KEY_PASSWORD_AAD,
+      })
       expect(unwrappedMasterKey).toEqual(masterKey)
 
       const hierarchy = await deriveFullKeyHierarchy(unwrappedMasterKey)
@@ -161,8 +178,10 @@ describe('crypto integration', () => {
       const noteKey = unwrappedFieldKeys.get('note')!
       const noteCryptoKey = await importKey(noteKey)
       const plaintext = new TextEncoder().encode('My secret note')
-      const { ciphertext, iv } = await encrypt(plaintext, noteCryptoKey)
-      const decrypted = await decrypt(ciphertext, noteCryptoKey, iv)
+      const iv = generateIV()
+      const aad = new Uint8Array([1])
+      const ciphertext = await encrypt(plaintext, noteCryptoKey, { iv, aad })
+      const decrypted = await decrypt(ciphertext, noteCryptoKey, { iv, aad })
       expect(new TextDecoder().decode(decrypted)).toBe('My secret note')
     })
   })
@@ -190,7 +209,10 @@ describe('crypto integration', () => {
       )
 
       const newCryptoKey = await importKey(mockBytes(32, NEW_PASSWORD_KEY_FILL))
-      const unwrapped = await decrypt(result.newWrappedMasterKey, newCryptoKey, result.newMasterKeyIV)
+      const unwrapped = await decrypt(result.newWrappedMasterKey, newCryptoKey, {
+        iv: result.newMasterKeyIV,
+        aad: MASTER_KEY_PASSWORD_AAD,
+      })
       expect(unwrapped).toEqual(masterKey)
 
       // Field keys still decryptable with same KEK
@@ -203,15 +225,17 @@ describe('crypto integration', () => {
       const noteKey = unwrappedFieldKeys.get('note')!
       const noteCryptoKey = await importKey(noteKey)
       const plaintext = new TextEncoder().encode('Persistent data')
-      const { ciphertext, iv } = await encrypt(plaintext, noteCryptoKey)
-      const decrypted = await decrypt(ciphertext, noteCryptoKey, iv)
+      const iv = generateIV()
+      const aad = new Uint8Array([1])
+      const ciphertext = await encrypt(plaintext, noteCryptoKey, { iv, aad })
+      const decrypted = await decrypt(ciphertext, noteCryptoKey, { iv, aad })
       expect(new TextDecoder().decode(decrypted)).toBe('Persistent data')
 
       // Old password key cannot unwrap new wrapped master key
       const oldCryptoKey = await importKey(mockBytes(32, PASSWORD_KEY_FILL))
-      await expect(decrypt(result.newWrappedMasterKey, oldCryptoKey, result.newMasterKeyIV)).rejects.toThrow(
-        DecryptionError,
-      )
+      await expect(
+        decrypt(result.newWrappedMasterKey, oldCryptoKey, { iv: result.newMasterKeyIV, aad: MASTER_KEY_PASSWORD_AAD }),
+      ).rejects.toThrow(DecryptionError)
     })
   })
 
@@ -221,12 +245,10 @@ describe('crypto integration', () => {
       vi.clearAllMocks()
 
       vi.mocked(deriveKey).mockResolvedValue(mockBytes(32, RECOVERY_KEK_FILL))
-      const recoveredMasterKey = await unwrapMasterKeyWithRecovery(
-        recoveryData.wrappedMasterKey,
-        MOCK_VALID_MNEMONIC,
-        recoveryData.recoverySalt,
-        recoveryData.recoveryIV,
-      )
+      const recoveredMasterKey = await unwrapMasterKeyWithRecovery(recoveryData.wrappedMasterKey, MOCK_VALID_MNEMONIC, {
+        iv: recoveryData.recoveryIV,
+        salt: recoveryData.recoverySalt,
+      })
       expect(recoveredMasterKey).toEqual(masterKey)
 
       const recoveredHierarchy = await deriveFullKeyHierarchy(recoveredMasterKey)
@@ -240,20 +262,20 @@ describe('crypto integration', () => {
         const key = recoveredFieldKeys.get(name)!
         const cryptoKey = await importKey(key)
         const plaintext = new TextEncoder().encode(`content for ${name}`)
-        const { ciphertext, iv } = await encrypt(plaintext, cryptoKey)
-        const decrypted = await decrypt(ciphertext, cryptoKey, iv)
+        const iv = generateIV()
+        const aad = new Uint8Array([1])
+        const ciphertext = await encrypt(plaintext, cryptoKey, { iv, aad })
+        const decrypted = await decrypt(ciphertext, cryptoKey, { iv, aad })
         expect(new TextDecoder().decode(decrypted)).toBe(`content for ${name}`)
       }
 
       // Wrong mnemonic cannot unwrap
       vi.mocked(deriveKey).mockResolvedValueOnce(mockBytes(32, 0x44))
       await expect(
-        unwrapMasterKeyWithRecovery(
-          recoveryData.wrappedMasterKey,
-          'wrong mnemonic here',
-          recoveryData.recoverySalt,
-          recoveryData.recoveryIV,
-        ),
+        unwrapMasterKeyWithRecovery(recoveryData.wrappedMasterKey, 'wrong mnemonic here', {
+          iv: recoveryData.recoveryIV,
+          salt: recoveryData.recoverySalt,
+        }),
       ).rejects.toThrow(DecryptionError)
     })
   })
@@ -283,13 +305,17 @@ describe('crypto integration', () => {
 
       // Re-encrypt note content with new key
       const newNoteCryptoKey = await importKey(newNoteKey)
-      const { ciphertext: v2Ciphertext, iv: v2IV } = await encrypt(plaintext, newNoteCryptoKey)
+      const v2IV = generateIV()
+      const v2AAD = new Uint8Array([1])
+      const v2Ciphertext = await encrypt(plaintext, newNoteCryptoKey, { iv: v2IV, aad: v2AAD })
 
       // Old key cannot decrypt new ciphertext
-      await expect(decrypt(v2Ciphertext, originalNoteCryptoKey, v2IV)).rejects.toThrow(DecryptionError)
+      await expect(decrypt(v2Ciphertext, originalNoteCryptoKey, { iv: v2IV, aad: v2AAD })).rejects.toThrow(
+        DecryptionError,
+      )
 
       // New key decrypts correctly
-      const decrypted = await decrypt(v2Ciphertext, newNoteCryptoKey, v2IV)
+      const decrypted = await decrypt(v2Ciphertext, newNoteCryptoKey, { iv: v2IV, aad: v2AAD })
       expect(new TextDecoder().decode(decrypted)).toBe('Sensitive note content')
 
       // Website/email keys unaffected
@@ -323,7 +349,10 @@ describe('crypto integration', () => {
       const start = Date.now()
       const loginCreds = await deriveLoginCredentials(PASSWORD, authSalt, keySalt)
       const passwordCryptoKey = await importKey(loginCreds.passwordKey)
-      const masterKey = await decrypt(wrappedMasterKey, passwordCryptoKey, masterKeyIV)
+      const masterKey = await decrypt(wrappedMasterKey, passwordCryptoKey, {
+        iv: masterKeyIV,
+        aad: MASTER_KEY_PASSWORD_AAD,
+      })
       const hierarchy = await deriveFullKeyHierarchy(masterKey)
       await unwrapFieldKeys(wrappedFieldKeys, hierarchy.kek)
       const elapsed = Date.now() - start

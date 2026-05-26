@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import { devtools } from 'zustand/middleware'
 import type { User, UserSession } from '@/shared/types/entities/user.types'
 
 interface AuthState {
@@ -27,21 +26,16 @@ const initialState: AuthState = {
   isRestoringSession: true,
 }
 
-const useAuthStore = create<AuthState & AuthActions>()(
-  devtools(
-    (set) => ({
-      ...initialState,
-      setUser: (user) => set({ user }, false, 'auth/setUser'),
-      setSession: (session) => set({ session }, false, 'auth/setSession'),
-      setAuth: (user, session) => set({ user, session }, false, 'auth/setAuth'),
-      setLoading: (isLoading) => set({ isLoading }, false, 'auth/setLoading'),
-      setRestoringSession: (isRestoringSession) => set({ isRestoringSession }, false, 'auth/setRestoringSession'),
-      // reset clears auth data but preserves isRestoringSession — logout doesn't re-trigger session restoration
-      reset: () => set({ user: null, session: null, isLoading: false }, false, 'auth/reset'),
-    }),
-    { name: 'AuthStore' },
-  ),
-)
+const useAuthStore = create<AuthState & AuthActions>()((set) => ({
+  ...initialState,
+  setUser: (user) => set({ user }),
+  setSession: (session) => set({ session }),
+  setAuth: (user, session) => set({ user, session }),
+  setLoading: (isLoading) => set({ isLoading }),
+  setRestoringSession: (isRestoringSession) => set({ isRestoringSession }),
+  // reset clears auth data but preserves isRestoringSession — logout doesn't re-trigger session restoration
+  reset: () => set({ user: null, session: null, isLoading: false }),
+}))
 
 export { useAuthStore, isAuthenticated }
 export type { AuthState, AuthActions }

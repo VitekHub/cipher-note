@@ -11,7 +11,7 @@ This app will never need backward compatibility with previous versions. The data
 ## Architecture
 
 ### Tech Stack
-React 19 · TypeScript (strict, `erasableSyntaxOnly`, `verbatimModuleSyntax`) · Vite 8 · Tailwind CSS v4 · shadcn/ui (base-nova) · TanStack Router (file-based) · TanStack Query 5 · Zustand 5 (with devtools) · react-hook-form + Zod 4 · i18next (en + cs) · Supabase (local Docker) · Web Crypto API + argon2-browser
+React 19 · TypeScript (strict, `erasableSyntaxOnly`, `verbatimModuleSyntax`) · Vite 8 · Tailwind CSS v4 · shadcn/ui (base-nova) · TanStack Router (file-based) · TanStack Query 5 · Zustand 5 · react-hook-form + Zod 4 · i18next (en + cs) · Supabase (local Docker) · Web Crypto API + argon2-browser
 
 ### Auth (Split KDF / Zero-Knowledge)
 - Users log in with a **username** (mapped to `{username}@ciphernote.internal` for Supabase Auth, which requires an email).
@@ -25,8 +25,9 @@ React 19 · TypeScript (strict, `erasableSyntaxOnly`, `verbatimModuleSyntax`) ·
 ```
 Password → Split KDF → authHash (Supabase) + passwordKey (unwrap master key)
 Master Key → HKDF("wrap") → KEK (wraps field keys) | HKDF("sign") → Signing Key Seed
-Field Keys (one per field) → wrapped by KEK with AAD(fieldName, version)
+Master Key → wrapped by passwordKey with AAD("master") or recovery KEK with AAD("recovery")
 Recovery: BIP-39 mnemonic → Argon2id → recovery KEK → wraps master key
+Field Keys (one per field) → wrapped by KEK with AAD(fieldName, version)
 ```
 - All keys: 32 bytes (256 bits), salts: 16 bytes. Argon2id params: m=47104, t=3, p=1.
 - Zustand crypto store uses **hex-encoded strings** (not Uint8Array) for reactivity.
@@ -102,7 +103,7 @@ Backend abstracted behind interfaces: `IAuthAdapter`, `IApiAdapter`, `IRealtimeA
 ### State Management
 - Zustand for client state (auth store, crypto store, UI store).
 - TanStack Query for server state (fields, keys).
-- Zustand stores use **devtools middleware** with named actions (e.g., `'auth/setUser'`).
+- Zustand stores use devtools middleware with named actions **only for stores without sensitive data** (e.g., UI store, vault dialog store). Stores that hold crypto keys or auth tokens (crypto store, auth store) must NOT use devtools — the Redux DevTools extension would expose secrets in browser devtools.
 - NEVER store `language` preference in Zustand — `i18next` is the source of truth.
 
 ### Code Style
@@ -169,6 +170,7 @@ See `IMPLEMENTATION-PLAN.md` for the full 36-step plan.
 - Step 20 (Registration UI) — complete
 - Step 21 (Login Crypto Flow) — complete
 - Step 22 (Login UI + Vault Unlock) — complete
+- Step 23 (Crypto Session Store in Zustand + Query Cache Purge) — complete
 
 ### Implementation Notes
 
@@ -185,7 +187,8 @@ Non-obvious decisions not visible from code alone:
 - **FieldCard i18n keys**: `FIELD_I18N_KEYS` is a static record (not template literals) so i18next-parser can discover them
 - **`useCurrentUser` hook**: wraps the auth store in `shared/auth/` so features can access user data without cross-feature imports. This is a deliberate exception to the "shared must not import from features" rule — the hook re-exports only what other features need, keeping the dependency surface narrow.
 - **`Uint8Array<ArrayBuffer>` for Web Crypto**: TS 6.0 made `Uint8Array` generic; bare `Uint8Array` expands to `Uint8Array<ArrayBufferLike>` which doesn't satisfy `BufferSource`. All `crypto.subtle` function signatures must use `Uint8Array<ArrayBuffer>`.
-- **Split KDF master key wrapping uses no AAD**: `changePassword` in `split-kdf.ts` uses `encrypt`/`decrypt` from `aes-gcm.ts` directly (no AAD), not `wrapKey`/`unwrapKey` from `key-wrap.ts`. The master key has no field name or version concept, so AAD is omitted. Field key wrapping still uses AAD via `key-wrap.ts`.
+- **`copyToUint8Array` only in aes-gcm.ts**: Web Crypto's `encrypt`, `decrypt`, and `exportKey` return `ArrayBuffer`, which can be neutered/transferred. `copyToUint8Array` wraps these calls and provides type narrowing to `Uint8Array<ArrayBuffer>`. Other crypto modules construct `Uint8Array` from scratch (e.g., `new Uint8Array(derivedBits)`) so they already own the buffer.
+- **Master key wrapping uses AAD constants**: All key wrapping is done directly with `encrypt`/`decrypt` from `aes-gcm.ts` using `{iv, aad}` options. `changePassword` in `split-kdf.ts` uses `MASTER_KEY_PASSWORD_AAD`, recovery wrapping in `mnemonic.ts` uses `MASTER_KEY_RECOVERY_AAD`, field key wrapping uses `encodeAAD(fieldName, version)` from `crypto-utils.ts`.
 - **HKDF uses `deriveBits`, not `deriveKey`**: `deriveSubKey` returns raw `Uint8Array` bytes because the KEK bytes need to be imported as an AES-GCM CryptoKey via `importKey()` separately in `deriveFullKeyHierarchy`. HKDF uses empty salt since the master key is already random.
 - **BIP-39 mnemonic functions are async**: `generateMnemonic`, `validateMnemonic`, `mnemonicToSeed` must be `async` despite the underlying `@scure/bip39` functions being synchronous, because the lazy-loading pattern (`await loadBip39()`) requires it. Same as how `argon2id.ts` wraps sync Argon2 in async.
 - **`deriveRecoveryKEK` uses mnemonic string directly**: The mnemonic phrase is passed as the Argon2id "password" parameter, not the BIP-39 binary seed. The human-readable phrase is the input because it is what the user supplies and remembers; the binary seed is an internal derivation artifact. `mnemonicToSeed` is a utility function not used in the recovery KEK path.

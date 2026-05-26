@@ -1,8 +1,8 @@
 import type { Argon2Params } from '@/shared/types/crypto.types'
-import { CRYPTO_SALT_LENGTH, DEFAULT_ARGON2_PARAMS } from '@/shared/types/crypto.types'
+import { DEFAULT_ARGON2_PARAMS } from '@/shared/types/crypto.types'
 import type { Argon2DeriveRequest, Argon2WorkerResponse } from '@/shared/types/argon2-worker.types'
 import { Argon2Error } from '@/shared/crypto/errors'
-import { hexEncode } from '@/shared/crypto/memory'
+import { hexEncode } from '@/shared/crypto/crypto-utils'
 
 interface PendingRequest {
   resolve: (value: Uint8Array<ArrayBuffer>) => void
@@ -95,11 +95,6 @@ export async function derivePasswordKey(
   keySalt: Uint8Array<ArrayBuffer>,
 ): Promise<Uint8Array<ArrayBuffer>> {
   return deriveKey(password, keySalt)
-}
-
-/** Generate a cryptographically random salt. */
-export function generateSalt(): Uint8Array<ArrayBuffer> {
-  return crypto.getRandomValues(new Uint8Array(CRYPTO_SALT_LENGTH)) as Uint8Array<ArrayBuffer>
 }
 
 export type { Argon2DeriveRequest as WorkerDeriveRequest, Argon2WorkerResponse as WorkerResponse }

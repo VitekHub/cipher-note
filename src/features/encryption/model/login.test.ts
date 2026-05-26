@@ -5,7 +5,6 @@ vi.mock('@/shared/crypto/argon2id', () => ({
   deriveKey: vi.fn().mockResolvedValue(new Uint8Array(32).fill(0xab)),
   deriveAuthHash: vi.fn().mockResolvedValue('a'.repeat(64)),
   derivePasswordKey: vi.fn().mockResolvedValue(new Uint8Array(32).fill(0xcd)),
-  generateSalt: vi.fn().mockReturnValue(new Uint8Array(16).fill(0xef)),
 }))
 
 // Mock @scure/bip39 (lazy-loaded, won't run in jsdom)
@@ -19,7 +18,7 @@ vi.mock('@scure/bip39', () => ({
 
 import { deriveLoginKeys } from '@/features/encryption/model/login'
 import { deriveRegistrationKeys } from '@/features/encryption/model/registration'
-import { hexEncode } from '@/shared/crypto/memory'
+import { hexEncode } from '@/shared/crypto/crypto-utils'
 import type { ServerFieldKey } from '@/shared/types/api.types'
 
 /**

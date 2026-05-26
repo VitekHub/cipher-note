@@ -9,7 +9,8 @@
 
 import { importKey, decrypt } from '@/shared/crypto/aes-gcm'
 import { deriveFullKeyHierarchy, unwrapFieldKeys } from '@/shared/crypto/key-hierarchy'
-import { hexDecode } from '@/shared/crypto/memory'
+import { hexDecode } from '@/shared/crypto/crypto-utils'
+import { MASTER_KEY_PASSWORD_AAD } from '@/shared/types/crypto.types'
 import type { LoginKeysInput, LoginResult } from '@/shared/types/crypto.types'
 
 /**
@@ -22,9 +23,12 @@ export async function deriveLoginKeys({
   masterKeyIV,
   serverFieldKeys,
 }: LoginKeysInput): Promise<LoginResult> {
-  // Import passwordKey → unwrap master key (no AAD) → derive KEK
+  // Import passwordKey → unwrap master key (AAD = password context) → derive KEK
   const passwordCryptoKey = await importKey(passwordKey)
-  const masterKey = await decrypt(wrappedMasterKey, passwordCryptoKey, masterKeyIV)
+  const masterKey = await decrypt(wrappedMasterKey, passwordCryptoKey, {
+    iv: masterKeyIV,
+    aad: MASTER_KEY_PASSWORD_AAD,
+  })
   const { kek } = await deriveFullKeyHierarchy(masterKey)
 
   // Decode hex field keys → unwrap with KEK (verifies AAD = fieldName + version)
