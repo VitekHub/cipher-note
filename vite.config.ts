@@ -10,6 +10,7 @@ const cipherNoteIconPath = path.resolve(__dirname, "src/shared/assets/cipher-not
 const cipherNoteIconSource = readFileSync(cipherNoteIconPath, "utf-8")
 
 export default defineConfig({
+  base: process.env.VITE_BASE_URL || '/',
   plugins: [
     tanstackRouter({
       target: "react",
