@@ -1,9 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { decrypt, importKey } from '@/shared/crypto/aes-gcm'
+import { decrypt, encrypt, importKey } from '@/shared/crypto/aes-gcm'
 import { unwrapFieldKeys } from '@/shared/crypto/key-hierarchy'
 import { unwrapMasterKeyWithRecovery } from '@/shared/crypto/mnemonic'
 import { FIELD_KEY_VERSION, MASTER_KEY_PASSWORD_AAD } from '@/shared/types/crypto.types'
 import type { RegistrationResult } from '@/shared/types/crypto.types'
+import type { ServerFieldKey } from '@/shared/types/api.types'
+import { generateIV } from '@/shared/crypto/crypto-utils'
+import { hexEncode } from '@/shared/crypto/crypto-utils'
 
 // Mock Argon2id module — Web Worker won't run in jsdom
 vi.mock('@/shared/crypto/argon2id', () => ({
@@ -71,19 +74,20 @@ describe('deriveRegistrationKeys', () => {
     expect(result.keySalt).toHaveLength(16)
   })
 
-  it('returns 32-byte masterKey', () => {
-    expect(result.masterKey).toHaveLength(32)
+  it('returns wrappedMasterKey of 48 bytes and 12-byte IV', () => {
+    expect(result.wrappedMasterKey).toHaveLength(48)
+    expect(result.masterKeyIV).toHaveLength(12)
   })
 
   it('returns kek as CryptoKey', () => {
     expect(result.kek).toBeInstanceOf(CryptoKey)
   })
 
-  it('returns fieldKeys map with 3 entries, each 32 bytes', () => {
+  it('returns fieldKeys map with 3 CryptoKey entries', () => {
     expect(result.fieldKeys.size).toBe(3)
-    expect(result.fieldKeys.get('note')).toHaveLength(32)
-    expect(result.fieldKeys.get('website')).toHaveLength(32)
-    expect(result.fieldKeys.get('email')).toHaveLength(32)
+    expect(result.fieldKeys.get('note')).toBeInstanceOf(CryptoKey)
+    expect(result.fieldKeys.get('website')).toBeInstanceOf(CryptoKey)
+    expect(result.fieldKeys.get('email')).toBeInstanceOf(CryptoKey)
   })
 
   it('returns 3 wrapped field keys, all version 1', () => {
@@ -93,11 +97,6 @@ describe('deriveRegistrationKeys', () => {
       expect(wfk.wrappedKey).toHaveLength(48)
       expect(wfk.iv).toHaveLength(12)
     }
-  })
-
-  it('returns wrapped master key of 48 bytes and 12-byte IV', () => {
-    expect(result.wrappedMasterKey).toHaveLength(48)
-    expect(result.masterKeyIV).toHaveLength(12)
   })
 
   it('returns recovery data with correct sizes', () => {
@@ -117,14 +116,34 @@ describe('deriveRegistrationKeys', () => {
       iv: result.masterKeyIV,
       aad: MASTER_KEY_PASSWORD_AAD,
     })
-    expect(decrypted).toEqual(result.masterKey)
+    // Verify unwrapped key is 32 bytes (master key length)
+    expect(decrypted).toHaveLength(32)
   })
 
   it('unwraps field keys with derived KEK', async () => {
-    // KEK is already a CryptoKey, use directly
-    const unwrapped = await unwrapFieldKeys(result.wrappedFieldKeys, result.kek)
-    for (const [name, key] of result.fieldKeys) {
-      expect(unwrapped.get(name)).toEqual(key)
+    // Convert WrappedFieldKey[] to ServerFieldKey[] format (hex strings)
+    const serverFieldKeys: ServerFieldKey[] = result.wrappedFieldKeys.map((wfk) => ({
+      fieldName: wfk.fieldName,
+      version: wfk.version,
+      wrappedKey: hexEncode(wfk.wrappedKey),
+      keyIV: hexEncode(wfk.iv),
+    }))
+
+    // unwrapFieldKeys now returns Map<string, CryptoKey>
+    const unwrapped = await unwrapFieldKeys(serverFieldKeys, result.kek)
+
+    // Verify unwrapped keys are CryptoKeys and can encrypt/decrypt correctly
+    expect(unwrapped.size).toBe(3)
+    for (const [, cryptoKey] of unwrapped) {
+      expect(cryptoKey).toBeInstanceOf(CryptoKey)
+
+      // Verify key works via encrypt-decrypt round-trip
+      const plaintext = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+      const iv = generateIV()
+      const aad = new Uint8Array([1])
+      const ciphertext = await encrypt(plaintext, cryptoKey, { iv, aad })
+      const decrypted = await decrypt(ciphertext, cryptoKey, { iv, aad })
+      expect(decrypted).toEqual(plaintext)
     }
   })
 
@@ -133,7 +152,17 @@ describe('deriveRegistrationKeys', () => {
       iv: result.recoveryData.recoveryIV,
       salt: result.recoveryData.recoverySalt,
     })
-    expect(masterKey).toEqual(result.masterKey)
+    // Verify unwrapped key is 32 bytes (master key length)
+    expect(masterKey).toHaveLength(32)
+
+    // Verify key works by importing and doing encrypt-decrypt round-trip
+    const cryptoKey = await importKey(masterKey)
+    const plaintext = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+    const iv = generateIV()
+    const aad = new Uint8Array([2])
+    const ciphertext = await encrypt(plaintext, cryptoKey, { iv, aad })
+    const decrypted = await decrypt(ciphertext, cryptoKey, { iv, aad })
+    expect(decrypted).toEqual(plaintext)
   })
 
   it('calls deriveAuthCredentials with password', () => {

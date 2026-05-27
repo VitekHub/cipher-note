@@ -41,17 +41,6 @@ export async function deriveAuthCredentials(password: string): Promise<AuthCrede
 }
 
 /**
- * Derive login credentials using existing salts from the server.
- */
-export async function deriveLoginCredentials(
-  password: string,
-  authSalt: Uint8Array<ArrayBuffer>,
-  keySalt: Uint8Array<ArrayBuffer>,
-): Promise<LoginCredentials> {
-  return deriveCredentials(password, authSalt, keySalt)
-}
-
-/**
  * Change the user's password by re-wrapping the master key.
  *
  * The master key itself is never changed - only its wrapping.

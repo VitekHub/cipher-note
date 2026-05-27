@@ -7,7 +7,7 @@ import { z } from 'zod'
 
 import { useCryptoStore } from '@/features/encryption/model/crypto-store'
 import { useVaultDialogStore } from '@/features/encryption/model/vault-dialog-store'
-import { keyVault } from '@/features/encryption/model/key-vault'
+import { unlockVault } from '@/app/flows/auth-flow'
 import { getCryptoErrorMessage } from '@/features/encryption/model/crypto-error-messages'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/shared/ui/dialog'
 import { Button } from '@/shared/ui/button'
@@ -57,7 +57,7 @@ function VaultUnlockDialog() {
   async function onSubmit(data: UnlockFormData) {
     setError(null)
     try {
-      await keyVault.unlockVault(data.password)
+      await unlockVault(data.password)
     } catch (err) {
       setError(getCryptoErrorMessage(err, t))
     }

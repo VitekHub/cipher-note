@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { DecryptionError } from '@/shared/crypto/errors'
-import { deriveAuthCredentials, deriveLoginCredentials, changePassword } from '@/shared/crypto/split-kdf'
+import { deriveAuthCredentials, changePassword } from '@/shared/crypto/split-kdf'
 import { importKey, encrypt, decrypt } from '@/shared/crypto/aes-gcm'
 import { generateMasterKey } from '@/shared/crypto/key-hierarchy'
 import { MASTER_KEY_PASSWORD_AAD } from '@/shared/types/crypto.types'
-import type { AuthCredentials, LoginCredentials, PasswordChangeResult } from '@/shared/types/crypto.types'
+import type { AuthCredentials, PasswordChangeResult } from '@/shared/types/crypto.types'
 
 // Mock Argon2id module to avoid WASM/worker dependency in tests
 vi.mock('@/shared/crypto/argon2id', () => ({
@@ -66,54 +66,6 @@ describe('split-kdf', () => {
       expect(result.authSalt.byteLength).toBe(16)
       expect(result.keySalt).toBeInstanceOf(Uint8Array)
       expect(result.keySalt.byteLength).toBe(16)
-    })
-  })
-
-  describe('deriveLoginCredentials', () => {
-    it('derives authHash and passwordKey from existing salts', async () => {
-      const authSalt = mockBytes(16, 0x11)
-      const keySalt = mockBytes(16, 0x22)
-      vi.mocked(deriveAuthHash).mockResolvedValue('c'.repeat(64))
-      vi.mocked(derivePasswordKey).mockResolvedValue(mockBytes(32, 0xef))
-
-      const result: LoginCredentials = await deriveLoginCredentials('password123', authSalt, keySalt)
-
-      expect(deriveAuthHash).toHaveBeenCalledWith('password123', authSalt)
-      expect(derivePasswordKey).toHaveBeenCalledWith('password123', keySalt)
-      expect(result).toEqual({
-        authHash: 'c'.repeat(64),
-        passwordKey: mockBytes(32, 0xef),
-      })
-    })
-
-    it('does not generate new salts', async () => {
-      const authSalt = mockBytes(16, 0x11)
-      const keySalt = mockBytes(16, 0x22)
-      vi.mocked(deriveAuthHash).mockResolvedValue('d'.repeat(64))
-      vi.mocked(derivePasswordKey).mockResolvedValue(mockBytes(32, 0xff))
-
-      await deriveLoginCredentials('password', authSalt, keySalt)
-
-      expect(generateSalt).not.toHaveBeenCalled()
-    })
-
-    it('matches deriveAuthCredentials output for same password and salts', async () => {
-      const authSalt = mockBytes(16, 0x01)
-      const keySalt = mockBytes(16, 0x02)
-
-      vi.mocked(generateSalt).mockReturnValueOnce(authSalt).mockReturnValueOnce(keySalt)
-      vi.mocked(deriveAuthHash).mockResolvedValue('e'.repeat(64))
-      vi.mocked(derivePasswordKey).mockResolvedValue(mockBytes(32, 0xaa))
-
-      const regResult = await deriveAuthCredentials('password123')
-
-      vi.mocked(deriveAuthHash).mockResolvedValue('e'.repeat(64))
-      vi.mocked(derivePasswordKey).mockResolvedValue(mockBytes(32, 0xaa))
-
-      const loginResult = await deriveLoginCredentials('password123', regResult.authSalt, regResult.keySalt)
-
-      expect(loginResult.authHash).toBe(regResult.authHash)
-      expect(loginResult.passwordKey).toEqual(regResult.passwordKey)
     })
   })
 

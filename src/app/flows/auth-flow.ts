@@ -4,11 +4,15 @@ import { useAuthStore } from '@/features/auth/model/auth-store'
 import { authAdapter } from '@/shared/auth/supabase-adapter'
 import { uploadRegistrationData } from '@/shared/api/supabase-registration'
 import { getLoginSalts, getMasterKeyEnvelope, getFieldKeys } from '@/shared/api/supabase-keys'
-import { deriveLoginCredentials } from '@/shared/crypto/split-kdf'
-import { deriveLoginKeys } from '@/features/encryption/model/login'
 import { hexDecode, hexEncode, zeroFill } from '@/shared/crypto/crypto-utils'
-import { importKey } from '@/shared/crypto/aes-gcm'
+import { decrypt, importKey } from '@/shared/crypto/aes-gcm'
 import { keyVault } from '@/features/encryption/model/key-vault'
+import type { CachedVaultEnvelope, ServerFieldKey } from '@/shared/types/api.types'
+import { DecryptionError } from '@/shared/crypto/errors'
+import { unwrapFieldKeys } from '@/shared/crypto/key-hierarchy'
+import { deriveKEK } from '@/shared/crypto/hkdf'
+import { MASTER_KEY_PASSWORD_AAD } from '@/shared/types/crypto.types'
+import { deriveAuthHash, derivePasswordKey, terminateWorker } from '@/shared/crypto/argon2id'
 
 /**
  * Registers a new user: derives keys, signs up on the server, uploads encrypted
@@ -40,12 +44,8 @@ export async function signUpUser(username: string, password: string): Promise<st
     authStore.setAuth(authResult.user, authResult.session)
 
     // Store KEK and field keys in the vault (non-extractable CryptoKeys)
-    keyVault.storeKey('kek', regResult.kek)
-    for (const [name, key] of regResult.fieldKeys) {
-      keyVault.storeKey(name, await importKey(key))
-    }
-    useCryptoStore.getState().setKeys(['note', 'website', 'email'])
-    zeroFill(regResult.masterKey)
+    keyVault.storeFieldKeys(regResult.kek, regResult.fieldKeys)
+
     useCryptoStore.getState().setCachedEnvelope({
       authSalt: hexEncode(regResult.authSalt),
       keySalt: hexEncode(regResult.keySalt),
@@ -74,35 +74,25 @@ export async function loginUser(username: string, password: string) {
 
   try {
     // Fetch salts (pre-auth) → derive credentials → authenticate
-    const { authSalt, keySalt } = await getLoginSalts(username)
-    const { authHash, passwordKey } = await deriveLoginCredentials(password, hexDecode(authSalt), hexDecode(keySalt))
+    const { authSalt } = await getLoginSalts(username)
+    const authHash = await deriveAuthHash(password, hexDecode(authSalt))
     const authResult = await authAdapter.login(username, authHash)
 
-    // Fetch wrapped keys (post-auth) → unwrap → store
-    // Sequential: both calls require an active auth session;
-    // parallel requests can race on session initialization
-    const masterKeyEnvelope = await getMasterKeyEnvelope(authResult.user.id)
-    const serverFieldKeys = await getFieldKeys(authResult.user.id)
-    const { masterKey, kek, fieldKeys } = await deriveLoginKeys({
-      passwordKey,
-      wrappedMasterKey: hexDecode(masterKeyEnvelope.wrappedMasterKey),
-      masterKeyIV: hexDecode(masterKeyEnvelope.masterKeyIV),
-      serverFieldKeys,
-    })
-    useCryptoStore.getState().setCachedEnvelope({ ...masterKeyEnvelope, fieldKeys: serverFieldKeys })
-
-    // Store KEK and field keys in the vault (non-extractable CryptoKeys)
-    keyVault.storeKey('kek', kek)
-    for (const [name, key] of fieldKeys) {
-      keyVault.storeKey(name, await importKey(key))
-    }
-    useCryptoStore.getState().setKeys(['note', 'website', 'email'])
-    zeroFill(masterKey)
+    // Fetch wrapped keys (post-auth) → derive KEK → unwrap and store field keys
+    const envelope = await fetchFreshEnvelope(authResult.user.id)
+    const kek = await deriveKekFromEnvelope(password, envelope)
+    await storeFieldKeys(kek, envelope.fieldKeys)
 
     authStore.setAuth(authResult.user, authResult.session)
   } finally {
     authStore.setLoading(false)
   }
+}
+
+function logoutCleanup() {
+  keyVault.clearVault()
+  useAuthStore.getState().reset()
+  terminateWorker()
 }
 
 export async function logoutUser() {
@@ -114,8 +104,7 @@ export async function logoutUser() {
   } catch {
     // Server signOut may fail (no session, network error) - clear local state regardless
   } finally {
-    keyVault.clearVault()
-    store.reset()
+    logoutCleanup()
   }
 }
 
@@ -159,8 +148,73 @@ export function subscribeToAuthChanges(): () => void {
     if (result) {
       useAuthStore.getState().setAuth(result.user, result.session)
     } else {
-      keyVault.clearVault()
-      useAuthStore.getState().reset()
+      logoutCleanup()
     }
   })
+}
+
+export async function unlockVault(password: string): Promise<void> {
+  const user = useAuthStore.getState().user
+  if (!user) {
+    throw new Error('Cannot unlock vault: no authenticated user')
+  }
+
+  let staleCache = false
+  const cachedEnvelope = useCryptoStore.getState().cachedEnvelope
+  if (cachedEnvelope) {
+    try {
+      const kek = await deriveKekFromEnvelope(password, cachedEnvelope)
+      await storeFieldKeys(kek, cachedEnvelope.fieldKeys)
+    } catch (error) {
+      if (error instanceof DecryptionError) {
+        // Cached envelope may be stale (password changed in another session).
+        // Clear the stale cache and retry the full network + derivation path.
+        keyVault.clearVault()
+        staleCache = true
+      } else {
+        throw error
+      }
+    }
+  }
+
+  if (!cachedEnvelope || staleCache) {
+    const freshEnvelope = await fetchFreshEnvelope(user.id)
+    const kek = await deriveKekFromEnvelope(password, freshEnvelope)
+    await storeFieldKeys(kek, freshEnvelope.fieldKeys)
+  }
+}
+
+async function fetchFreshEnvelope(userId: string): Promise<CachedVaultEnvelope> {
+  // Sequential: both calls require an active auth session;
+  // parallel requests can race on session initialization
+  const masterKeyEnvelope = await getMasterKeyEnvelope(userId)
+  const serverFieldKeys = await getFieldKeys(userId)
+  const freshEnvelope = { ...masterKeyEnvelope, fieldKeys: serverFieldKeys }
+  useCryptoStore.getState().setCachedEnvelope(freshEnvelope)
+  return freshEnvelope
+}
+
+async function deriveKekFromEnvelope(password: string, envelope: CachedVaultEnvelope): Promise<CryptoKey> {
+  // Derive password key
+  const passwordKey = await derivePasswordKey(password, hexDecode(envelope.keySalt))
+  const cryptoPasswordKey = await importKey(passwordKey)
+
+  // Unwrap master key → derive KEK
+  const wrappedMasterKey = hexDecode(envelope.wrappedMasterKey)
+  const masterKey = await decrypt(wrappedMasterKey, cryptoPasswordKey, {
+    iv: hexDecode(envelope.masterKeyIV),
+    aad: MASTER_KEY_PASSWORD_AAD,
+  })
+  const kekBytes = await deriveKEK(masterKey)
+  const kek = await importKey(kekBytes)
+  zeroFill(masterKey)
+  return kek
+}
+
+async function storeFieldKeys(kek: CryptoKey, fieldKeys: ServerFieldKey[]): Promise<void> {
+  // Unwrap field keys with KEK (verifies AAD = fieldName + version)
+  const unwrappedFieldKeys = await unwrapFieldKeys(fieldKeys, kek)
+
+  // Store KEK and field keys in the vault (non-extractable CryptoKeys)
+  keyVault.storeFieldKeys(kek, unwrappedFieldKeys)
 }

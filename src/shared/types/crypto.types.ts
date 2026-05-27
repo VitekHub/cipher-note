@@ -88,9 +88,8 @@ export interface RegistrationResult {
   authHash: string
   authSalt: Uint8Array<ArrayBuffer>
   keySalt: Uint8Array<ArrayBuffer>
-  masterKey: Uint8Array<ArrayBuffer>
   kek: CryptoKey
-  fieldKeys: Map<string, Uint8Array<ArrayBuffer>>
+  fieldKeys: Map<string, CryptoKey>
   wrappedMasterKey: Uint8Array<ArrayBuffer>
   masterKeyIV: Uint8Array<ArrayBuffer>
   wrappedFieldKeys: WrappedFieldKey[]

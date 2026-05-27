@@ -9,11 +9,8 @@ const { mockUnlockVault } = vi.hoisted(() => ({
   mockUnlockVault: vi.fn(),
 }))
 
-vi.mock('@/features/encryption/model/key-vault', () => ({
-  keyVault: {
-    lockVault: vi.fn(),
-    unlockVault: mockUnlockVault,
-  },
+vi.mock('@/app/flows/auth-flow', () => ({
+  unlockVault: mockUnlockVault,
 }))
 
 import { VaultUnlockDialog } from './VaultUnlockDialog'

@@ -2,8 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // Helper to create a mock CryptoKey for testing
 function createCryptoKeyMock(): CryptoKey {
-  // Create a dummy CryptoKey - for testing purposes we just need a valid object
-  // that can be stored in the key vault
   return {
     type: 'secret',
     extractable: false,
@@ -23,9 +21,7 @@ const mockSetAuth =
   >()
 const mockSetRestoringSession = vi.fn<(isRestoringSession: boolean) => void>()
 const mockReset = vi.fn<() => void>()
-const mockSetKeys = vi.fn<(fieldKeyNames: string[]) => void>(() => {
-  cryptoStoreState.isVaultLocked = false
-})
+const mockSetKeys = vi.fn<(fieldKeyNames: string[]) => void>()
 const mockSetEnvelope = vi.fn<(envelope: import('@/shared/types/api.types').CachedVaultEnvelope) => void>()
 
 // Mock registration module
@@ -34,12 +30,11 @@ vi.mock('@/features/encryption/model/registration', () => ({
     authHash: 'a'.repeat(64),
     authSalt: new Uint8Array(16).fill(0x01),
     keySalt: new Uint8Array(16).fill(0x02),
-    masterKey: new Uint8Array(32).fill(0x03),
     kek: createCryptoKeyMock(),
     fieldKeys: new Map([
-      ['note', new Uint8Array(32).fill(0x10)],
-      ['website', new Uint8Array(32).fill(0x20)],
-      ['email', new Uint8Array(32).fill(0x30)],
+      ['note', createCryptoKeyMock()],
+      ['website', createCryptoKeyMock()],
+      ['email', createCryptoKeyMock()],
     ]),
     wrappedMasterKey: new Uint8Array(48).fill(0x05),
     masterKeyIV: new Uint8Array(12).fill(0x06),
@@ -53,19 +48,6 @@ vi.mock('@/features/encryption/model/registration', () => ({
   }),
 }))
 
-// Mock login crypto module
-vi.mock('@/features/encryption/model/login', () => ({
-  deriveLoginKeys: vi.fn().mockResolvedValue({
-    masterKey: new Uint8Array(32).fill(0x03),
-    kek: {}, // CryptoKey mock
-    fieldKeys: new Map([
-      ['note', new Uint8Array(32).fill(0x10)],
-      ['website', new Uint8Array(32).fill(0x20)],
-      ['email', new Uint8Array(32).fill(0x30)],
-    ]),
-  }),
-}))
-
 // Mock key-vault module
 const { mockClearVault } = vi.hoisted(() => ({
   mockClearVault: vi.fn<() => void>(),
@@ -74,8 +56,8 @@ vi.mock('@/features/encryption/model/key-vault', () => ({
   keyVault: {
     lockVault: vi.fn<() => void>(),
     storeKey: vi.fn<() => void>(),
+    storeFieldKeys: vi.fn<(kek: CryptoKey, fieldKeys: Map<string, CryptoKey>) => void>(),
     clearVault: mockClearVault,
-    unlockVault: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
   },
 }))
 
@@ -108,18 +90,21 @@ vi.mock('@/shared/api/supabase-keys', () => ({
   getFieldKeys: vi.fn().mockResolvedValue(mockFieldKeysData),
 }))
 
-// Mock Split KDF
+// Mock Split KDF (deriveLoginCredentials removed)
 vi.mock('@/shared/crypto/split-kdf', () => ({
-  deriveLoginCredentials: vi.fn().mockResolvedValue({
-    authHash: 'a'.repeat(64),
-    passwordKey: new Uint8Array(32).fill(0x07),
-  }),
   deriveAuthCredentials: vi.fn().mockResolvedValue({
     authHash: 'a'.repeat(64),
     passwordKey: new Uint8Array(32).fill(0x07),
     authSalt: new Uint8Array(16).fill(0x01),
     keySalt: new Uint8Array(16).fill(0x02),
   }),
+}))
+
+// Mock Argon2id
+vi.mock('@/shared/crypto/argon2id', () => ({
+  deriveAuthHash: vi.fn().mockResolvedValue('a'.repeat(64)),
+  derivePasswordKey: vi.fn().mockResolvedValue(new Uint8Array(32).fill(0x07)),
+  terminateWorker: vi.fn(),
 }))
 
 // Mock crypto memory
@@ -135,9 +120,25 @@ vi.mock('@/shared/crypto/crypto-utils', async () => ({
 // Mock AES-GCM
 vi.mock('@/shared/crypto/aes-gcm', () => ({
   exportKey: vi.fn().mockResolvedValue(new Uint8Array(32).fill(0x04)),
-  importKey: vi.fn(),
+  importKey: vi.fn().mockResolvedValue(createCryptoKeyMock()),
   encrypt: vi.fn(),
-  decrypt: vi.fn(),
+  decrypt: vi.fn().mockResolvedValue(new Uint8Array(32).fill(0x03)),
+}))
+
+// Mock key-hierarchy
+vi.mock('@/shared/crypto/key-hierarchy', () => ({
+  unwrapFieldKeys: vi.fn().mockResolvedValue(
+    new Map([
+      ['note', createCryptoKeyMock()],
+      ['website', createCryptoKeyMock()],
+      ['email', createCryptoKeyMock()],
+    ]),
+  ),
+}))
+
+// Mock HKDF
+vi.mock('@/shared/crypto/hkdf', () => ({
+  deriveKEK: vi.fn().mockResolvedValue(new Uint8Array(32).fill(0x08)),
 }))
 
 // Mock auth adapter
@@ -176,6 +177,7 @@ const cryptoStoreState = {
   loadedFieldKeys: {} as Record<string, boolean>,
   isVaultLocked: true,
   lastActivity: 0,
+  cachedEnvelope: null as import('@/shared/types/api.types').CachedVaultEnvelope | null,
   setKeys: mockSetKeys,
   setCachedEnvelope: mockSetEnvelope,
   lockVault: vi.fn<() => void>(),
@@ -189,17 +191,27 @@ vi.mock('@/features/encryption/model/crypto-store', () => ({
   },
 }))
 
-import { signUpUser, loginUser, logoutUser, restoreSession, subscribeToAuthChanges } from '@/app/flows/auth-flow'
+import {
+  signUpUser,
+  loginUser,
+  logoutUser,
+  restoreSession,
+  subscribeToAuthChanges,
+  unlockVault,
+} from '@/app/flows/auth-flow'
 import { deriveRegistrationKeys } from '@/features/encryption/model/registration'
-import { deriveLoginKeys } from '@/features/encryption/model/login'
-import { useCryptoStore } from '@/features/encryption/model/crypto-store'
 import { authAdapter } from '@/shared/auth/supabase-adapter'
 import { uploadRegistrationData } from '@/shared/api/supabase-registration'
 import { getLoginSalts, getMasterKeyEnvelope, getFieldKeys } from '@/shared/api/supabase-keys'
-import { deriveLoginCredentials } from '@/shared/crypto/split-kdf'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { AuthError, AuthErrorCode } from '@/shared/auth/auth-errors'
 import type { AuthResult } from '@/shared/auth/auth.types'
+import { keyVault } from '@/features/encryption/model/key-vault'
+import { deriveAuthHash, derivePasswordKey, terminateWorker } from '@/shared/crypto/argon2id'
+import { unwrapFieldKeys } from '@/shared/crypto/key-hierarchy'
+import { deriveKEK } from '@/shared/crypto/hkdf'
+import { decrypt, importKey } from '@/shared/crypto/aes-gcm'
+import { DecryptionError } from '@/shared/crypto/errors'
 
 describe('signUpUser', () => {
   beforeEach(() => {
@@ -225,10 +237,10 @@ describe('signUpUser', () => {
     expect(uploadRegistrationData).toHaveBeenCalledWith(regResult, signupResult.user.id)
   })
 
-  it('populates crypto store with loaded field key flags', async () => {
+  it('stores field keys via keyVault.storeFieldKeys', async () => {
     await signUpUser('testuser', 'testpass123')
-    expect(mockSetKeys).toHaveBeenCalledWith(['note', 'website', 'email'])
-    expect(useCryptoStore.getState().isVaultLocked).toBe(false)
+    const regResult = await (deriveRegistrationKeys as ReturnType<typeof vi.fn>).mock.results[0].value
+    expect(keyVault.storeFieldKeys).toHaveBeenCalledWith(regResult.kek, regResult.fieldKeys)
   })
 
   it('caches envelope data after signup', async () => {
@@ -275,36 +287,30 @@ describe('loginUser', () => {
     vi.clearAllMocks()
   })
 
-  it('fetches salts, derives credentials, and authenticates', async () => {
+  it('fetches salts, derives auth hash, and authenticates', async () => {
     await loginUser('testuser', 'testpass123')
 
     expect(getLoginSalts).toHaveBeenCalledWith('testuser')
-    expect(deriveLoginCredentials).toHaveBeenCalledWith('testpass123', expect.any(Uint8Array), expect.any(Uint8Array))
+    expect(deriveAuthHash).toHaveBeenCalledWith('testpass123', expect.any(Uint8Array))
     expect(authAdapter.login).toHaveBeenCalledWith('testuser', 'a'.repeat(64))
   })
 
-  it('fetches keys and field keys after authentication', async () => {
+  it('fetches envelope and field keys after authentication', async () => {
     await loginUser('testuser', 'testpass123')
 
     expect(getMasterKeyEnvelope).toHaveBeenCalledWith('1')
     expect(getFieldKeys).toHaveBeenCalledWith('1')
   })
 
-  it('calls deriveLoginKeys with passwordKey and decoded key material', async () => {
+  it('derives KEK from password and envelope, then stores field keys', async () => {
     await loginUser('testuser', 'testpass123')
 
-    expect(deriveLoginKeys).toHaveBeenCalledWith({
-      passwordKey: expect.any(Uint8Array),
-      wrappedMasterKey: expect.any(Uint8Array),
-      masterKeyIV: expect.any(Uint8Array),
-      serverFieldKeys: expect.any(Array),
-    })
-  })
-
-  it('populates crypto store with loaded field key flags', async () => {
-    await loginUser('testuser', 'testpass123')
-
-    expect(mockSetKeys).toHaveBeenCalledWith(['note', 'website', 'email'])
+    expect(derivePasswordKey).toHaveBeenCalledWith('testpass123', expect.any(Uint8Array))
+    expect(importKey).toHaveBeenCalled()
+    expect(decrypt).toHaveBeenCalled()
+    expect(deriveKEK).toHaveBeenCalled()
+    expect(unwrapFieldKeys).toHaveBeenCalledWith(mockFieldKeysData, expect.any(Object))
+    expect(keyVault.storeFieldKeys).toHaveBeenCalled()
   })
 
   it('caches envelope data after login', async () => {
@@ -336,7 +342,7 @@ describe('loginUser', () => {
 
     await expect(loginUser('testuser', 'wrongpass')).rejects.toThrow()
 
-    expect(mockSetKeys).not.toHaveBeenCalled()
+    expect(keyVault.storeFieldKeys).not.toHaveBeenCalled()
     expect(mockSetAuth).not.toHaveBeenCalled()
   })
 
@@ -348,12 +354,12 @@ describe('loginUser', () => {
     expect(mockSetLoading).toHaveBeenCalledWith(false)
   })
 
-  it('does not populate crypto store when key unwrapping fails after auth succeeds', async () => {
-    vi.mocked(deriveLoginKeys).mockRejectedValueOnce(new Error('Decryption failed'))
+  it('does not populate crypto store when key derivation fails after auth succeeds', async () => {
+    vi.mocked(decrypt).mockRejectedValueOnce(new Error('Decryption failed'))
 
     await expect(loginUser('testuser', 'testpass123')).rejects.toThrow('Decryption failed')
 
-    expect(mockSetKeys).not.toHaveBeenCalled()
+    expect(keyVault.storeFieldKeys).not.toHaveBeenCalled()
     expect(mockSetAuth).not.toHaveBeenCalled()
     expect(mockSetLoading).toHaveBeenCalledWith(false)
   })
@@ -363,7 +369,7 @@ describe('loginUser', () => {
 
     await expect(loginUser('testuser', 'testpass123')).rejects.toThrow(AuthError)
 
-    expect(mockSetKeys).not.toHaveBeenCalled()
+    expect(keyVault.storeFieldKeys).not.toHaveBeenCalled()
     expect(mockSetAuth).not.toHaveBeenCalled()
   })
 })
@@ -373,21 +379,23 @@ describe('logoutUser', () => {
     vi.clearAllMocks()
   })
 
-  it('calls adapter logout, clears vault, and resets store', async () => {
+  it('calls adapter logout, clears vault, resets store, and terminates worker', async () => {
     await logoutUser()
 
     expect(authAdapter.logout).toHaveBeenCalled()
     expect(mockClearVault).toHaveBeenCalled()
     expect(mockReset).toHaveBeenCalled()
+    expect(terminateWorker).toHaveBeenCalled()
   })
 
-  it('clears vault and resets store even when adapter logout fails', async () => {
+  it('clears vault, resets store, and terminates worker even when adapter logout fails', async () => {
     vi.mocked(authAdapter.logout).mockRejectedValueOnce(new Error('Network error'))
 
     await logoutUser()
 
     expect(mockClearVault).toHaveBeenCalled()
     expect(mockReset).toHaveBeenCalled()
+    expect(terminateWorker).toHaveBeenCalled()
   })
 })
 
@@ -410,19 +418,6 @@ describe('restoreSession', () => {
       setUser: vi.fn(),
       setSession: vi.fn(),
     })
-
-    vi.mock('@/features/auth/model/auth-store', () => ({
-      useAuthStore: {
-        getState: vi.fn(() => ({
-          setLoading: mockSetLoading,
-          setAuth: mockSetAuth,
-          setRestoringSession: mockSetRestoringSession,
-          reset: mockReset,
-          isRestoringSession: false,
-        })),
-        setState: vi.fn(),
-      },
-    }))
 
     await restoreSession()
     expect(mockSetRestoringSession).toHaveBeenCalledWith(false)
@@ -560,7 +555,7 @@ describe('subscribeToAuthChanges', () => {
     )
   })
 
-  it('callback calls clearVault and reset on null result', () => {
+  it('callback calls clearVault, reset, and terminateWorker on null result', () => {
     let capturedCallback: ((result: unknown) => void) | undefined
     vi.mocked(authAdapter.onAuthStateChange).mockImplementation((cb) => {
       capturedCallback = cb as (result: unknown) => void
@@ -572,5 +567,122 @@ describe('subscribeToAuthChanges', () => {
 
     expect(mockClearVault).toHaveBeenCalled()
     expect(mockReset).toHaveBeenCalled()
+    expect(terminateWorker).toHaveBeenCalled()
+  })
+})
+
+describe('unlockVault', () => {
+  const mockUser = { id: 'user-1', username: 'testuser', createdAt: '' }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    cryptoStoreState.cachedEnvelope = null
+    vi.mocked(useAuthStore.getState).mockReturnValue({
+      setLoading: mockSetLoading,
+      setAuth: mockSetAuth,
+      setRestoringSession: mockSetRestoringSession,
+      reset: mockReset,
+      isRestoringSession: false,
+      user: mockUser,
+      session: null,
+      isLoading: false,
+      setUser: vi.fn(),
+      setSession: vi.fn(),
+    })
+  })
+
+  it('fetches from server and populates vault when no cached envelope', async () => {
+    await unlockVault('test-password-123')
+
+    expect(getMasterKeyEnvelope).toHaveBeenCalledWith('user-1')
+    expect(getFieldKeys).toHaveBeenCalledWith('user-1')
+    expect(derivePasswordKey).toHaveBeenCalled()
+    expect(keyVault.storeFieldKeys).toHaveBeenCalled()
+    expect(mockSetEnvelope).toHaveBeenCalled()
+  })
+
+  it('uses cached envelope without network calls', async () => {
+    cryptoStoreState.cachedEnvelope = {
+      ...mockEnvelopeData,
+      fieldKeys: mockFieldKeysData,
+    }
+
+    await unlockVault('test-password-123')
+
+    expect(getMasterKeyEnvelope).not.toHaveBeenCalled()
+    expect(getFieldKeys).not.toHaveBeenCalled()
+    expect(derivePasswordKey).toHaveBeenCalled()
+    expect(keyVault.storeFieldKeys).toHaveBeenCalled()
+  })
+
+  it('does not call setCachedEnvelope when envelope is already cached', async () => {
+    cryptoStoreState.cachedEnvelope = {
+      ...mockEnvelopeData,
+      fieldKeys: mockFieldKeysData,
+    }
+
+    await unlockVault('test-password-123')
+
+    expect(mockSetEnvelope).not.toHaveBeenCalled()
+  })
+
+  it('throws when no user is authenticated', async () => {
+    vi.mocked(useAuthStore.getState).mockReturnValue({
+      setLoading: mockSetLoading,
+      setAuth: mockSetAuth,
+      setRestoringSession: mockSetRestoringSession,
+      reset: mockReset,
+      isRestoringSession: false,
+      user: null,
+      session: null,
+      isLoading: false,
+      setUser: vi.fn(),
+      setSession: vi.fn(),
+    })
+
+    await expect(unlockVault('test-password-123')).rejects.toThrow('Cannot unlock vault: no authenticated user')
+  })
+
+  it('clears cache and retries from server on DecryptionError', async () => {
+    cryptoStoreState.cachedEnvelope = {
+      ...mockEnvelopeData,
+      fieldKeys: mockFieldKeysData,
+    }
+    // First call (cached envelope) throws DecryptionError
+    vi.mocked(deriveKEK)
+      .mockRejectedValueOnce(new DecryptionError())
+      .mockResolvedValueOnce(new Uint8Array(32).fill(0x08))
+
+    await unlockVault('test-password-123')
+
+    expect(mockClearVault).toHaveBeenCalled()
+    expect(getMasterKeyEnvelope).toHaveBeenCalledWith('user-1')
+    expect(getFieldKeys).toHaveBeenCalledWith('user-1')
+    expect(mockSetEnvelope).toHaveBeenCalled()
+    expect(keyVault.storeFieldKeys).toHaveBeenCalled()
+  })
+
+  it('re-throws if retry also fails', async () => {
+    cryptoStoreState.cachedEnvelope = {
+      ...mockEnvelopeData,
+      fieldKeys: mockFieldKeysData,
+    }
+    vi.mocked(deriveKEK).mockRejectedValue(new DecryptionError())
+
+    await expect(unlockVault('test-password-123')).rejects.toThrow(DecryptionError)
+    expect(mockClearVault).toHaveBeenCalled()
+    expect(getMasterKeyEnvelope).toHaveBeenCalled()
+  })
+
+  it('does not retry on non-DecryptionError', async () => {
+    cryptoStoreState.cachedEnvelope = {
+      ...mockEnvelopeData,
+      fieldKeys: mockFieldKeysData,
+    }
+    vi.mocked(derivePasswordKey).mockRejectedValueOnce(new Error('Some other error'))
+
+    await expect(unlockVault('test-password-123')).rejects.toThrow('Some other error')
+    expect(mockClearVault).not.toHaveBeenCalled()
+    expect(getMasterKeyEnvelope).not.toHaveBeenCalled()
   })
 })

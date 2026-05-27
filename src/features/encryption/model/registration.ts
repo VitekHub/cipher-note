@@ -6,7 +6,7 @@
  */
 
 import { importKey, encrypt } from '@/shared/crypto/aes-gcm'
-import { generateIV, generateSalt } from '@/shared/crypto/crypto-utils'
+import { generateIV, generateSalt, zeroFill } from '@/shared/crypto/crypto-utils'
 import { generateMnemonic, wrapMasterKeyWithRecovery } from '@/shared/crypto/mnemonic'
 import {
   generateMasterKey,
@@ -25,9 +25,9 @@ export async function deriveRegistrationKeys(password: string): Promise<Registra
   const hierarchy = await deriveFullKeyHierarchy(masterKey)
 
   // Generate and wrap field keys (AAD = fieldName + version)
-  const fieldKeys = generateFieldKeys()
-  const versions = new Map(Array.from(fieldKeys.keys()).map((name) => [name, FIELD_KEY_VERSION] as const))
-  const wrappedFieldKeys = await wrapFieldKeys(fieldKeys, hierarchy.kek, versions)
+  const { rawFieldKeys, cryptoFieldKeys } = await generateFieldKeys()
+  const versions = new Map(Array.from(rawFieldKeys.keys()).map((name) => [name, FIELD_KEY_VERSION] as const))
+  const wrappedFieldKeys = await wrapFieldKeys(rawFieldKeys, hierarchy.kek, versions)
 
   // Wrap master key with password key (AAD prevents cross-context decryption)
   const passwordCryptoKey = await importKey(passwordKey)
@@ -40,14 +40,14 @@ export async function deriveRegistrationKeys(password: string): Promise<Registra
   // Recovery: generate mnemonic and wrap master key with recovery KEK
   const mnemonic = await generateMnemonic()
   const recoveryData = await wrapMasterKeyWithRecovery(masterKey, mnemonic, { iv: generateIV(), salt: generateSalt() })
+  zeroFill(masterKey)
 
   return {
     authHash,
     authSalt,
     keySalt,
-    masterKey,
     kek: hierarchy.kek,
-    fieldKeys,
+    fieldKeys: cryptoFieldKeys,
     wrappedMasterKey,
     masterKeyIV,
     wrappedFieldKeys,
