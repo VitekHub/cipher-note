@@ -1,10 +1,29 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
+// Helper to create a mock CryptoKey for testing
+function createCryptoKeyMock(): CryptoKey {
+  // Create a dummy CryptoKey - for testing purposes we just need a valid object
+  // that can be stored in the key vault
+  return {
+    type: 'secret',
+    extractable: false,
+    algorithm: { name: 'AES-GCM', length: 256 },
+    usages: ['encrypt', 'decrypt'],
+    [Symbol.toStringTag]: 'CryptoKey',
+  } as unknown as CryptoKey
+}
+
 const mockSetLoading = vi.fn<(isLoading: boolean) => void>()
-const mockSetAuth = vi.fn<(user: import('@/shared/types/entities/user.types').User, session: import('@/shared/types/entities/user.types').UserSession) => void>()
+const mockSetAuth =
+  vi.fn<
+    (
+      user: import('@/shared/types/entities/user.types').User,
+      session: import('@/shared/types/entities/user.types').UserSession,
+    ) => void
+  >()
 const mockSetRestoringSession = vi.fn<(isRestoringSession: boolean) => void>()
 const mockReset = vi.fn<() => void>()
-const mockSetKeys = vi.fn<(masterKey: string, kek: string, fieldKeys: Record<string, string>) => void>(() => {
+const mockSetKeys = vi.fn<(fieldKeyNames: string[]) => void>(() => {
   cryptoStoreState.isVaultLocked = false
 })
 const mockSetEnvelope = vi.fn<(envelope: import('@/shared/types/api.types').CachedVaultEnvelope) => void>()
@@ -16,7 +35,7 @@ vi.mock('@/features/encryption/model/registration', () => ({
     authSalt: new Uint8Array(16).fill(0x01),
     keySalt: new Uint8Array(16).fill(0x02),
     masterKey: new Uint8Array(32).fill(0x03),
-    kek: new Uint8Array(32).fill(0x04),
+    kek: createCryptoKeyMock(),
     fieldKeys: new Map([
       ['note', new Uint8Array(32).fill(0x10)],
       ['website', new Uint8Array(32).fill(0x20)],
@@ -47,14 +66,17 @@ vi.mock('@/features/encryption/model/login', () => ({
   }),
 }))
 
-// Mock vault-lock module
+// Mock key-vault module
 const { mockClearVault } = vi.hoisted(() => ({
   mockClearVault: vi.fn<() => void>(),
 }))
-vi.mock('@/features/encryption/model/vault-lock', () => ({
-  lockVault: vi.fn<() => void>(),
-  clearVault: mockClearVault,
-  unlockVault: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
+vi.mock('@/features/encryption/model/key-vault', () => ({
+  keyVault: {
+    lockVault: vi.fn<() => void>(),
+    storeKey: vi.fn<() => void>(),
+    clearVault: mockClearVault,
+    unlockVault: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
+  },
 }))
 
 // Mock Supabase registration
@@ -151,9 +173,7 @@ vi.mock('@/features/auth/model/auth-store', () => ({
 
 // Mock crypto store
 const cryptoStoreState = {
-  masterKey: null as string | null,
-  kek: null as string | null,
-  fieldKeys: {} as Record<string, string>,
+  loadedFieldKeys: {} as Record<string, boolean>,
   isVaultLocked: true,
   lastActivity: 0,
   setKeys: mockSetKeys,
@@ -172,10 +192,7 @@ vi.mock('@/features/encryption/model/crypto-store', () => ({
 import { signUpUser, loginUser, logoutUser, restoreSession, subscribeToAuthChanges } from '@/app/flows/auth-flow'
 import { deriveRegistrationKeys } from '@/features/encryption/model/registration'
 import { deriveLoginKeys } from '@/features/encryption/model/login'
-import { clearVault as clearVaultMock } from '@/features/encryption/model/vault-lock'
 import { useCryptoStore } from '@/features/encryption/model/crypto-store'
-import { hexEncode } from '@/shared/crypto/crypto-utils'
-import { exportKey } from '@/shared/crypto/aes-gcm'
 import { authAdapter } from '@/shared/auth/supabase-adapter'
 import { uploadRegistrationData } from '@/shared/api/supabase-registration'
 import { getLoginSalts, getMasterKeyEnvelope, getFieldKeys } from '@/shared/api/supabase-keys'
@@ -208,10 +225,9 @@ describe('signUpUser', () => {
     expect(uploadRegistrationData).toHaveBeenCalledWith(regResult, signupResult.user.id)
   })
 
-  it('populates crypto store with hex-encoded keys', async () => {
+  it('populates crypto store with loaded field key flags', async () => {
     await signUpUser('testuser', 'testpass123')
-    expect(hexEncode).toHaveBeenCalledWith(new Uint8Array(32).fill(0x03))
-    expect(hexEncode).toHaveBeenCalledWith(new Uint8Array(32).fill(0x04))
+    expect(mockSetKeys).toHaveBeenCalledWith(['note', 'website', 'email'])
     expect(useCryptoStore.getState().isVaultLocked).toBe(false)
   })
 
@@ -285,11 +301,10 @@ describe('loginUser', () => {
     })
   })
 
-  it('populates crypto store with hex-encoded keys', async () => {
+  it('populates crypto store with loaded field key flags', async () => {
     await loginUser('testuser', 'testpass123')
 
-    expect(exportKey).toHaveBeenCalled()
-    expect(mockSetKeys).toHaveBeenCalled()
+    expect(mockSetKeys).toHaveBeenCalledWith(['note', 'website', 'email'])
   })
 
   it('caches envelope data after login', async () => {
@@ -362,7 +377,7 @@ describe('logoutUser', () => {
     await logoutUser()
 
     expect(authAdapter.logout).toHaveBeenCalled()
-    expect(clearVaultMock).toHaveBeenCalled()
+    expect(mockClearVault).toHaveBeenCalled()
     expect(mockReset).toHaveBeenCalled()
   })
 
@@ -371,7 +386,7 @@ describe('logoutUser', () => {
 
     await logoutUser()
 
-    expect(clearVaultMock).toHaveBeenCalled()
+    expect(mockClearVault).toHaveBeenCalled()
     expect(mockReset).toHaveBeenCalled()
   })
 })
@@ -555,7 +570,7 @@ describe('subscribeToAuthChanges', () => {
     subscribeToAuthChanges()
     capturedCallback!(null)
 
-    expect(clearVaultMock).toHaveBeenCalled()
+    expect(mockClearVault).toHaveBeenCalled()
     expect(mockReset).toHaveBeenCalled()
   })
 })

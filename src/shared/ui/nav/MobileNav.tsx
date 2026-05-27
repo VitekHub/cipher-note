@@ -5,7 +5,7 @@ import { Button } from '@/shared/ui/button'
 import { NavLink } from '@/shared/ui/nav/NavLink'
 import { useCryptoStore } from '@/features/encryption/model/crypto-store'
 import { useVaultDialogStore } from '@/features/encryption/model/vault-dialog-store'
-import { lockVault } from '@/features/encryption/model/vault-lock'
+import { keyVault } from '@/features/encryption/model/key-vault'
 
 function MobileNav() {
   const { t } = useTranslation(['common', 'crypto'])
@@ -16,7 +16,7 @@ function MobileNav() {
     if (isVaultLocked) {
       openUnlockDialog()
     } else {
-      lockVault()
+      keyVault.lockVault()
     }
   }
 

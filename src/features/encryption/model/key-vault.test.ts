@@ -18,9 +18,7 @@ const mockClearVault = vi.fn()
 const mockSetEnvelope = vi.fn()
 
 const createStoreState = (overrides?: Partial<{ cachedEnvelope: CachedVaultEnvelope | null }>) => ({
-  masterKey: null as string | null,
-  kek: null as string | null,
-  fieldKeys: {} as Record<string, string>,
+  loadedFieldKeys: {} as Record<string, boolean>,
   isVaultLocked: true,
   lastActivity: 0,
   cachedEnvelope: null as CachedVaultEnvelope | null,
@@ -76,13 +74,12 @@ vi.mock('@/shared/api/supabase-keys', () => ({
 
 // Mock AES-GCM
 vi.mock('@/shared/crypto/aes-gcm', () => ({
-  exportKey: vi.fn().mockResolvedValue(new Uint8Array(32).fill(0x04)),
   importKey: vi.fn(),
   encrypt: vi.fn(),
   decrypt: vi.fn(),
 }))
 
-import { lockVault, unlockVault, clearVault } from '@/features/encryption/model/vault-lock'
+import { keyVault } from '@/features/encryption/model/key-vault'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { useCryptoStore } from '@/features/encryption/model/crypto-store'
 import { deriveLoginKeys } from '@/features/encryption/model/login'
@@ -102,35 +99,104 @@ const cachedEnvelope: CachedVaultEnvelope = {
   ],
 }
 
-describe('lockVault', () => {
+describe('key-vault', () => {
+  beforeEach(() => {
+    keyVault.zeroKeys()
+  })
+
+  it('stores and retrieves a CryptoKey', async () => {
+    const keyData = new Uint8Array(32).fill(0x42)
+    const key = await crypto.subtle.importKey('raw', keyData, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt'])
+
+    keyVault.storeKey('test-key', key)
+
+    const retrieved = keyVault.getKey('test-key')
+    expect(retrieved).toBe(key)
+  })
+
+  it('returns undefined for missing key', () => {
+    expect(keyVault.getKey('nonexistent')).toBeUndefined()
+  })
+
+  it('keyVault.hasKey returns true for existing key', async () => {
+    const keyData = new Uint8Array(32).fill(0x42)
+    const key = await crypto.subtle.importKey('raw', keyData, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt'])
+
+    keyVault.storeKey('existing', key)
+
+    expect(keyVault.hasKey('existing')).toBe(true)
+  })
+
+  it('keyVault.hasKey returns false for missing key', () => {
+    expect(keyVault.hasKey('missing')).toBe(false)
+  })
+
+  it('zeroKeys removes all entries', async () => {
+    const keyData1 = new Uint8Array(32).fill(0x01)
+    const keyData2 = new Uint8Array(32).fill(0x02)
+
+    const key1 = await crypto.subtle.importKey('raw', keyData1, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt'])
+    const key2 = await crypto.subtle.importKey('raw', keyData2, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt'])
+
+    keyVault.storeKey('key1', key1)
+    keyVault.storeKey('key2', key2)
+
+    keyVault.zeroKeys()
+
+    expect(keyVault.getKey('key1')).toBeUndefined()
+    expect(keyVault.getKey('key2')).toBeUndefined()
+    expect(keyVault.hasKey('key1')).toBe(false)
+    expect(keyVault.hasKey('key2')).toBe(false)
+  })
+
+  it('keys are non-extractable (exportKey throws)', async () => {
+    const keyData = new Uint8Array(32).fill(0x55)
+    const key = await crypto.subtle.importKey('raw', keyData, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt'])
+
+    keyVault.storeKey('non-extractable', key)
+
+    await expect(crypto.subtle.exportKey('raw', key)).rejects.toThrow()
+  })
+
+  it('zeroKeys is idempotent', () => {
+    // Should not throw when clearing empty vault
+    keyVault.zeroKeys()
+    keyVault.zeroKeys()
+
+    // Verify vault is empty by checking keyVault.hasKey for non-existent keys
+    expect(keyVault.hasKey('nonexistent')).toBe(false)
+  })
+})
+
+describe('keyVault.lockVault', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   it('calls cryptoStore.lockVault', () => {
-    lockVault()
+    keyVault.lockVault()
     expect(mockLockVault).toHaveBeenCalled()
   })
 })
 
-describe('clearVault', () => {
+describe('keyVault.clearVault', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('calls cryptoStore.clearVault', () => {
-    clearVault()
+  it('calls cryptoStore.clearVault and keyVault.clearVault', () => {
+    keyVault.clearVault()
     expect(mockClearVault).toHaveBeenCalled()
   })
 })
 
-describe('unlockVault (network path)', () => {
+describe('keyVault.unlockVault (network path)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   it('fetches envelope from server and populates crypto store', async () => {
-    await unlockVault('test-password-123')
+    await keyVault.unlockVault('test-password-123')
 
     expect(getMasterKeyEnvelope).toHaveBeenCalledWith('user-1')
     expect(getFieldKeys).toHaveBeenCalledWith('user-1')
@@ -140,11 +206,11 @@ describe('unlockVault (network path)', () => {
       expect.any(Uint8Array),
     )
     expect(deriveLoginKeys).toHaveBeenCalled()
-    expect(mockSetKeys).toHaveBeenCalled()
+    expect(mockSetKeys).toHaveBeenCalledWith(['note', 'website', 'email'])
   })
 
   it('caches envelope after fetching from server', async () => {
-    await unlockVault('test-password-123')
+    await keyVault.unlockVault('test-password-123')
 
     expect(mockSetEnvelope).toHaveBeenCalledWith({
       authSalt: '01'.repeat(16),
@@ -164,13 +230,15 @@ describe('unlockVault (network path)', () => {
       user: null,
     })
 
-    await expect(unlockVault('test-password-123')).rejects.toThrow('Cannot unlock vault: no authenticated user')
+    await expect(keyVault.unlockVault('test-password-123')).rejects.toThrow(
+      'Cannot unlock vault: no authenticated user',
+    )
   })
 
   it('does not populate crypto store when getMasterKeyEnvelope fails', async () => {
     vi.mocked(getMasterKeyEnvelope).mockRejectedValueOnce(new Error('Network error'))
 
-    await expect(unlockVault('test-password-123')).rejects.toThrow('Network error')
+    await expect(keyVault.unlockVault('test-password-123')).rejects.toThrow('Network error')
 
     expect(mockSetKeys).not.toHaveBeenCalled()
   })
@@ -178,13 +246,13 @@ describe('unlockVault (network path)', () => {
   it('does not populate crypto store when key unwrapping fails', async () => {
     vi.mocked(deriveLoginKeys).mockRejectedValueOnce(new Error('Decryption failed'))
 
-    await expect(unlockVault('test-password-123')).rejects.toThrow('Decryption failed')
+    await expect(keyVault.unlockVault('test-password-123')).rejects.toThrow('Decryption failed')
 
     expect(mockSetKeys).not.toHaveBeenCalled()
   })
 })
 
-describe('unlockVault (cached envelope)', () => {
+describe('keyVault.unlockVault (cached envelope)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(useCryptoStore.getState).mockReturnValue(createStoreState({ cachedEnvelope }))
@@ -195,7 +263,7 @@ describe('unlockVault (cached envelope)', () => {
   })
 
   it('skips network calls and uses cached envelope', async () => {
-    await unlockVault('test-password-123')
+    await keyVault.unlockVault('test-password-123')
 
     expect(getMasterKeyEnvelope).not.toHaveBeenCalled()
     expect(getFieldKeys).not.toHaveBeenCalled()
@@ -204,11 +272,11 @@ describe('unlockVault (cached envelope)', () => {
       expect.any(Uint8Array),
       expect.any(Uint8Array),
     )
-    expect(mockSetKeys).toHaveBeenCalled()
+    expect(mockSetKeys).toHaveBeenCalledWith(['note', 'website', 'email'])
   })
 
   it('does not call setCachedEnvelope again when envelope is already cached', async () => {
-    await unlockVault('test-password-123')
+    await keyVault.unlockVault('test-password-123')
 
     expect(mockSetEnvelope).not.toHaveBeenCalled()
   })
@@ -226,19 +294,19 @@ describe('unlockVault (cached envelope)', () => {
         ]),
       })
 
-    await unlockVault('test-password-123')
+    await keyVault.unlockVault('test-password-123')
 
     expect(mockClearVault).toHaveBeenCalled()
     expect(getMasterKeyEnvelope).toHaveBeenCalledWith('user-1')
     expect(getFieldKeys).toHaveBeenCalledWith('user-1')
     expect(mockSetEnvelope).toHaveBeenCalled()
-    expect(mockSetKeys).toHaveBeenCalled()
+    expect(mockSetKeys).toHaveBeenCalledWith(['note', 'website', 'email'])
   })
 
   it('re-throws if retry also fails', async () => {
     vi.mocked(deriveLoginKeys).mockRejectedValueOnce(new DecryptionError()).mockRejectedValueOnce(new DecryptionError())
 
-    await expect(unlockVault('test-password-123')).rejects.toThrow(DecryptionError)
+    await expect(keyVault.unlockVault('test-password-123')).rejects.toThrow(DecryptionError)
     expect(mockClearVault).toHaveBeenCalled()
     expect(getMasterKeyEnvelope).toHaveBeenCalled()
   })
@@ -246,7 +314,7 @@ describe('unlockVault (cached envelope)', () => {
   it('does not retry on non-DecryptionError', async () => {
     vi.mocked(deriveLoginKeys).mockRejectedValueOnce(new Error('Some other error'))
 
-    await expect(unlockVault('test-password-123')).rejects.toThrow('Some other error')
+    await expect(keyVault.unlockVault('test-password-123')).rejects.toThrow('Some other error')
     expect(mockClearVault).not.toHaveBeenCalled()
     expect(getMasterKeyEnvelope).not.toHaveBeenCalled()
   })

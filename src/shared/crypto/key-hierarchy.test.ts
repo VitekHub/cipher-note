@@ -68,9 +68,14 @@ describe('key-hierarchy', () => {
       const h1 = await deriveFullKeyHierarchy(masterKey)
       const h2 = await deriveFullKeyHierarchy(masterKey)
 
-      const kek1 = await crypto.subtle.exportKey('raw', h1.kek)
-      const kek2 = await crypto.subtle.exportKey('raw', h2.kek)
-      expect(new Uint8Array(kek1)).toEqual(new Uint8Array(kek2))
+      // Compare ciphertexts from encrypting same data with both KEKs
+      const testPlaintext = new Uint8Array(32).fill(0x42)
+      const iv = new Uint8Array(12).fill(0x00)
+
+      const ciphertext1 = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, h1.kek, testPlaintext)
+      const ciphertext2 = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, h2.kek, testPlaintext)
+
+      expect(new Uint8Array(ciphertext1)).toEqual(new Uint8Array(ciphertext2))
     })
 
     it('produces different KEK for different master keys', async () => {
@@ -79,9 +84,14 @@ describe('key-hierarchy', () => {
       const h1 = await deriveFullKeyHierarchy(mk1)
       const h2 = await deriveFullKeyHierarchy(mk2)
 
-      const kek1 = await crypto.subtle.exportKey('raw', h1.kek)
-      const kek2 = await crypto.subtle.exportKey('raw', h2.kek)
-      expect(new Uint8Array(kek1)).not.toEqual(new Uint8Array(kek2))
+      // Compare ciphertexts from encrypting same data with both KEKs
+      const testPlaintext = new Uint8Array(32).fill(0x42)
+      const iv = new Uint8Array(12).fill(0x00)
+
+      const ciphertext1 = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, h1.kek, testPlaintext)
+      const ciphertext2 = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, h2.kek, testPlaintext)
+
+      expect(new Uint8Array(ciphertext1)).not.toEqual(new Uint8Array(ciphertext2))
     })
   })
 

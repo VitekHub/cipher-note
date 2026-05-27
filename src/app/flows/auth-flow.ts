@@ -6,9 +6,9 @@ import { uploadRegistrationData } from '@/shared/api/supabase-registration'
 import { getLoginSalts, getMasterKeyEnvelope, getFieldKeys } from '@/shared/api/supabase-keys'
 import { deriveLoginCredentials } from '@/shared/crypto/split-kdf'
 import { deriveLoginKeys } from '@/features/encryption/model/login'
-import { hexDecode, hexEncode, encodeFieldKeysToHex } from '@/shared/crypto/crypto-utils'
-import { exportKey } from '@/shared/crypto/aes-gcm'
-import { clearVault } from '@/features/encryption/model/vault-lock'
+import { hexDecode, hexEncode, zeroFill } from '@/shared/crypto/crypto-utils'
+import { importKey } from '@/shared/crypto/aes-gcm'
+import { keyVault } from '@/features/encryption/model/key-vault'
 
 /**
  * Registers a new user: derives keys, signs up on the server, uploads encrypted
@@ -39,10 +39,13 @@ export async function signUpUser(username: string, password: string): Promise<st
 
     authStore.setAuth(authResult.user, authResult.session)
 
-    const masterKeyHex = hexEncode(regResult.masterKey)
-    const kekHex = hexEncode(regResult.kek)
-    const fieldKeysHex = encodeFieldKeysToHex(regResult.fieldKeys)
-    useCryptoStore.getState().setKeys(masterKeyHex, kekHex, fieldKeysHex)
+    // Store KEK and field keys in the vault (non-extractable CryptoKeys)
+    keyVault.storeKey('kek', regResult.kek)
+    for (const [name, key] of regResult.fieldKeys) {
+      keyVault.storeKey(name, await importKey(key))
+    }
+    useCryptoStore.getState().setKeys(['note', 'website', 'email'])
+    zeroFill(regResult.masterKey)
     useCryptoStore.getState().setCachedEnvelope({
       authSalt: hexEncode(regResult.authSalt),
       keySalt: hexEncode(regResult.keySalt),
@@ -86,9 +89,15 @@ export async function loginUser(username: string, password: string) {
       masterKeyIV: hexDecode(masterKeyEnvelope.masterKeyIV),
       serverFieldKeys,
     })
-    const kekBytes = await exportKey(kek)
-    useCryptoStore.getState().setKeys(hexEncode(masterKey), hexEncode(kekBytes), encodeFieldKeysToHex(fieldKeys))
     useCryptoStore.getState().setCachedEnvelope({ ...masterKeyEnvelope, fieldKeys: serverFieldKeys })
+
+    // Store KEK and field keys in the vault (non-extractable CryptoKeys)
+    keyVault.storeKey('kek', kek)
+    for (const [name, key] of fieldKeys) {
+      keyVault.storeKey(name, await importKey(key))
+    }
+    useCryptoStore.getState().setKeys(['note', 'website', 'email'])
+    zeroFill(masterKey)
 
     authStore.setAuth(authResult.user, authResult.session)
   } finally {
@@ -105,7 +114,7 @@ export async function logoutUser() {
   } catch {
     // Server signOut may fail (no session, network error) - clear local state regardless
   } finally {
-    clearVault()
+    keyVault.clearVault()
     store.reset()
   }
 }
@@ -150,7 +159,7 @@ export function subscribeToAuthChanges(): () => void {
     if (result) {
       useAuthStore.getState().setAuth(result.user, result.session)
     } else {
-      clearVault()
+      keyVault.clearVault()
       useAuthStore.getState().reset()
     }
   })

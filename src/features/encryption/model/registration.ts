@@ -5,7 +5,7 @@
  * The caller (auth-flow.ts) handles Supabase Auth signup and data upload.
  */
 
-import { importKey, encrypt, exportKey } from '@/shared/crypto/aes-gcm'
+import { importKey, encrypt } from '@/shared/crypto/aes-gcm'
 import { generateIV, generateSalt } from '@/shared/crypto/crypto-utils'
 import { generateMnemonic, wrapMasterKeyWithRecovery } from '@/shared/crypto/mnemonic'
 import {
@@ -41,14 +41,12 @@ export async function deriveRegistrationKeys(password: string): Promise<Registra
   const mnemonic = await generateMnemonic()
   const recoveryData = await wrapMasterKeyWithRecovery(masterKey, mnemonic, { iv: generateIV(), salt: generateSalt() })
 
-  const kek = await exportKey(hierarchy.kek)
-
   return {
     authHash,
     authSalt,
     keySalt,
     masterKey,
-    kek,
+    kek: hierarchy.kek,
     fieldKeys,
     wrappedMasterKey,
     masterKeyIV,

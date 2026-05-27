@@ -75,8 +75,8 @@ describe('deriveRegistrationKeys', () => {
     expect(result.masterKey).toHaveLength(32)
   })
 
-  it('returns 32-byte kek (raw bytes, not CryptoKey)', () => {
-    expect(result.kek).toHaveLength(32)
+  it('returns kek as CryptoKey', () => {
+    expect(result.kek).toBeInstanceOf(CryptoKey)
   })
 
   it('returns fieldKeys map with 3 entries, each 32 bytes', () => {
@@ -121,8 +121,8 @@ describe('deriveRegistrationKeys', () => {
   })
 
   it('unwraps field keys with derived KEK', async () => {
-    const kekCryptoKey = await importKey(result.kek)
-    const unwrapped = await unwrapFieldKeys(result.wrappedFieldKeys, kekCryptoKey)
+    // KEK is already a CryptoKey, use directly
+    const unwrapped = await unwrapFieldKeys(result.wrappedFieldKeys, result.kek)
     for (const [name, key] of result.fieldKeys) {
       expect(unwrapped.get(name)).toEqual(key)
     }

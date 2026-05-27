@@ -40,9 +40,11 @@ vi.mock('@/features/encryption/model/login', () => ({
   }),
 }))
 
-vi.mock('@/features/encryption/model/vault-lock', () => ({
-  lockVault: vi.fn(),
-  unlockVault: vi.fn().mockResolvedValue(undefined),
+vi.mock('@/features/encryption/model/key-vault', () => ({
+  keyVault: {
+    lockVault: vi.fn(),
+    unlockVault: vi.fn().mockResolvedValue(undefined),
+  },
 }))
 
 vi.mock('@/shared/crypto/crypto-utils', () => ({

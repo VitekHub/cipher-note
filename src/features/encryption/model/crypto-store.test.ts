@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { useCryptoStore, selectFieldKey, hasCachedEnvelope, setQueryClient } from './crypto-store'
 import type { CachedVaultEnvelope } from '@/shared/types/api.types'
+import { useCryptoStore, hasCachedEnvelope, setQueryClient } from './crypto-store'
 
 const mockRemoveQueries = vi.fn()
 const mockQueryClient = { removeQueries: mockRemoveQueries } as unknown as import('@tanstack/react-query').QueryClient
@@ -20,15 +20,14 @@ const sampleEnvelope: CachedVaultEnvelope = {
 
 describe('crypto-store', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
     mockRemoveQueries.mockClear()
     useCryptoStore.getState().clearVault()
   })
 
-  it('initializes with locked vault and empty keys', () => {
+  it('initializes with locked vault and empty loadedFieldKeys', () => {
     const state = useCryptoStore.getState()
-    expect(state.masterKey).toBeNull()
-    expect(state.kek).toBeNull()
-    expect(state.fieldKeys).toEqual({})
+    expect(state.loadedFieldKeys).toEqual({})
     expect(state.isVaultLocked).toBe(true)
     expect(state.lastActivity).toBe(0)
   })
@@ -38,16 +37,14 @@ describe('crypto-store', () => {
     expect(state.cachedEnvelope).toBeNull()
   })
 
-  it('setKeys stores hex-encoded keys and unlocks vault', () => {
-    useCryptoStore.getState().setKeys('a1b2c3', 'd4e5f6', { note: 'aa11bb22', website: 'cc33dd44', email: 'ee55ff66' })
+  it('setKeys loads field keys and unlocks vault', () => {
+    useCryptoStore.getState().setKeys(['note', 'website', 'email'])
 
     const state = useCryptoStore.getState()
-    expect(state.masterKey).toBe('a1b2c3')
-    expect(state.kek).toBe('d4e5f6')
-    expect(state.fieldKeys).toEqual({
-      note: 'aa11bb22',
-      website: 'cc33dd44',
-      email: 'ee55ff66',
+    expect(state.loadedFieldKeys).toEqual({
+      note: true,
+      website: true,
+      email: true,
     })
     expect(state.isVaultLocked).toBe(false)
     expect(state.lastActivity).toBeGreaterThan(0)
@@ -60,63 +57,30 @@ describe('crypto-store', () => {
     expect(state.cachedEnvelope).toEqual(sampleEnvelope)
   })
 
-  it('selectFieldKey returns correct key by field name', () => {
-    useCryptoStore.getState().setKeys('mk', 'kk', {
-      note: 'notekey',
-      website: 'webkey',
-      email: 'emailkey',
-    })
-
-    const state = useCryptoStore.getState()
-    expect(selectFieldKey('note')(state)).toBe('notekey')
-    expect(selectFieldKey('website')(state)).toBe('webkey')
-    expect(selectFieldKey('email')(state)).toBe('emailkey')
-  })
-
-  it('selectFieldKey returns null for unknown field', () => {
-    useCryptoStore.getState().setKeys('mk', 'kk', {
-      note: 'notekey',
-    })
-
-    expect(selectFieldKey('unknown')(useCryptoStore.getState())).toBeNull()
-  })
-
   it('lockVault zeros keys but preserves envelope cache', () => {
-    useCryptoStore.getState().setKeys('mk', 'kk', { note: 'notekey' })
+    useCryptoStore.getState().setKeys(['note'])
     useCryptoStore.getState().setCachedEnvelope(sampleEnvelope)
 
     useCryptoStore.getState().lockVault()
 
     const state = useCryptoStore.getState()
-    expect(state.masterKey).toBeNull()
-    expect(state.kek).toBeNull()
-    expect(state.fieldKeys).toEqual({})
+    expect(state.loadedFieldKeys).toEqual({})
     expect(state.isVaultLocked).toBe(true)
     expect(state.lastActivity).toBe(0)
-    // Envelope cache is preserved
     expect(state.cachedEnvelope).toEqual(sampleEnvelope)
   })
 
   it('clearVault zeros everything including envelope cache', () => {
-    useCryptoStore.getState().setKeys('mk', 'kk', { note: 'notekey' })
+    useCryptoStore.getState().setKeys(['note'])
     useCryptoStore.getState().setCachedEnvelope(sampleEnvelope)
 
     useCryptoStore.getState().clearVault()
 
     const state = useCryptoStore.getState()
-    expect(state.masterKey).toBeNull()
-    expect(state.kek).toBeNull()
-    expect(state.fieldKeys).toEqual({})
+    expect(state.loadedFieldKeys).toEqual({})
     expect(state.isVaultLocked).toBe(true)
     expect(state.lastActivity).toBe(0)
     expect(state.cachedEnvelope).toBeNull()
-  })
-
-  it('selectFieldKey returns null after lockVault', () => {
-    useCryptoStore.getState().setKeys('mk', 'kk', { note: 'notekey' })
-    useCryptoStore.getState().lockVault()
-
-    expect(selectFieldKey('note')(useCryptoStore.getState())).toBeNull()
   })
 
   it('updateActivity updates lastActivity timestamp', () => {
@@ -160,27 +124,23 @@ describe('crypto-store', () => {
   })
 
   it('integration: setKeys → clearVault zeroes all keys and purges query cache', () => {
-    useCryptoStore.getState().setKeys('mk', 'kk', { note: 'nk' })
+    useCryptoStore.getState().setKeys(['note'])
     useCryptoStore.getState().setCachedEnvelope(sampleEnvelope)
 
-    expect(selectFieldKey('note')(useCryptoStore.getState())).toBe('nk')
+    expect(useCryptoStore.getState().loadedFieldKeys['note']).toBe(true)
     expect(useCryptoStore.getState().isVaultLocked).toBe(false)
 
     useCryptoStore.getState().clearVault()
 
-    expect(useCryptoStore.getState().masterKey).toBeNull()
-    expect(useCryptoStore.getState().kek).toBeNull()
-    expect(useCryptoStore.getState().fieldKeys).toEqual({})
+    expect(useCryptoStore.getState().loadedFieldKeys).toEqual({})
     expect(useCryptoStore.getState().isVaultLocked).toBe(true)
     expect(useCryptoStore.getState().cachedEnvelope).toBeNull()
-    expect(selectFieldKey('note')(useCryptoStore.getState())).toBeNull()
     expect(mockRemoveQueries).toHaveBeenCalledWith({ queryKey: ['field'] })
   })
 
   it('never persists keys to localStorage or sessionStorage', () => {
-    useCryptoStore.getState().setKeys('deadbeef', 'cafe', { note: 'key123' })
+    useCryptoStore.getState().setKeys(['note'])
 
-    // Crypto store must not write to Web Storage — only the UI store uses persist
     const localStorageKeys = Object.keys(localStorage)
     const sessionStorageKeys = Object.keys(sessionStorage)
     expect(localStorageKeys.every((k) => !k.includes('crypto') && !k.includes('auth'))).toBe(true)

@@ -10,7 +10,7 @@ import { AppLogo } from '@/shared/ui/brand/AppLogo'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { useCryptoStore } from '@/features/encryption/model/crypto-store'
 import { useVaultDialogStore } from '@/features/encryption/model/vault-dialog-store'
-import { lockVault } from '@/features/encryption/model/vault-lock'
+import { keyVault } from '@/features/encryption/model/key-vault'
 
 interface SidebarProps {
   onClose?: () => void
@@ -39,7 +39,7 @@ function Sidebar({ onClose, onLogout, className }: SidebarProps) {
     if (isVaultLocked) {
       openUnlockDialog()
     } else {
-      lockVault()
+      keyVault.lockVault()
     }
   }
 

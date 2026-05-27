@@ -4,11 +4,13 @@ import { act } from 'react'
 import { useCryptoStore } from '@/features/encryption/model/crypto-store'
 import { DEFAULT_VAULT_TIMEOUT_MS } from './vault-timeout'
 
-vi.mock('@/features/encryption/model/vault-lock', () => ({
-  lockVault: vi.fn<() => void>(),
+vi.mock('@/features/encryption/model/key-vault', () => ({
+  keyVault: {
+    lockVault: vi.fn<() => void>(),
+  },
 }))
 
-import { lockVault } from '@/features/encryption/model/vault-lock'
+import { keyVault } from '@/features/encryption/model/key-vault'
 import { useVaultTimeout } from './vault-timeout'
 import { renderHook } from '@/test/utils'
 
@@ -29,7 +31,7 @@ describe('useVaultTimeout', () => {
 
     vi.advanceTimersByTime(DEFAULT_VAULT_TIMEOUT_MS + 1000)
 
-    expect(lockVault).not.toHaveBeenCalled()
+    expect(keyVault.lockVault).not.toHaveBeenCalled()
   })
 
   it('starts timer when vault is unlocked', () => {
@@ -38,7 +40,7 @@ describe('useVaultTimeout', () => {
 
     vi.advanceTimersByTime(DEFAULT_VAULT_TIMEOUT_MS)
 
-    expect(lockVault).toHaveBeenCalledTimes(1)
+    expect(keyVault.lockVault).toHaveBeenCalledTimes(1)
   })
 
   it('resets timer on mousemove', () => {
@@ -49,10 +51,10 @@ describe('useVaultTimeout', () => {
     document.dispatchEvent(new Event('mousemove'))
 
     vi.advanceTimersByTime(500)
-    expect(lockVault).not.toHaveBeenCalled()
+    expect(keyVault.lockVault).not.toHaveBeenCalled()
 
     vi.advanceTimersByTime(DEFAULT_VAULT_TIMEOUT_MS)
-    expect(lockVault).toHaveBeenCalledTimes(1)
+    expect(keyVault.lockVault).toHaveBeenCalledTimes(1)
   })
 
   it('resets timer on keydown', () => {
@@ -63,7 +65,7 @@ describe('useVaultTimeout', () => {
     document.dispatchEvent(new Event('keydown'))
 
     vi.advanceTimersByTime(500)
-    expect(lockVault).not.toHaveBeenCalled()
+    expect(keyVault.lockVault).not.toHaveBeenCalled()
   })
 
   it('resets timer on mousedown', () => {
@@ -74,7 +76,7 @@ describe('useVaultTimeout', () => {
     document.dispatchEvent(new Event('mousedown'))
 
     vi.advanceTimersByTime(500)
-    expect(lockVault).not.toHaveBeenCalled()
+    expect(keyVault.lockVault).not.toHaveBeenCalled()
   })
 
   it('resets timer on touchstart', () => {
@@ -85,7 +87,7 @@ describe('useVaultTimeout', () => {
     document.dispatchEvent(new Event('touchstart'))
 
     vi.advanceTimersByTime(500)
-    expect(lockVault).not.toHaveBeenCalled()
+    expect(keyVault.lockVault).not.toHaveBeenCalled()
   })
 
   it('resets timer on scroll', () => {
@@ -96,7 +98,7 @@ describe('useVaultTimeout', () => {
     document.dispatchEvent(new Event('scroll'))
 
     vi.advanceTimersByTime(500)
-    expect(lockVault).not.toHaveBeenCalled()
+    expect(keyVault.lockVault).not.toHaveBeenCalled()
   })
 
   it('stops timer when vault becomes locked', () => {
@@ -111,7 +113,7 @@ describe('useVaultTimeout', () => {
 
     vi.advanceTimersByTime(DEFAULT_VAULT_TIMEOUT_MS)
 
-    expect(lockVault).not.toHaveBeenCalled()
+    expect(keyVault.lockVault).not.toHaveBeenCalled()
   })
 
   it('cleans up event listeners on unmount', () => {
@@ -122,7 +124,7 @@ describe('useVaultTimeout', () => {
 
     vi.advanceTimersByTime(DEFAULT_VAULT_TIMEOUT_MS)
 
-    expect(lockVault).not.toHaveBeenCalled()
+    expect(keyVault.lockVault).not.toHaveBeenCalled()
   })
 
   it('supports custom timeout', () => {
@@ -132,6 +134,6 @@ describe('useVaultTimeout', () => {
 
     vi.advanceTimersByTime(customTimeout)
 
-    expect(lockVault).toHaveBeenCalledTimes(1)
+    expect(keyVault.lockVault).toHaveBeenCalledTimes(1)
   })
 })

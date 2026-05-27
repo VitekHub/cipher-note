@@ -31,7 +31,7 @@ function makeRegistrationResult(): RegistrationResult {
     authSalt: mockBytes(16, 0x01),
     keySalt: mockBytes(16, 0x02),
     masterKey: mockBytes(32, 0x03),
-    kek: mockBytes(32, 0x04),
+    kek: {} as CryptoKey,
     fieldKeys: new Map([
       ['note', mockBytes(32, 0x10)],
       ['website', mockBytes(32, 0x20)],
