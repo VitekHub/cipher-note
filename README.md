@@ -134,4 +134,4 @@ After running `pnpm supabase:start`, copy the **Publishable** key from the outpu
 
 ## License
 
-Private
+MIT
