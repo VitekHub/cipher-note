@@ -30,8 +30,8 @@ Recovery: BIP-39 mnemonic → Argon2id → recovery KEK → wraps master key
 Field Keys (one per field) → wrapped by KEK with AAD(fieldName, version)
 ```
 - All keys: 32 bytes (256 bits), salts: 16 bytes. Argon2id params: m=47104, t=3, p=1.
-- Zustand crypto store uses **hex-encoded strings** (not Uint8Array) for reactivity.
-- Vault lock purges Zustand keys + TanStack Query cache.
+- `KeyVault` class (`key-vault.ts`) stores non-extractable `CryptoKey` objects in a module-scoped `Map`. Zustand crypto store only tracks which field names are loaded (`loadedFieldKeys: Record<string, boolean>`).
+- Vault lock purges key vault Map + Zustand state + TanStack Query cache.
 
 ### App Hierarchy
 ```
@@ -82,7 +82,7 @@ Backend abstracted behind interfaces: `IAuthAdapter`, `IApiAdapter`, `IRealtimeA
 - These MUST be dynamically imported. For `argon2-browser`, use the bundled build to avoid Vite WASM loading issues: `const argon2 = await import('argon2-browser/dist/argon2-bundled.min.js')`. The default import (`argon2-browser`) tries to load a `.wasm` file which Vite cannot handle. The bundled build embeds WASM as base64 in JS. A module declaration in `src/env.d.ts` maps the bundled path to `argon2-browser` types.
 - The Vite config already has manual chunks for these modules to keep them out of the initial bundle.
 - NEVER persist crypto keys to localStorage, sessionStorage, or IndexedDB.
-- Use hex-encoded strings in Zustand stores (not Uint8Array or Map) for proper reactivity.
+- Crypto keys live in `KeyVault` as non-extractable `CryptoKey` objects, not in Zustand.
 
 ### Styling
 - Tailwind CSS v4 with `@import "tailwindcss"` and `@theme` in `src/app/styles/globals.css`.
@@ -170,7 +170,7 @@ See `IMPLEMENTATION-PLAN.md` for the full 36-step plan.
 - Step 20 (Registration UI) — complete
 - Step 21 (Login Crypto Flow) — complete
 - Step 22 (Login UI + Vault Unlock) — complete
-- Step 23 (Crypto Session Store in Zustand + Query Cache Purge) — complete
+- Step 23 (Non-Extractable Key Vault + Zustand Store Refactor) — complete
 
 ### Implementation Notes
 
@@ -179,7 +179,7 @@ Non-obvious decisions not visible from code alone:
 - **Auth store `isRestoringSession`**: defaults `true`; `reset()` does NOT touch it (logout doesn't re-trigger initialization)
 - **Auto-lock**: `useVaultTimeout` hook in ProtectedLayout resets a 15-minute inactivity timer on user activity (mousemove, keydown, mousedown, touchstart, scroll); calls `lockVault()` on expiry
 - **VaultUnlockDialog**: uses a separate `vault-dialog-store` so the dialog can be opened/closed independently of vault lock state. This lets the user dismiss the dialog without unlocking, and lets the sidebar/mobile nav trigger `openUnlockDialog()` directly
-- **`lockVault()` vs `clearVault()`**: `lockVault()` preserves the cached envelope (so re-unlock can skip network calls), while `clearVault()` (called on logout) zeros everything including the cache. `unlockVault()` tries the cached envelope first and retries from server on `DecryptionError` (stale cache can happen if the password was changed in another session)
+- **`keyVault.lockVault()` vs `keyVault.clearVault()`**: `lockVault()` preserves the cached envelope (so re-unlock can skip network calls), while `clearVault()` (called on logout) zeros everything including the cache. `unlockVault()` (in `auth-flow.ts`) tries the cached envelope first and retries from server on `DecryptionError` (stale cache can happen if the password was changed in another session)
 - **Test file naming**: prefix with `-` in `src/app/routes/` to exclude from TanStack Router route tree generation
 - **Test setup**: shared setup (`src/test/setup.ts`) resets `useAuthStore` (with `isRestoringSession: false`), `useCryptoStore`, and `useUiStore` (including `sidebarWidth: 240`) in `afterEach`. Router mocking (`@tanstack/react-router`) is done per-file in each test that needs it, not centralized
 - **Argon2id Web Worker**: `argon2id.ts` delegates all derivation to `argon2id.worker.ts` via `postMessage`. The worker lazy-loads `argon2-browser/dist/argon2-bundled.min.js` (not the default `argon2-browser` import — the default tries to load a `.wasm` file which Vite cannot handle; the bundled build embeds WASM as base64 in JS). Tests mock the Worker constructor; actual Argon2id computation is tested in E2E (Step 36).
@@ -195,6 +195,6 @@ Non-obvious decisions not visible from code alone:
 - **Crypto integration tests mock `deriveKey` re-consumption**: In `crypto-integration.test.ts`, `unwrapMasterKeyWithRecovery` requires a fresh `deriveKey` mock even after `wrapMasterKeyWithRecovery` consumed one during setup. The `setupRegistration` helper uses `mockResolvedValueOnce` which is consumed, so the test must re-mock before calling unwrap.
 - **`deriveRegistrationKeys` is a pure crypto function**: in `features/encryption/model/registration.ts`, it has no side effects (no auth, no DB, no store writes). The orchestration (signup + upload + store population) lives in `auth-flow.ts` `signUpUser`. Do not add side effects to this function.
 - **`signUpUser` error cleanup**: on any error after `deriveRegistrationKeys` succeeds, attempts `authAdapter.logout()` as best-effort cleanup (harmless if no session exists, since Supabase signOut with no session is a no-op).
-- **Login salt fetch is pre-auth**: `get_login_salts(p_username)` is a SECURITY DEFINER RPC callable by anonymous users, rate-limited (5 req/2 min/IP). Salts must be fetched before auth to derive `authHash` for Supabase Auth, but the `keys` table is RLS-protected. After auth succeeds, `getMasterKeyEnvelope` and `getFieldKeys` fetch wrapped key material through standard RLS-protected queries.
+- **Login salt fetch is pre-auth**: `get_login_salts(p_username)` is a SECURITY DEFINER RPC callable by anonymous users, rate-limited (5 req/2 min/IP). Salts must be fetched before auth to derive `authHash` for Supabase Auth, but the `keys` table is RLS-protected. After auth succeeds, `fetchMasterKeyEnvelope` and `fetchFieldKeys` fetch wrapped key material through standard RLS-protected queries.
 - **Auth error codes fold username format into invalid credentials**: `AuthErrorCode.INVALID_USERNAME_FORMAT` doesn't exist — `supabase-keys.ts` throws `INVALID_CREDENTIALS` for invalid username format. This is deliberate: showing a different error for "wrong format" vs "wrong password" would leak whether a username exists.
 - **Network errors can bypass the adapter boundary**: `getAuthErrorMessage` in `auth-error-messages.ts` has an `isNetworkError` fallback because raw `TypeError('Failed to fetch')` from the browser can reach the UI without being wrapped by the adapter. The adapter wraps what it can, but the fallback catches the rest.
