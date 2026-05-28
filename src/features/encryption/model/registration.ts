@@ -28,6 +28,7 @@ export async function deriveRegistrationKeys(password: string): Promise<Registra
   const { rawFieldKeys, cryptoFieldKeys } = await generateFieldKeys()
   const versions = new Map(Array.from(rawFieldKeys.keys()).map((name) => [name, FIELD_KEY_VERSION] as const))
   const wrappedFieldKeys = await wrapFieldKeys(rawFieldKeys, hierarchy.kek, versions)
+  zeroFill(rawFieldKeys.values())
 
   // Wrap master key with password key (AAD prevents cross-context decryption)
   const passwordCryptoKey = await importKey(passwordKey)
@@ -36,6 +37,7 @@ export async function deriveRegistrationKeys(password: string): Promise<Registra
     iv: masterKeyIV,
     aad: MASTER_KEY_PASSWORD_AAD,
   })
+  zeroFill(passwordKey)
 
   // Recovery: generate mnemonic and wrap master key with recovery KEK
   const mnemonic = await generateMnemonic()

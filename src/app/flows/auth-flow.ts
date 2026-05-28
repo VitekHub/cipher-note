@@ -198,6 +198,7 @@ async function deriveKekFromEnvelope(password: string, envelope: CachedVaultEnve
   // Derive password key
   const passwordKey = await derivePasswordKey(password, hexDecode(envelope.keySalt))
   const cryptoPasswordKey = await importKey(passwordKey)
+  zeroFill(passwordKey)
 
   // Unwrap master key → derive KEK
   const wrappedMasterKey = hexDecode(envelope.wrappedMasterKey)
@@ -207,6 +208,7 @@ async function deriveKekFromEnvelope(password: string, envelope: CachedVaultEnve
   })
   const kekBytes = await deriveKEK(masterKey)
   const kek = await importKey(kekBytes)
+  zeroFill(kekBytes)
   zeroFill(masterKey)
   return kek
 }
