@@ -12,39 +12,39 @@ describe('LanguageSwitcher', () => {
 
   it('renders compact variant with language code', () => {
     render(<LanguageSwitcher variant="compact" />)
-    expect(screen.getByRole('button', { name: 'EN' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Switch language' })).toHaveTextContent('EN')
   })
 
   it('renders full variant with language names', () => {
     render(<LanguageSwitcher variant="full" />)
-    expect(screen.getByRole('button', { name: 'English' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Czech' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'English' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Čeština' })).toBeInTheDocument()
   })
 
   it('defaults to compact variant', () => {
     render(<LanguageSwitcher />)
-    expect(screen.getByRole('button', { name: 'EN' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Switch language' })).toHaveTextContent('EN')
   })
 
   it('switches language when clicked in compact variant', async () => {
     const user = userEvent.setup()
     render(<LanguageSwitcher variant="compact" />)
-    await user.click(screen.getByRole('button', { name: 'EN' }))
+    await user.click(screen.getByRole('button', { name: 'Switch language' }))
     expect(i18next.language.startsWith('cs')).toBe(true)
   })
 
   it('switches language when clicked in full variant', async () => {
     const user = userEvent.setup()
     render(<LanguageSwitcher variant="full" />)
-    await user.click(screen.getByRole('button', { name: 'Czech' }))
+    await user.click(screen.getByRole('tab', { name: 'Čeština' }))
     expect(i18next.language.startsWith('cs')).toBe(true)
   })
 
-  it('marks active language with aria-current in full variant', () => {
+  it('marks active language with aria-pressed in full variant', () => {
     render(<LanguageSwitcher variant="full" />)
-    const enButton = screen.getByRole('button', { name: 'English' })
-    const csButton = screen.getByRole('button', { name: 'Czech' })
-    expect(enButton).toHaveAttribute('aria-current')
-    expect(csButton).not.toHaveAttribute('aria-current')
+    const enButton = screen.getByRole('tab', { name: 'English' })
+    const csButton = screen.getByRole('tab', { name: 'Čeština' })
+    expect(enButton).toHaveAttribute('aria-pressed', 'true')
+    expect(csButton).toHaveAttribute('aria-pressed', 'false')
   })
 })

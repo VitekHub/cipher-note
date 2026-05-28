@@ -16,6 +16,10 @@
     "loading": "Načítání...",
     "error": "Něco se pokazilo"
   },
+  "preAlpha": {
+    "ariaLabel": "Upozornění na předběžnou verzi",
+    "message": "Cipher Note je předběžná alfa verze. Očekávejte zásadní změny a občasné resety dat."
+  },
   "nav": {
     "dashboard": "Nástěnka",
     "settings": "Nastavení",
@@ -25,6 +29,11 @@
     "recover": "Obnovit účet",
     "menu": "Menu",
     "closeMenu": "Zavřít menu",
-    "mainNav": "Hlavní navigace"
+    "mainNav": "Hlavní navigace",
+    "backToHome": "Zpět na domovskou stránku",
+    "languageSelection": "Výběr jazyka",
+    "switchLanguage": "Přepnout jazyk",
+    "themeSelection": "Výběr motivu",
+    "switchTheme": "Přepnout motiv"
   }
 }

@@ -3,6 +3,7 @@ import { ThemeProvider } from '@/shared/lib/theme-provider'
 import { Toaster } from '@/shared/ui/sonner'
 import { PageSkeleton } from '@/app/Pending'
 import { RootErrorBoundary } from '@/app/ErrorBoundary'
+import { PreAlphaBanner } from '@/shared/ui/PreAlphaBanner'
 import type { AuthContext } from '@/shared/auth/auth-context'
 
 interface RouterContext {
@@ -18,6 +19,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 function RootLayout() {
   return (
     <ThemeProvider defaultTheme="dark">
+      <PreAlphaBanner />
       <Outlet />
       <Toaster />
     </ThemeProvider>

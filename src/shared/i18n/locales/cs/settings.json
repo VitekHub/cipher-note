@@ -11,6 +11,7 @@
     "title": "Předvolby",
     "description": "Jazyk a předvolby zobrazení.",
     "language": "Jazyk",
+    "theme": "Motiv",
     "languageName": {
       "en": "Angličtina",
       "cs": "Čeština"

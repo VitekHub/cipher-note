@@ -1,0 +1,48 @@
+{
+  "hero": {
+    "title": "Your notes. Your keys.",
+    "subtitle": "End-to-end encrypted notes that not even our servers can read. Built on zero-knowledge cryptography.",
+    "cta": "Create a free account",
+    "login": "Sign in"
+  },
+  "features": {
+    "heading": "Security without compromise",
+    "zeroKnowledge": {
+      "title": "Zero-Knowledge Encryption",
+      "description": "Your password never leaves your device. We derive encryption keys locally - the server only sees ciphertext."
+    },
+    "splitKey": {
+      "title": "Split Key Derivation",
+      "description": "One password, two independent keys: one for authentication, one for encryption. Even a server breach reveals nothing."
+    },
+    "recovery": {
+      "title": "Recovery Phrase Backup",
+      "description": "A BIP-39 mnemonic phrase lets you recover your data if you forget your password. Write it down, keep it safe."
+    },
+    "openDesign": {
+      "title": "Transparent Architecture",
+      "description": "Built on AES-256-GCM, Argon2id, and HKDF. No proprietary algorithms. Every cryptographic choice is auditable."
+    }
+  },
+  "howItWorks": {
+    "heading": "How it works",
+    "step1": {
+      "title": "Create your account",
+      "description": "Pick a username and password. Your password is never sent to the server - only a derived hash is used for authentication."
+    },
+    "step2": {
+      "title": "Write your notes",
+      "description": "Add notes, websites, and emails to your encrypted vault. The interface is simple and focused."
+    },
+    "step3": {
+      "title": "Encrypted instantly",
+      "description": "Every field is encrypted with a unique key before leaving your browser. The server stores only ciphertext."
+    }
+  },
+  "security": {
+    "statement": "Built on AES-256-GCM, Argon2id, and HKDF. No tracking. No ads. No compromise."
+  },
+  "footer": {
+    "tagline": "Privacy is not a feature - it's the foundation."
+  }
+}
