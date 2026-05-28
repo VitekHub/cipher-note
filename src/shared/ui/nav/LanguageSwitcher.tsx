@@ -1,35 +1,33 @@
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/shared/ui/button'
+import { SegmentedControl } from '@/shared/ui/SegmentedControl'
 
 const LANGUAGES = [
   { code: 'en', label: 'EN', name: 'English' },
   { code: 'cs', label: 'CS', name: 'Čeština' },
 ] as const
 
+const LANGUAGE_ITEMS = LANGUAGES.map((lang) => ({
+  value: lang.code,
+  label: lang.name,
+}))
+
 interface LanguageSwitcherProps {
   variant?: 'compact' | 'full'
 }
 
 function LanguageSwitcher({ variant = 'compact' }: LanguageSwitcherProps) {
-  const { t, i18n } = useTranslation('settings')
+  const { i18n } = useTranslation('settings')
 
   const currentCode = i18n.language?.split('-')[0] ?? 'en'
 
   if (variant === 'full') {
     return (
-      <div className="flex gap-1">
-        {LANGUAGES.map((lang) => (
-          <Button
-            key={lang.code}
-            variant={currentCode === lang.code ? 'default' : 'outline'}
-            aria-current={currentCode === lang.code ? 'true' : undefined}
-            size="sm"
-            onClick={() => void i18n.changeLanguage(lang.code)}
-          >
-            {t(`preferences.languageName.${lang.code}`, lang.name)}
-          </Button>
-        ))}
-      </div>
+      <SegmentedControl
+        items={LANGUAGE_ITEMS}
+        value={currentCode}
+        onChange={(code) => void i18n.changeLanguage(code)}
+      />
     )
   }
 

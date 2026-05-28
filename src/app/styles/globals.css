@@ -52,6 +52,7 @@
 
 :root {
   color-scheme: light;
+  --banner-height: 32px;
   --background: oklch(0.98 0.004 215);
   --foreground: oklch(0.18 0.015 215);
   --card: oklch(1 0 0);

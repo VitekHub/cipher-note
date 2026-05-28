@@ -32,7 +32,7 @@ function ProtectedLayout() {
   useVaultTimeout()
 
   return (
-    <div className="text-foreground bg-background flex h-screen">
+    <div className="text-foreground bg-background flex h-[calc(100vh-var(--banner-height))]">
       {/* Desktop sidebar */}
       <aside
         className="bg-sidebar text-sidebar-foreground border-sidebar-border hidden flex-shrink-0 flex-col border-r md:flex"

@@ -11,6 +11,7 @@
     "title": "Preferences",
     "description": "Language and display preferences.",
     "language": "Language",
+    "theme": "Theme",
     "languageName": {
       "en": "English",
       "cs": "Czech"

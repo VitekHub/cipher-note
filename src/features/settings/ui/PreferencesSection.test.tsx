@@ -18,6 +18,6 @@ describe('PreferencesSection', () => {
   it('renders language switcher buttons', () => {
     render(<PreferencesSection />)
     expect(screen.getByRole('button', { name: 'English' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Czech' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Čeština' })).toBeInTheDocument()
   })
 })
