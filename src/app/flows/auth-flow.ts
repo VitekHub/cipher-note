@@ -3,7 +3,7 @@ import { useCryptoStore } from '@/features/encryption/model/crypto-store'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { authAdapter } from '@/shared/auth/supabase-adapter'
 import { uploadRegistrationData } from '@/shared/api/supabase-registration'
-import { getLoginSalts, getMasterKeyEnvelope, getFieldKeys } from '@/shared/api/supabase-keys'
+import { fetchLoginSalts, fetchMasterKeyEnvelope, fetchFieldKeys } from '@/shared/api/supabase-keys'
 import { hexDecode, hexEncode, zeroFill } from '@/shared/crypto/crypto-utils'
 import { decrypt, importKey } from '@/shared/crypto/aes-gcm'
 import { keyVault } from '@/features/encryption/model/key-vault'
@@ -74,7 +74,7 @@ export async function loginUser(username: string, password: string) {
 
   try {
     // Fetch salts (pre-auth) → derive credentials → authenticate
-    const { authSalt } = await getLoginSalts(username)
+    const { authSalt } = await fetchLoginSalts(username)
     const authHash = await deriveAuthHash(password, hexDecode(authSalt))
     const authResult = await authAdapter.login(username, authHash)
 
@@ -187,8 +187,8 @@ export async function unlockVault(password: string): Promise<void> {
 async function fetchFreshEnvelope(userId: string): Promise<CachedVaultEnvelope> {
   // Sequential: both calls require an active auth session;
   // parallel requests can race on session initialization
-  const masterKeyEnvelope = await getMasterKeyEnvelope(userId)
-  const serverFieldKeys = await getFieldKeys(userId)
+  const masterKeyEnvelope = await fetchMasterKeyEnvelope(userId)
+  const serverFieldKeys = await fetchFieldKeys(userId)
   const freshEnvelope = { ...masterKeyEnvelope, fieldKeys: serverFieldKeys }
   useCryptoStore.getState().setCachedEnvelope(freshEnvelope)
   return freshEnvelope

@@ -82,15 +82,15 @@ const { mockEnvelopeData, mockFieldKeysData } = vi.hoisted(() => ({
 }))
 
 vi.mock('@/shared/api/supabase-keys', () => ({
-  getLoginSalts: vi.fn().mockResolvedValue({
+  fetchLoginSalts: vi.fn().mockResolvedValue({
     authSalt: '01'.repeat(16),
     keySalt: '02'.repeat(16),
   }),
-  getMasterKeyEnvelope: vi.fn().mockResolvedValue(mockEnvelopeData),
-  getFieldKeys: vi.fn().mockResolvedValue(mockFieldKeysData),
+  fetchMasterKeyEnvelope: vi.fn().mockResolvedValue(mockEnvelopeData),
+  fetchFieldKeys: vi.fn().mockResolvedValue(mockFieldKeysData),
 }))
 
-// Mock Split KDF (deriveLoginCredentials removed)
+// Mock Split KDF
 vi.mock('@/shared/crypto/split-kdf', () => ({
   deriveAuthCredentials: vi.fn().mockResolvedValue({
     authHash: 'a'.repeat(64),
@@ -202,7 +202,7 @@ import {
 import { deriveRegistrationKeys } from '@/features/encryption/model/registration'
 import { authAdapter } from '@/shared/auth/supabase-adapter'
 import { uploadRegistrationData } from '@/shared/api/supabase-registration'
-import { getLoginSalts, getMasterKeyEnvelope, getFieldKeys } from '@/shared/api/supabase-keys'
+import { fetchLoginSalts, fetchMasterKeyEnvelope, fetchFieldKeys } from '@/shared/api/supabase-keys'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { AuthError, AuthErrorCode } from '@/shared/auth/auth-errors'
 import type { AuthResult } from '@/shared/auth/auth.types'
@@ -290,7 +290,7 @@ describe('loginUser', () => {
   it('fetches salts, derives auth hash, and authenticates', async () => {
     await loginUser('testuser', 'testpass123')
 
-    expect(getLoginSalts).toHaveBeenCalledWith('testuser')
+    expect(fetchLoginSalts).toHaveBeenCalledWith('testuser')
     expect(deriveAuthHash).toHaveBeenCalledWith('testpass123', expect.any(Uint8Array))
     expect(authAdapter.login).toHaveBeenCalledWith('testuser', 'a'.repeat(64))
   })
@@ -298,8 +298,8 @@ describe('loginUser', () => {
   it('fetches envelope and field keys after authentication', async () => {
     await loginUser('testuser', 'testpass123')
 
-    expect(getMasterKeyEnvelope).toHaveBeenCalledWith('1')
-    expect(getFieldKeys).toHaveBeenCalledWith('1')
+    expect(fetchMasterKeyEnvelope).toHaveBeenCalledWith('1')
+    expect(fetchFieldKeys).toHaveBeenCalledWith('1')
   })
 
   it('derives KEK from password and envelope, then stores field keys', async () => {
@@ -365,7 +365,7 @@ describe('loginUser', () => {
   })
 
   it('does not populate crypto store when fetching keys fails after auth succeeds', async () => {
-    vi.mocked(getMasterKeyEnvelope).mockRejectedValueOnce(new AuthError(AuthErrorCode.NETWORK_ERROR))
+    vi.mocked(fetchMasterKeyEnvelope).mockRejectedValueOnce(new AuthError(AuthErrorCode.NETWORK_ERROR))
 
     await expect(loginUser('testuser', 'testpass123')).rejects.toThrow(AuthError)
 
@@ -594,8 +594,8 @@ describe('unlockVault', () => {
   it('fetches from server and populates vault when no cached envelope', async () => {
     await unlockVault('test-password-123')
 
-    expect(getMasterKeyEnvelope).toHaveBeenCalledWith('user-1')
-    expect(getFieldKeys).toHaveBeenCalledWith('user-1')
+    expect(fetchMasterKeyEnvelope).toHaveBeenCalledWith('user-1')
+    expect(fetchFieldKeys).toHaveBeenCalledWith('user-1')
     expect(derivePasswordKey).toHaveBeenCalled()
     expect(keyVault.storeFieldKeys).toHaveBeenCalled()
     expect(mockSetEnvelope).toHaveBeenCalled()
@@ -609,8 +609,8 @@ describe('unlockVault', () => {
 
     await unlockVault('test-password-123')
 
-    expect(getMasterKeyEnvelope).not.toHaveBeenCalled()
-    expect(getFieldKeys).not.toHaveBeenCalled()
+    expect(fetchMasterKeyEnvelope).not.toHaveBeenCalled()
+    expect(fetchFieldKeys).not.toHaveBeenCalled()
     expect(derivePasswordKey).toHaveBeenCalled()
     expect(keyVault.storeFieldKeys).toHaveBeenCalled()
   })
@@ -656,8 +656,8 @@ describe('unlockVault', () => {
     await unlockVault('test-password-123')
 
     expect(mockClearVault).toHaveBeenCalled()
-    expect(getMasterKeyEnvelope).toHaveBeenCalledWith('user-1')
-    expect(getFieldKeys).toHaveBeenCalledWith('user-1')
+    expect(fetchMasterKeyEnvelope).toHaveBeenCalledWith('user-1')
+    expect(fetchFieldKeys).toHaveBeenCalledWith('user-1')
     expect(mockSetEnvelope).toHaveBeenCalled()
     expect(keyVault.storeFieldKeys).toHaveBeenCalled()
   })
@@ -671,7 +671,7 @@ describe('unlockVault', () => {
 
     await expect(unlockVault('test-password-123')).rejects.toThrow(DecryptionError)
     expect(mockClearVault).toHaveBeenCalled()
-    expect(getMasterKeyEnvelope).toHaveBeenCalled()
+    expect(fetchMasterKeyEnvelope).toHaveBeenCalled()
   })
 
   it('does not retry on non-DecryptionError', async () => {
@@ -683,6 +683,6 @@ describe('unlockVault', () => {
 
     await expect(unlockVault('test-password-123')).rejects.toThrow('Some other error')
     expect(mockClearVault).not.toHaveBeenCalled()
-    expect(getMasterKeyEnvelope).not.toHaveBeenCalled()
+    expect(fetchMasterKeyEnvelope).not.toHaveBeenCalled()
   })
 })

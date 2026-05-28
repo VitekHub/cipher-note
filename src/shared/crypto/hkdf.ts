@@ -10,7 +10,7 @@
 
 import { CRYPTO_KEY_LENGTH } from '@/shared/types/crypto.types'
 
-const HKDF_HASH = 'SHA-256'
+const HKDF_ALGORITHM = { name: 'HKDF', hash: 'SHA-256' }
 
 const encoder = new TextEncoder()
 
@@ -35,14 +35,11 @@ export async function deriveSubKey(
     throw new Error(`Invalid master key length: expected ${CRYPTO_KEY_LENGTH} bytes, got ${masterKey.length}`)
   }
 
-  const baseKey = await crypto.subtle.importKey('raw', masterKey, { name: 'HKDF', hash: HKDF_HASH }, false, [
-    'deriveBits',
-  ])
+  const baseKey = await crypto.subtle.importKey('raw', masterKey, HKDF_ALGORITHM, false, ['deriveBits'])
 
   const derivedBits = await crypto.subtle.deriveBits(
     {
-      name: 'HKDF',
-      hash: HKDF_HASH,
+      ...HKDF_ALGORITHM,
       // empty salt: master key is already a cryptographically random 256-bit value
       salt: new Uint8Array(0),
       info: encoder.encode(info),

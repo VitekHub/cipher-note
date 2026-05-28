@@ -174,7 +174,7 @@ describe('crypto integration', () => {
       vi.mocked(deriveAuthHash).mockResolvedValue(authCreds.authHash)
       vi.mocked(derivePasswordKey).mockResolvedValue(authCreds.passwordKey)
 
-      // Login now uses deriveAuthHash + derivePasswordKey directly (no deriveLoginCredentials)
+      // Login now uses deriveAuthHash + derivePasswordKey
       const authHash = await deriveAuthHash(PASSWORD, authSalt)
       const passwordKey = await derivePasswordKey(PASSWORD, keySalt)
       expect(authHash).toBe(authCreds.authHash)

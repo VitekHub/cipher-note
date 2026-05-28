@@ -12,19 +12,7 @@ import { deriveAuthHash, derivePasswordKey } from '@/shared/crypto/argon2id'
 import { importKey, encrypt, decrypt } from '@/shared/crypto/aes-gcm'
 import { generateSalt, generateIV, zeroFill } from '@/shared/crypto/crypto-utils'
 import { MASTER_KEY_PASSWORD_AAD } from '@/shared/types/crypto.types'
-import type { AuthCredentials, LoginCredentials, PasswordChangeResult } from '@/shared/types/crypto.types'
-
-async function deriveCredentials(
-  password: string,
-  authSalt: Uint8Array<ArrayBuffer>,
-  keySalt: Uint8Array<ArrayBuffer>,
-): Promise<LoginCredentials> {
-  const [authHash, passwordKey] = await Promise.all([
-    deriveAuthHash(password, authSalt),
-    derivePasswordKey(password, keySalt),
-  ])
-  return { authHash, passwordKey }
-}
+import type { AuthCredentials, PasswordChangeResult } from '@/shared/types/crypto.types'
 
 /**
  * Derive authentication credentials for a new registration.
@@ -35,7 +23,10 @@ async function deriveCredentials(
 export async function deriveAuthCredentials(password: string): Promise<AuthCredentials> {
   const authSalt = generateSalt()
   const keySalt = generateSalt()
-  const { authHash, passwordKey } = await deriveCredentials(password, authSalt, keySalt)
+  const [authHash, passwordKey] = await Promise.all([
+    deriveAuthHash(password, authSalt),
+    derivePasswordKey(password, keySalt),
+  ])
 
   return { authHash, passwordKey, authSalt, keySalt }
 }
@@ -60,17 +51,11 @@ export async function changePassword(
   const masterKey = await decrypt(wrappedMasterKey, oldWrappingKey, { iv: masterKeyIV, aad: MASTER_KEY_PASSWORD_AAD })
 
   // Generate new salts and derive new credentials
-  const newAuthSalt = generateSalt()
-  const newKeySalt = generateSalt()
-  const { authHash: newAuthHash, passwordKey: newPasswordKey } = await deriveCredentials(
-    newPassword,
-    newAuthSalt,
-    newKeySalt,
-  )
+  const newCredentials = await deriveAuthCredentials(newPassword)
 
   // Re-wrap master key with new password key
-  const newWrappingKey = await importKey(newPasswordKey)
-  zeroFill(newPasswordKey)
+  const newWrappingKey = await importKey(newCredentials.passwordKey)
+  zeroFill(newCredentials.passwordKey)
   const newMasterKeyIV = generateIV()
   const newWrappedMasterKey = await encrypt(masterKey, newWrappingKey, {
     iv: newMasterKeyIV,
@@ -79,9 +64,9 @@ export async function changePassword(
   zeroFill(masterKey)
 
   return {
-    newAuthHash,
-    newAuthSalt,
-    newKeySalt,
+    newAuthHash: newCredentials.authHash,
+    newAuthSalt: newCredentials.authSalt,
+    newKeySalt: newCredentials.keySalt,
     newWrappedMasterKey,
     newMasterKeyIV,
   }

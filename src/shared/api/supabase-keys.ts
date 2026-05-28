@@ -13,7 +13,7 @@ export interface LoginSalts {
  * Callable before authentication (uses SECURITY DEFINER RPC).
  * Validates username format client-side to avoid wasting rate-limited RPC calls.
  */
-export async function getLoginSalts(username: string): Promise<LoginSalts> {
+export async function fetchLoginSalts(username: string): Promise<LoginSalts> {
   if (!USERNAME_PATTERN.test(username)) {
     throw new AuthError(AuthErrorCode.INVALID_CREDENTIALS)
   }
@@ -34,7 +34,7 @@ export async function getLoginSalts(username: string): Promise<LoginSalts> {
  * Fetch the user's key material (requires authenticated user).
  * Returns salts, wrapped master key, and IV.
  */
-export async function getMasterKeyEnvelope(userId: string): Promise<ServerMasterKeyEnvelope> {
+export async function fetchMasterKeyEnvelope(userId: string): Promise<ServerMasterKeyEnvelope> {
   const supabase = getSupabase()
   const { data, error } = await supabase
     .from('keys')
@@ -56,7 +56,7 @@ export async function getMasterKeyEnvelope(userId: string): Promise<ServerMaster
 /**
  * Fetch the user's wrapped field keys (requires authenticated user).
  */
-export async function getFieldKeys(userId: string): Promise<ServerFieldKey[]> {
+export async function fetchFieldKeys(userId: string): Promise<ServerFieldKey[]> {
   const supabase = getSupabase()
   const { data, error } = await supabase
     .from('field_keys')

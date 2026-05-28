@@ -1,5 +1,3 @@
-import type { ServerFieldKey } from '@/shared/types/api.types'
-
 /** System-wide cryptographic key length in bytes (256 bits). */
 export const CRYPTO_KEY_LENGTH = 32 as const
 
@@ -65,11 +63,6 @@ export interface AuthCredentials {
   keySalt: Uint8Array<ArrayBuffer>
 }
 
-export interface LoginCredentials {
-  authHash: string
-  passwordKey: Uint8Array<ArrayBuffer>
-}
-
 export interface PasswordChangeResult {
   newAuthHash: string
   newAuthSalt: Uint8Array<ArrayBuffer>
@@ -95,21 +88,4 @@ export interface RegistrationResult {
   wrappedFieldKeys: WrappedFieldKey[]
   recoveryData: RecoveryData
   mnemonic: string
-}
-
-export interface LoginKeysInput {
-  /** Raw 32-byte key derived from Argon2id (from deriveLoginCredentials) */
-  passwordKey: Uint8Array<ArrayBuffer>
-  /** Encrypted master key from server (binary) */
-  wrappedMasterKey: Uint8Array<ArrayBuffer>
-  /** IV used to encrypt the master key (binary) */
-  masterKeyIV: Uint8Array<ArrayBuffer>
-  /** Wrapped field key data from server (hex strings) */
-  serverFieldKeys: ServerFieldKey[]
-}
-
-export interface LoginResult {
-  masterKey: Uint8Array<ArrayBuffer>
-  kek: CryptoKey
-  fieldKeys: Map<string, Uint8Array<ArrayBuffer>>
 }

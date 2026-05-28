@@ -15,9 +15,9 @@ vi.mock('@/shared/api/supabase-client', () => ({
   }),
 }))
 
-import { getLoginSalts, getMasterKeyEnvelope, getFieldKeys } from '@/shared/api/supabase-keys'
+import { fetchLoginSalts, fetchMasterKeyEnvelope, fetchFieldKeys } from '@/shared/api/supabase-keys'
 
-describe('getLoginSalts', () => {
+describe('fetchLoginSalts', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -28,7 +28,7 @@ describe('getLoginSalts', () => {
       error: null,
     })
 
-    const result = await getLoginSalts('testuser')
+    const result = await fetchLoginSalts('testuser')
 
     expect(mockRpc).toHaveBeenCalledWith('get_login_salts', { p_username: 'testuser' })
     expect(result).toEqual({
@@ -43,7 +43,7 @@ describe('getLoginSalts', () => {
       error: { message: 'RPC error' },
     })
 
-    await expect(getLoginSalts('testuser')).rejects.toThrow()
+    await expect(fetchLoginSalts('testuser')).rejects.toThrow()
   })
 
   it('throws INVALID_CREDENTIALS when no data returned', async () => {
@@ -53,7 +53,7 @@ describe('getLoginSalts', () => {
     })
 
     try {
-      await getLoginSalts('nonexistent')
+      await fetchLoginSalts('nonexistent')
       expect.unreachable('should have thrown')
     } catch (e) {
       expect(e).toBeInstanceOf(AuthError)
@@ -68,7 +68,7 @@ describe('getLoginSalts', () => {
     })
 
     try {
-      await getLoginSalts('nonexistent')
+      await fetchLoginSalts('nonexistent')
       expect.unreachable('should have thrown')
     } catch (e) {
       expect(e).toBeInstanceOf(AuthError)
@@ -77,9 +77,9 @@ describe('getLoginSalts', () => {
   })
 
   it('throws without calling RPC when username format is invalid', async () => {
-    await expect(getLoginSalts('ab')).rejects.toThrow(AuthError)
-    await expect(getLoginSalts('user@name')).rejects.toThrow(AuthError)
-    await expect(getLoginSalts('')).rejects.toThrow(AuthError)
+    await expect(fetchLoginSalts('ab')).rejects.toThrow(AuthError)
+    await expect(fetchLoginSalts('user@name')).rejects.toThrow(AuthError)
+    await expect(fetchLoginSalts('')).rejects.toThrow(AuthError)
 
     expect(mockRpc).not.toHaveBeenCalled()
   })
@@ -90,13 +90,13 @@ describe('getLoginSalts', () => {
       error: null,
     })
 
-    await getLoginSalts('TestUser')
+    await fetchLoginSalts('TestUser')
 
     expect(mockRpc).toHaveBeenCalledWith('get_login_salts', { p_username: 'TestUser' })
   })
 })
 
-describe('getMasterKeyEnvelope', () => {
+describe('fetchMasterKeyEnvelope', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
@@ -121,7 +121,7 @@ describe('getMasterKeyEnvelope', () => {
       error: null,
     })
 
-    const result = await getMasterKeyEnvelope('user-1')
+    const result = await fetchMasterKeyEnvelope('user-1')
 
     expect(mockFrom).toHaveBeenCalledWith('keys')
     expect(mockSelect).toHaveBeenCalledWith('auth_salt, key_salt, wrapped_master_key, master_key_iv')
@@ -140,7 +140,7 @@ describe('getMasterKeyEnvelope', () => {
       error: { message: 'Query error' },
     })
 
-    await expect(getMasterKeyEnvelope('user-1')).rejects.toThrow()
+    await expect(fetchMasterKeyEnvelope('user-1')).rejects.toThrow()
   })
 
   it('throws KEYS_NOT_FOUND when no data found', async () => {
@@ -150,7 +150,7 @@ describe('getMasterKeyEnvelope', () => {
     })
 
     try {
-      await getMasterKeyEnvelope('user-1')
+      await fetchMasterKeyEnvelope('user-1')
       expect.unreachable('should have thrown')
     } catch (e) {
       expect(e).toBeInstanceOf(AuthError)
@@ -159,7 +159,7 @@ describe('getMasterKeyEnvelope', () => {
   })
 })
 
-describe('getFieldKeys', () => {
+describe('fetchFieldKeys', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
@@ -181,7 +181,7 @@ describe('getFieldKeys', () => {
       error: null,
     })
 
-    const result = await getFieldKeys('user-1')
+    const result = await fetchFieldKeys('user-1')
 
     expect(mockFrom).toHaveBeenCalledWith('field_keys')
     expect(mockSelect).toHaveBeenCalledWith('field_name, version, wrapped_key, key_iv')
@@ -199,7 +199,7 @@ describe('getFieldKeys', () => {
       error: null,
     })
 
-    const result = await getFieldKeys('user-1')
+    const result = await fetchFieldKeys('user-1')
     expect(result).toEqual([])
   })
 
@@ -210,7 +210,7 @@ describe('getFieldKeys', () => {
     })
 
     try {
-      await getFieldKeys('user-1')
+      await fetchFieldKeys('user-1')
       expect.unreachable('should have thrown')
     } catch (e) {
       expect(e).toBeInstanceOf(AuthError)
@@ -224,6 +224,6 @@ describe('getFieldKeys', () => {
       error: { message: 'Query error' },
     })
 
-    await expect(getFieldKeys('user-1')).rejects.toThrow()
+    await expect(fetchFieldKeys('user-1')).rejects.toThrow()
   })
 })
