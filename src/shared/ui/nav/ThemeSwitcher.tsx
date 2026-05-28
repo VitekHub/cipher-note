@@ -3,14 +3,15 @@ import { Moon, Sun, Monitor } from 'lucide-react'
 import { useTheme } from '@/shared/lib/theme-provider'
 
 import { SegmentedControl } from '@/shared/ui/SegmentedControl'
+import { useTranslation } from 'react-i18next'
 
 type Theme = 'dark' | 'light' | 'system'
 
 const THEME_CYCLE: Theme[] = ['dark', 'light', 'system']
 
 const THEME_ICONS: Record<Theme, React.ReactNode> = {
-  dark: <Sun className="size-4" />,
-  light: <Moon className="size-4" />,
+  dark: <Moon className="size-4" />,
+  light: <Sun className="size-4" />,
   system: <Monitor className="size-4" />,
 }
 
@@ -32,9 +33,17 @@ interface ThemeSwitcherProps {
 
 function ThemeSwitcher({ variant = 'compact' }: ThemeSwitcherProps) {
   const { theme, setTheme } = useTheme()
+  const { t } = useTranslation('common')
 
   if (variant === 'full') {
-    return <SegmentedControl items={THEME_ITEMS} value={theme} onChange={(v) => setTheme(v as Theme)} />
+    return (
+      <SegmentedControl
+        items={THEME_ITEMS}
+        value={theme}
+        onChange={(v) => setTheme(v as Theme)}
+        aria-label={t('nav.themeSelection')}
+      />
+    )
   }
 
   const cycleTheme = () => {
@@ -43,15 +52,12 @@ function ThemeSwitcher({ variant = 'compact' }: ThemeSwitcherProps) {
     setTheme(THEME_CYCLE[nextIndex])
   }
 
-  const nextThemeIndex = (THEME_CYCLE.indexOf(theme) + 1) % THEME_CYCLE.length
-  const nextTheme = THEME_CYCLE[nextThemeIndex]
-
   return (
     <button
       type="button"
       onClick={cycleTheme}
       className="hover:bg-muted inline-flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
-      aria-label={`Switch to ${THEME_LABELS[nextTheme].toLowerCase()} theme`}
+      aria-label={t('nav.switchTheme')}
     >
       {THEME_ICONS[theme]}
       <span className="hidden sm:inline">{THEME_LABELS[theme]}</span>

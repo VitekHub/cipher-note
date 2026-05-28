@@ -29,6 +29,11 @@
     "recover": "Recover account",
     "menu": "Menu",
     "closeMenu": "Close menu",
-    "mainNav": "Main navigation"
+    "mainNav": "Main navigation",
+    "backToHome": "Back to home",
+    "languageSelection": "Language selection",
+    "switchLanguage": "Switch language",
+    "themeSelection": "Theme selection",
+    "switchTheme": "Switch theme"
   }
 }

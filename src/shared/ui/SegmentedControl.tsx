@@ -10,11 +10,12 @@ interface SegmentedControlProps {
   items: SegmentedControlItem[]
   value: string
   onChange: (value: string) => void
+  ariaLabel?: string
 }
 
-function SegmentedControl({ items, value, onChange }: SegmentedControlProps) {
+function SegmentedControl({ items, value, onChange, ariaLabel }: SegmentedControlProps) {
   return (
-    <div className="bg-muted inline-flex rounded-lg p-1">
+    <div className="bg-muted inline-flex rounded-lg p-1" role="tablist" aria-label={ariaLabel}>
       {items.map((item) => (
         <button
           key={item.value}
@@ -26,6 +27,7 @@ function SegmentedControl({ items, value, onChange }: SegmentedControlProps) {
               ? 'bg-background text-foreground shadow-sm'
               : 'text-muted-foreground hover:text-foreground',
           )}
+          role="tab"
           aria-pressed={value === item.value}
         >
           {item.icon}

@@ -12,12 +12,14 @@ const LANGUAGE_ITEMS = LANGUAGES.map((lang) => ({
   label: lang.name,
 }))
 
+const LANGUAGE_CODES = LANGUAGES.map((lang) => lang.code) as string[]
+
 interface LanguageSwitcherProps {
   variant?: 'compact' | 'full'
 }
 
 function LanguageSwitcher({ variant = 'compact' }: LanguageSwitcherProps) {
-  const { i18n } = useTranslation('settings')
+  const { i18n, t } = useTranslation('common')
 
   const currentCode = i18n.language?.split('-')[0] ?? 'en'
 
@@ -27,19 +29,23 @@ function LanguageSwitcher({ variant = 'compact' }: LanguageSwitcherProps) {
         items={LANGUAGE_ITEMS}
         value={currentCode}
         onChange={(code) => void i18n.changeLanguage(code)}
+        aria-label={t('nav.languageSelection')}
       />
     )
   }
 
-  const currentLang = LANGUAGES.find((lang) => lang.code === currentCode) ?? LANGUAGES[0]
-  const nextLang = LANGUAGES.find((lang) => lang.code !== currentLang.code) ?? LANGUAGES[0]
+  const currentIndex = LANGUAGE_CODES.indexOf(currentCode)
+  const nextIndex = (currentIndex + 1) % LANGUAGE_CODES.length
+  const nextCode = LANGUAGE_CODES[nextIndex]
 
   function toggleLanguage() {
-    void i18n.changeLanguage(nextLang.code)
+    void i18n.changeLanguage(nextCode)
   }
 
+  const currentLang = LANGUAGES.find((lang) => lang.code === currentCode) ?? LANGUAGES[0]
+
   return (
-    <Button variant="ghost" size="sm" onClick={toggleLanguage}>
+    <Button variant="ghost" size="sm" onClick={toggleLanguage} aria-label={t('nav.switchLanguage')}>
       {currentLang.label}
     </Button>
   )

@@ -9,7 +9,7 @@ function PreAlphaBanner() {
       <div
         role="banner"
         aria-label={t('preAlpha.ariaLabel')}
-        className="flex items-center gap-2 px-4 py-1.5 text-sm text-amber-700 backdrop-blur-sm dark:text-amber-400"
+        className="flex items-center gap-2 px-4 py-1.5 text-sm text-amber-900 backdrop-blur-sm dark:text-amber-200"
       >
         <TriangleAlert className="size-4 shrink-0" aria-hidden="true" />
         <span>{t('preAlpha.message')}</span>

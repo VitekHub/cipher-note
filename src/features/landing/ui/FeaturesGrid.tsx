@@ -27,7 +27,7 @@ function FeaturesGrid() {
 
         <div className="grid gap-8 sm:grid-cols-2 lg:gap-12">
           {FEATURES.map((feature) => (
-            <FeatureCard key={feature.titleKey} feature={feature} t={t} />
+            <FeatureCard key={feature.titleKey} feature={feature} />
           ))}
         </div>
       </div>
@@ -35,8 +35,9 @@ function FeaturesGrid() {
   )
 }
 
-function FeatureCard({ feature, t }: { feature: FeatureItem; t: (key: string) => string }) {
+function FeatureCard({ feature }: { feature: FeatureItem }) {
   const Icon = feature.icon
+  const { t } = useTranslation('landing')
 
   return (
     <div className="bg-card/50 border-border/50 group hover:border-primary/20 hover:shadow-primary/5 rounded-xl border p-8 backdrop-blur-sm transition-all duration-300 hover:shadow-lg">
