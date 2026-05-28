@@ -986,27 +986,33 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 
 ---
 
-### Step 23 — Crypto Session Store (Zustand) + Query Cache Purge ✅
+### Step 23 — Non-Extractable Key Vault + Zustand Store Refactor ✅
 
-**Goal:** Verify and finalize the Zustand crypto store — already has hex-encoded keys, `lockVault()` with query cache purge, `setKeys`, `updateActivity`, and `selectFieldKey`. Remove devtools middleware from stores holding sensitive data (auth store, crypto store) since Redux DevTools would expose secrets in browser devtools.
+**Goal:** Replace hex-encoded key strings in Zustand with a module-scoped `KeyVault` class holding non-extractable `CryptoKey` objects (so `exportKey()` fails). Consolidate vault lock/unlock logic, zero-fill intermediate key material, and remove the now-unnecessary `login.ts` and `vault-lock.ts` modules.
 
 **Code:**
-- Verify `copyToUint8Array` (in `crypto-utils.ts`) is used in AES-GCM module for `encrypt`, `decrypt`, `exportKey` results (replacing bare `new Uint8Array(buffer)` calls)
-- Verify that `devtools` middleware is not in auth store and crypto store — these hold secrets (tokens, crypto keys) that must not be visible in browser DevTools. Only non-sensitive stores (UI store, vault dialog store) keep devtools with named actions
-- `lockVault()` (inactivity timeout) preserves cached envelope for faster re-unlock; `clearVault()` (logout) zeros everything including cached envelope. Both purge TanStack Query cache for `['field']`
-- Verify `setQueryClient(client)` is wired in app providers
-- Verify that no crypto keys appear in localStorage, sessionStorage, or IndexedDB (crypto store and auth store use no persist middleware)
+- Replace hex-encoded keys in crypto store (`masterKey`, `kek`, `fieldKeys`) with a `KeyVault` class (`key-vault.ts`) that stores non-extractable `CryptoKey` objects in a module-scoped `Map`. Crypto store now only tracks `loadedFieldKeys: Record<string, boolean>` (which field names are loaded, not the actual key bytes). Remove `selectFieldKey` — consumers call `keyVault.getKey(id)` instead
+- `KeyVault.storeFieldKeys(kek, fieldKeys)` stores KEK + field CryptoKeys and calls `setKeys(fieldKeyNames)` on the Zustand store. `keyVault.lockVault()` clears the Map and sets `isVaultLocked`; `keyVault.clearVault()` additionally purges the cached envelope and query cache
+- Move `unlockVault()` from `vault-lock.ts` into `auth-flow.ts`, inlining the derivation steps into focused helpers (`fetchFreshEnvelope`, `deriveKekFromEnvelope`, `storeFieldKeys`). Zero-fill all intermediate key material (`passwordKey`, `masterKey`, `kekBytes`) after use. On stale-cache `DecryptionError`, clear the vault and retry from server
+- Delete `vault-lock.ts` and `login.ts` — their logic absorbed by `key-vault.ts` and `auth-flow.ts`. Update all callers (`Sidebar`, `MobileNav`, `VaultUnlockDialog`, `vault-timeout`) to use `keyVault.lockVault()` instead of the removed `lockVault()` function
+- `generateFieldKeys()` now returns `{ rawFieldKeys, cryptoFieldKeys }` — raw bytes for wrapping, `CryptoKey` objects for encryption. `deriveFullKeyHierarchy` imports KEK as non-extractable (`extractable: false`). `unwrapFieldKeys` accepts `ServerFieldKey[]` directly and returns `Map<string, CryptoKey>`. `RegistrationResult` uses `CryptoKey` types for `kek` and `fieldKeys`; `masterKey` removed from the return type
+- Simplify `split-kdf.ts`: remove `deriveLoginCredentials` and `LoginCredentials` type; `changePassword` reuses `deriveAuthCredentials` instead of a separate derivation path. `deriveAuthCredentials` returns `authHash` + `passwordKey` directly (login no longer needs both salts in one call since `authHash` is derived first, then `passwordKey` separately from the envelope's `keySalt`)
+- Rename API fetchers: `getLoginSalts` → `fetchLoginSalts`, `getMasterKeyEnvelope` → `fetchMasterKeyEnvelope`, `getFieldKeys` → `fetchFieldKeys` (consistent verb convention). Update `IApiAdapter` interface accordingly
+- Extend `zeroFill` in `crypto-utils.ts` to accept `Iterable<Uint8Array>` so you can zero-fill `rawFieldKeys.values()` in one call. Extract `HKDF_ALGORITHM` constant in `hkdf.ts` for DRY
+- `clearVault()` in crypto store no longer calls `terminateWorker()` — worker termination moved to `logoutCleanup()` in `auth-flow.ts` alongside `keyVault.clearVault()` and `store.reset()`
+- Verify `devtools` middleware is not in auth store or crypto store (secrets must not appear in Redux DevTools). Verify no crypto keys appear in localStorage, sessionStorage, or IndexedDB. Verify `setQueryClient(client)` is wired in app providers
 
 **Tests:**
-- Unit: `copyToUint8Array` copies ArrayBuffer and Uint8Array data, returns independent copy, handles empty input
-- Unit: `setKeys` stores all keys correctly (hex-encoded)
-- Unit: `selectFieldKey('note')` returns correct hex-encoded key
-- Unit: `lockVault` zeros keys and sets isVaultLocked = true, preserves cached envelope
-- Unit: `clearVault` zeros everything including cached envelope
-- Unit: after `lockVault`/`clearVault`, `selectFieldKey` returns null
-- Unit: `lockVault` and `clearVault` purge TanStack Query cache for `['field']`
-- Integration: `setKeys` → `clearVault` → verify all keys zeroed and query cache purged
-- Security: verify crypto store never persists keys to localStorage or sessionStorage
+- Unit: `KeyVault.storeFieldKeys` stores KEK and field keys, `getKey` retrieves them, `hasKey` checks existence
+- Unit: `keyVault.lockVault()` clears vault Map, sets `isVaultLocked`, preserves cached envelope
+- Unit: `keyVault.clearVault()` clears everything including cached envelope and purges query cache
+- Unit: after `lockVault`/`clearVault`, `keyVault.getKey()` returns undefined and `loadedFieldKeys` is empty
+- Unit: `generateFieldKeys` returns both raw and CryptoKey variants; CryptoKeys are non-extractable
+- Unit: `unwrapFieldKeys` returns `Map<string, CryptoKey>` from `ServerFieldKey[]` input
+- Unit: `zeroFill` handles single Uint8Array and iterable of Uint8Arrays
+- Integration: `signUpUser` stores keys via `keyVault` and populates `loadedFieldKeys`
+- Integration: `loginUser` → `unlockVault` → `lockVault` round-trip with cached envelope
+- Security: verify crypto store never persists keys to storage; verify `exportKey()` fails on vault keys
 
 ---
 

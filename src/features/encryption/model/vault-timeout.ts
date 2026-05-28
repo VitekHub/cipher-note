@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 
 import { useCryptoStore } from '@/features/encryption/model/crypto-store'
-import { lockVault } from '@/features/encryption/model/vault-lock'
+import { keyVault } from '@/features/encryption/model/key-vault'
 
 export const DEFAULT_VAULT_TIMEOUT_MS = 15 * 60 * 1000
 
@@ -25,7 +25,7 @@ export function useVaultTimeout(timeoutMs: number = DEFAULT_VAULT_TIMEOUT_MS): v
         clearTimeout(timeoutRef.current)
       }
       timeoutRef.current = setTimeout(() => {
-        lockVault()
+        keyVault.lockVault()
       }, timeoutMs)
     }
 

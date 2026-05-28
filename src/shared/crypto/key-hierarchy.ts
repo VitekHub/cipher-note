@@ -18,19 +18,28 @@
  */
 
 import { importKey } from '@/shared/crypto/aes-gcm'
-import { generateKey, generateIV, encodeAAD } from '@/shared/crypto/crypto-utils'
+import { generateKey, generateIV, encodeAAD, hexDecode } from '@/shared/crypto/crypto-utils'
 import { encrypt, decrypt } from '@/shared/crypto/aes-gcm'
 import { deriveKEK, deriveSigningKeySeed } from '@/shared/crypto/hkdf'
 import type { KeyHierarchy, WrappedFieldKey } from '@/shared/types/crypto.types'
+import type { ServerFieldKey } from '../types/api.types'
 
 const FIELD_NAMES = ['note', 'website', 'email'] as const
 
 /**
  * Generate all three field keys (note, website, email) at once.
- * Each is a 256-bit random key. Returns a Map of field name to key bytes.
+ * Each is a 256-bit random key. Returns both the raw key bytes (for wrapping)
+ * and imported CryptoKeys (for encryption).
  */
-export function generateFieldKeys(): Map<string, Uint8Array<ArrayBuffer>> {
-  return new Map<string, Uint8Array<ArrayBuffer>>(FIELD_NAMES.map((name) => [name, generateKey()]))
+export async function generateFieldKeys(): Promise<{
+  rawFieldKeys: Map<string, Uint8Array<ArrayBuffer>>
+  cryptoFieldKeys: Map<string, CryptoKey>
+}> {
+  const entries = FIELD_NAMES.map((name) => [name, generateKey()] as [string, Uint8Array<ArrayBuffer>])
+  const cryptoFieldKeys = new Map(
+    await Promise.all(entries.map(async ([name, key]) => [name, await importKey(key)] as const)),
+  )
+  return { rawFieldKeys: new Map(entries), cryptoFieldKeys }
 }
 
 /** Generate a 256-bit random master key. Used once during registration. */
@@ -41,15 +50,17 @@ export function generateMasterKey(): Uint8Array<ArrayBuffer> {
 /**
  * Derive the full key hierarchy from a master key.
  *
- * Runs KEK and signing key seed derivation in parallel, then imports the KEK
- * bytes as an AES-GCM CryptoKey so it can be used directly for wrapping.
+ * Derives KEK (for wrapping field keys) and signing key seed (for integrity
+ * verification) from the master key using HKDF. Imports the KEK bytes as an
+ * AES-GCM CryptoKey for direct use in key wrapping operations.
  *
- * @returns The master key, KEK (as CryptoKey), and signing key seed
+ * @param masterKey - 256-bit random master key
+ * @returns KeyHierarchy containing master key, KEK (CryptoKey), and signing key seed
  */
 export async function deriveFullKeyHierarchy(masterKey: Uint8Array<ArrayBuffer>): Promise<KeyHierarchy> {
   const [kekBytes, signingKeySeed] = await Promise.all([deriveKEK(masterKey), deriveSigningKeySeed(masterKey)])
 
-  const kek = await importKey(kekBytes, true)
+  const kek = await importKey(kekBytes, false)
 
   return { masterKey, kek, signingKeySeed }
 }
@@ -91,24 +102,24 @@ export async function wrapFieldKeys(
 /**
  * Unwrap multiple field keys with the KEK.
  *
- * Verifies the AAD (field name + version) for each key, so any version
- * mismatch or data tampering will cause a DecryptionError.
+ * Decrypts each wrapped field key using AES-256-GCM with AAD (field name + version).
+ * The AAD is verified during decryption, so any version mismatch or data tampering
+ * will cause a DecryptionError. Returns imported CryptoKeys ready for encryption.
  *
- * @param wrappedKeys - Wrapped field keys fetched from server
+ * @param fieldKeys - Wrapped field keys fetched from server
  * @param kek - Key Encryption Key (CryptoKey) to unwrap with
- * @returns Map of field name → plaintext field key
+ * @returns Map of field name → decrypted field key as CryptoKey
  */
-export async function unwrapFieldKeys(
-  wrappedKeys: WrappedFieldKey[],
-  kek: CryptoKey,
-): Promise<Map<string, Uint8Array<ArrayBuffer>>> {
+export async function unwrapFieldKeys(fieldKeys: ServerFieldKey[], kek: CryptoKey): Promise<Map<string, CryptoKey>> {
   const entries = await Promise.all(
-    wrappedKeys.map(async ({ fieldName, version, wrappedKey, iv }) => {
+    fieldKeys.map(async ({ fieldName, version, wrappedKey, keyIV }) => {
       const aad = encodeAAD(fieldName, version)
-      const key = await decrypt(wrappedKey, kek, { iv, aad })
-      return [fieldName, key] as [string, Uint8Array<ArrayBuffer>]
+      const iv = hexDecode(keyIV)
+      const unwrappedKey = await decrypt(hexDecode(wrappedKey), kek, { iv, aad })
+      const key = await importKey(unwrappedKey)
+      return [fieldName, key] as [string, CryptoKey]
     }),
   )
 
-  return new Map<string, Uint8Array<ArrayBuffer>>(entries)
+  return new Map<string, CryptoKey>(entries)
 }

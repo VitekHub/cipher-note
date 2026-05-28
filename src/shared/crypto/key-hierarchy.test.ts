@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { DecryptionError } from '@/shared/crypto/errors'
+import { hexEncode } from '@/shared/crypto/crypto-utils'
 import {
   generateMasterKey,
   generateFieldKeys,
@@ -7,6 +8,7 @@ import {
   wrapFieldKeys,
   unwrapFieldKeys,
 } from '@/shared/crypto/key-hierarchy'
+import type { ServerFieldKey } from '@/shared/types/api.types'
 
 describe('key-hierarchy', () => {
   describe('generateMasterKey', () => {
@@ -23,33 +25,44 @@ describe('key-hierarchy', () => {
   })
 
   describe('generateFieldKeys', () => {
-    it('returns a Map with note, website, and email keys', () => {
-      const fieldKeys = generateFieldKeys()
-      expect(fieldKeys.size).toBe(3)
-      expect(fieldKeys.has('note')).toBe(true)
-      expect(fieldKeys.has('website')).toBe(true)
-      expect(fieldKeys.has('email')).toBe(true)
+    it('returns rawFieldKeys and cryptoFieldKeys with note, website, and email', async () => {
+      const { rawFieldKeys, cryptoFieldKeys } = await generateFieldKeys()
+      expect(rawFieldKeys.size).toBe(3)
+      expect(cryptoFieldKeys.size).toBe(3)
+      expect(rawFieldKeys.has('note')).toBe(true)
+      expect(rawFieldKeys.has('website')).toBe(true)
+      expect(rawFieldKeys.has('email')).toBe(true)
+      expect(cryptoFieldKeys.has('note')).toBe(true)
+      expect(cryptoFieldKeys.has('website')).toBe(true)
+      expect(cryptoFieldKeys.has('email')).toBe(true)
     })
 
-    it('produces 32-byte keys for each field', () => {
-      const fieldKeys = generateFieldKeys()
-      for (const key of fieldKeys.values()) {
+    it('produces 32-byte raw keys for each field', async () => {
+      const { rawFieldKeys } = await generateFieldKeys()
+      for (const key of rawFieldKeys.values()) {
         expect(key.length).toBe(32)
       }
     })
 
-    it('produces unique keys for each field', () => {
-      const fieldKeys = generateFieldKeys()
-      const keys = [...fieldKeys.values()]
+    it('produces CryptoKey instances for each field', async () => {
+      const { cryptoFieldKeys } = await generateFieldKeys()
+      for (const key of cryptoFieldKeys.values()) {
+        expect(key).toBeInstanceOf(CryptoKey)
+      }
+    })
+
+    it('produces unique raw keys for each field', async () => {
+      const { rawFieldKeys } = await generateFieldKeys()
+      const keys = [...rawFieldKeys.values()]
       expect(keys[0]).not.toEqual(keys[1])
       expect(keys[0]).not.toEqual(keys[2])
       expect(keys[1]).not.toEqual(keys[2])
     })
 
-    it('produces unique keys on successive calls', () => {
-      const fieldKeys1 = generateFieldKeys()
-      const fieldKeys2 = generateFieldKeys()
-      expect(fieldKeys1.get('note')).not.toEqual(fieldKeys2.get('note'))
+    it('produces unique keys on successive calls', async () => {
+      const { rawFieldKeys: r1 } = await generateFieldKeys()
+      const { rawFieldKeys: r2 } = await generateFieldKeys()
+      expect(r1.get('note')).not.toEqual(r2.get('note'))
     })
   })
 
@@ -68,9 +81,14 @@ describe('key-hierarchy', () => {
       const h1 = await deriveFullKeyHierarchy(masterKey)
       const h2 = await deriveFullKeyHierarchy(masterKey)
 
-      const kek1 = await crypto.subtle.exportKey('raw', h1.kek)
-      const kek2 = await crypto.subtle.exportKey('raw', h2.kek)
-      expect(new Uint8Array(kek1)).toEqual(new Uint8Array(kek2))
+      // Compare ciphertexts from encrypting same data with both KEKs
+      const testPlaintext = new Uint8Array(32).fill(0x42)
+      const iv = new Uint8Array(12).fill(0x00)
+
+      const ciphertext1 = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, h1.kek, testPlaintext)
+      const ciphertext2 = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, h2.kek, testPlaintext)
+
+      expect(new Uint8Array(ciphertext1)).toEqual(new Uint8Array(ciphertext2))
     })
 
     it('produces different KEK for different master keys', async () => {
@@ -79,9 +97,14 @@ describe('key-hierarchy', () => {
       const h1 = await deriveFullKeyHierarchy(mk1)
       const h2 = await deriveFullKeyHierarchy(mk2)
 
-      const kek1 = await crypto.subtle.exportKey('raw', h1.kek)
-      const kek2 = await crypto.subtle.exportKey('raw', h2.kek)
-      expect(new Uint8Array(kek1)).not.toEqual(new Uint8Array(kek2))
+      // Compare ciphertexts from encrypting same data with both KEKs
+      const testPlaintext = new Uint8Array(32).fill(0x42)
+      const iv = new Uint8Array(12).fill(0x00)
+
+      const ciphertext1 = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, h1.kek, testPlaintext)
+      const ciphertext2 = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, h2.kek, testPlaintext)
+
+      expect(new Uint8Array(ciphertext1)).not.toEqual(new Uint8Array(ciphertext2))
     })
   })
 
@@ -90,7 +113,7 @@ describe('key-hierarchy', () => {
       const masterKey = generateMasterKey()
       const hierarchy = await deriveFullKeyHierarchy(masterKey)
 
-      const fieldKeys = generateFieldKeys()
+      const { rawFieldKeys, cryptoFieldKeys } = await generateFieldKeys()
 
       const versions = new Map<string, number>([
         ['note', 1],
@@ -98,24 +121,53 @@ describe('key-hierarchy', () => {
         ['email', 1],
       ])
 
-      return { hierarchy, fieldKeys, versions }
+      return { hierarchy, rawFieldKeys, cryptoFieldKeys, versions }
+    }
+
+    function toServerFieldKeys(
+      wrapped: {
+        fieldName: string
+        version: number
+        wrappedKey: Uint8Array<ArrayBuffer>
+        iv: Uint8Array<ArrayBuffer>
+      }[],
+    ): ServerFieldKey[] {
+      return wrapped.map((w) => ({
+        fieldName: w.fieldName,
+        version: w.version,
+        wrappedKey: hexEncode(w.wrappedKey),
+        keyIV: hexEncode(w.iv),
+      }))
     }
 
     it('round-trips all field keys through wrap and unwrap', async () => {
-      const { hierarchy, fieldKeys, versions } = await setupHierarchy()
+      const { hierarchy, rawFieldKeys, versions } = await setupHierarchy()
 
-      const wrapped = await wrapFieldKeys(fieldKeys, hierarchy.kek, versions)
-      const unwrapped = await unwrapFieldKeys(wrapped, hierarchy.kek)
+      const wrapped = await wrapFieldKeys(rawFieldKeys, hierarchy.kek, versions)
+      const serverFieldKeys = toServerFieldKeys(wrapped)
+      const unwrapped = await unwrapFieldKeys(serverFieldKeys, hierarchy.kek)
 
-      for (const [fieldName, originalKey] of fieldKeys) {
-        expect(unwrapped.get(fieldName)).toEqual(originalKey)
+      // Compare by encrypting same data with both original CryptoKey and unwrapped CryptoKey
+      for (const [fieldName, originalKey] of rawFieldKeys) {
+        const unwrappedKey = unwrapped.get(fieldName)!
+        const testPlaintext = new Uint8Array(32).fill(0x42)
+        const iv = new Uint8Array(12).fill(0x00)
+
+        const ciphertextOriginal = await crypto.subtle.encrypt(
+          { name: 'AES-GCM', iv },
+          await crypto.subtle.importKey('raw', originalKey, { name: 'AES-GCM' }, false, ['encrypt']),
+          testPlaintext,
+        )
+        const ciphertextUnwrapped = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, unwrappedKey, testPlaintext)
+
+        expect(new Uint8Array(ciphertextOriginal)).toEqual(new Uint8Array(ciphertextUnwrapped))
       }
     })
 
     it('preserves field names and versions in wrapped output', async () => {
-      const { hierarchy, fieldKeys, versions } = await setupHierarchy()
+      const { hierarchy, rawFieldKeys, versions } = await setupHierarchy()
 
-      const wrapped = await wrapFieldKeys(fieldKeys, hierarchy.kek, versions)
+      const wrapped = await wrapFieldKeys(rawFieldKeys, hierarchy.kek, versions)
 
       const fieldNames = wrapped.map((w) => w.fieldName).sort()
       expect(fieldNames).toEqual(['email', 'note', 'website'])
@@ -126,35 +178,36 @@ describe('key-hierarchy', () => {
     })
 
     it('produces wrapped keys that differ from plaintext keys', async () => {
-      const { hierarchy, fieldKeys, versions } = await setupHierarchy()
+      const { hierarchy, rawFieldKeys, versions } = await setupHierarchy()
 
-      const wrapped = await wrapFieldKeys(fieldKeys, hierarchy.kek, versions)
+      const wrapped = await wrapFieldKeys(rawFieldKeys, hierarchy.kek, versions)
 
       for (const w of wrapped) {
-        expect(w.wrappedKey).not.toEqual(fieldKeys.get(w.fieldName))
+        expect(w.wrappedKey).not.toEqual(rawFieldKeys.get(w.fieldName))
       }
     })
 
     it('throws DecryptionError when unwrapping with wrong KEK', async () => {
-      const { fieldKeys, versions } = await setupHierarchy()
+      const { rawFieldKeys, versions } = await setupHierarchy()
       const wrongHierarchy = await deriveFullKeyHierarchy(generateMasterKey())
 
-      const wrapped = await wrapFieldKeys(fieldKeys, wrongHierarchy.kek, versions)
+      const wrapped = await wrapFieldKeys(rawFieldKeys, wrongHierarchy.kek, versions)
 
       // Try to unwrap with a different KEK
       const anotherHierarchy = await deriveFullKeyHierarchy(generateMasterKey())
-      await expect(unwrapFieldKeys(wrapped, anotherHierarchy.kek)).rejects.toThrow(DecryptionError)
+      const serverFieldKeys = toServerFieldKeys(wrapped)
+      await expect(unwrapFieldKeys(serverFieldKeys, anotherHierarchy.kek)).rejects.toThrow(DecryptionError)
     })
 
     it('throws DecryptionError when unwrapping with wrong version (rollback protection)', async () => {
-      const { hierarchy, fieldKeys } = await setupHierarchy()
+      const { hierarchy, rawFieldKeys } = await setupHierarchy()
       const versions = new Map<string, number>([
         ['note', 1],
         ['website', 1],
         ['email', 1],
       ])
 
-      const wrapped = await wrapFieldKeys(fieldKeys, hierarchy.kek, versions)
+      const wrapped = await wrapFieldKeys(rawFieldKeys, hierarchy.kek, versions)
 
       // Tamper with version to simulate rollback
       const tampered = wrapped.map((w) => ({
@@ -162,18 +215,18 @@ describe('key-hierarchy', () => {
         version: w.version + 1,
       }))
 
-      await expect(unwrapFieldKeys(tampered, hierarchy.kek)).rejects.toThrow(DecryptionError)
+      await expect(unwrapFieldKeys(toServerFieldKeys(tampered), hierarchy.kek)).rejects.toThrow(DecryptionError)
     })
 
     it('throws if version is missing for a field name', async () => {
-      const { hierarchy, fieldKeys } = await setupHierarchy()
+      const { hierarchy, rawFieldKeys } = await setupHierarchy()
       // Missing 'email' version
       const incompleteVersions = new Map<string, number>([
         ['note', 1],
         ['website', 1],
       ])
 
-      await expect(wrapFieldKeys(fieldKeys, hierarchy.kek, incompleteVersions)).rejects.toThrow(
+      await expect(wrapFieldKeys(rawFieldKeys, hierarchy.kek, incompleteVersions)).rejects.toThrow(
         'Missing version for field "email"',
       )
     })
@@ -181,13 +234,29 @@ describe('key-hierarchy', () => {
     it('wraps and unwraps a single field key', async () => {
       const masterKey = generateMasterKey()
       const hierarchy = await deriveFullKeyHierarchy(masterKey)
-      const fieldKeys = new Map<string, Uint8Array<ArrayBuffer>>([['note', crypto.getRandomValues(new Uint8Array(32))]])
+      const rawFieldKeys = new Map<string, Uint8Array<ArrayBuffer>>([
+        ['note', crypto.getRandomValues(new Uint8Array(32))],
+      ])
       const versions = new Map<string, number>([['note', 1]])
 
-      const wrapped = await wrapFieldKeys(fieldKeys, hierarchy.kek, versions)
-      const unwrapped = await unwrapFieldKeys(wrapped, hierarchy.kek)
+      const wrapped = await wrapFieldKeys(rawFieldKeys, hierarchy.kek, versions)
+      const unwrapped = await unwrapFieldKeys(toServerFieldKeys(wrapped), hierarchy.kek)
 
-      expect(unwrapped.get('note')).toEqual(fieldKeys.get('note'))
+      // Verify by encrypting same data
+      const testPlaintext = new Uint8Array(32).fill(0x42)
+      const iv = new Uint8Array(12).fill(0x00)
+      const ciphertextOriginal = await crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv },
+        await crypto.subtle.importKey('raw', rawFieldKeys.get('note')!, { name: 'AES-GCM' }, false, ['encrypt']),
+        testPlaintext,
+      )
+      const ciphertextUnwrapped = await crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv },
+        unwrapped.get('note')!,
+        testPlaintext,
+      )
+
+      expect(new Uint8Array(ciphertextOriginal)).toEqual(new Uint8Array(ciphertextUnwrapped))
     })
 
     it('returns empty array for empty fieldKeys map', async () => {
@@ -212,7 +281,7 @@ describe('key-hierarchy', () => {
       const hierarchy = await deriveFullKeyHierarchy(masterKey)
 
       // 3. Generate field keys
-      const fieldKeys = generateFieldKeys()
+      const { rawFieldKeys } = await generateFieldKeys()
       const versions = new Map<string, number>([
         ['note', 1],
         ['website', 1],
@@ -220,15 +289,35 @@ describe('key-hierarchy', () => {
       ])
 
       // 4. Wrap field keys with KEK
-      const wrapped = await wrapFieldKeys(fieldKeys, hierarchy.kek, versions)
+      const wrapped = await wrapFieldKeys(rawFieldKeys, hierarchy.kek, versions)
 
-      // 5. Unwrap field keys with KEK
-      const unwrapped = await unwrapFieldKeys(wrapped, hierarchy.kek)
+      // 5. Convert to server format and unwrap
+      const serverFieldKeys = wrapped.map((w) => ({
+        fieldName: w.fieldName,
+        version: w.version,
+        wrappedKey: hexEncode(w.wrappedKey),
+        keyIV: hexEncode(w.iv),
+      }))
+      const unwrapped = await unwrapFieldKeys(serverFieldKeys, hierarchy.kek)
 
-      // 6. Verify all field keys match originals
-      expect(unwrapped.get('note')).toEqual(fieldKeys.get('note'))
-      expect(unwrapped.get('website')).toEqual(fieldKeys.get('website'))
-      expect(unwrapped.get('email')).toEqual(fieldKeys.get('email'))
+      // 6. Verify by encrypting same data with both original and unwrapped keys
+      const testPlaintext = new Uint8Array(32).fill(0x42)
+      const iv = new Uint8Array(12).fill(0x00)
+
+      for (const [fieldName, originalKey] of rawFieldKeys) {
+        const ciphertextOriginal = await crypto.subtle.encrypt(
+          { name: 'AES-GCM', iv },
+          await crypto.subtle.importKey('raw', originalKey, { name: 'AES-GCM' }, false, ['encrypt']),
+          testPlaintext,
+        )
+        const ciphertextUnwrapped = await crypto.subtle.encrypt(
+          { name: 'AES-GCM', iv },
+          unwrapped.get(fieldName)!,
+          testPlaintext,
+        )
+
+        expect(new Uint8Array(ciphertextOriginal)).toEqual(new Uint8Array(ciphertextUnwrapped))
+      }
     })
   })
 })

@@ -84,6 +84,12 @@ export function copyToUint8Array(data: ArrayBuffer | Uint8Array): Uint8Array<Arr
 }
 
 /** Overwrite a Uint8Array with zeros. Best-effort memory clearing for key material. */
-export function zeroFill(buffer: Uint8Array): void {
-  buffer.fill(0)
+export function zeroFill(buffer: Uint8Array | Iterable<Uint8Array>): void {
+  if (buffer instanceof Uint8Array) {
+    buffer.fill(0)
+  } else {
+    for (const item of buffer) {
+      item.fill(0)
+    }
+  }
 }

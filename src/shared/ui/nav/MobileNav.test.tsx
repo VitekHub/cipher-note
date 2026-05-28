@@ -15,8 +15,10 @@ vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => vi.fn(),
 }))
 
-vi.mock('@/features/encryption/model/vault-lock', () => ({
-  lockVault: mockLockVault,
+vi.mock('@/features/encryption/model/key-vault', () => ({
+  keyVault: {
+    lockVault: mockLockVault,
+  },
 }))
 
 import { MobileNav } from './MobileNav'

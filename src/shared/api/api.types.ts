@@ -9,8 +9,8 @@ import type {
 } from '@/shared/types/api.types'
 
 export interface IApiAdapter {
-  getMasterKeyEnvelope(userId: string): Promise<ServerMasterKeyEnvelope>
-  getFieldKeys(userId: string): Promise<ServerFieldKey[]>
+  fetchMasterKeyEnvelope(userId: string): Promise<ServerMasterKeyEnvelope>
+  fetchFieldKeys(userId: string): Promise<ServerFieldKey[]>
   saveWrappedKey(userId: string, data: SaveWrappedKeyData): Promise<void>
 
   getField(userId: string, fieldName: string): Promise<ServerEncryptedField | null>

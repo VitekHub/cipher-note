@@ -26,9 +26,7 @@ afterEach(() => {
     isRestoringSession: false,
   })
   useCryptoStore.setState({
-    masterKey: null,
-    kek: null,
-    fieldKeys: {},
+    loadedFieldKeys: {},
     isVaultLocked: true,
     lastActivity: 0,
   })
