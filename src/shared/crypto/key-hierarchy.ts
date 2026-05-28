@@ -50,10 +50,12 @@ export function generateMasterKey(): Uint8Array<ArrayBuffer> {
 /**
  * Derive the full key hierarchy from a master key.
  *
- * Runs KEK and signing key seed derivation in parallel, then imports the KEK
- * bytes as an AES-GCM CryptoKey so it can be used directly for wrapping.
+ * Derives KEK (for wrapping field keys) and signing key seed (for integrity
+ * verification) from the master key using HKDF. Imports the KEK bytes as an
+ * AES-GCM CryptoKey for direct use in key wrapping operations.
  *
- * @returns The master key, KEK (as CryptoKey), and signing key seed
+ * @param masterKey - 256-bit random master key
+ * @returns KeyHierarchy containing master key, KEK (CryptoKey), and signing key seed
  */
 export async function deriveFullKeyHierarchy(masterKey: Uint8Array<ArrayBuffer>): Promise<KeyHierarchy> {
   const [kekBytes, signingKeySeed] = await Promise.all([deriveKEK(masterKey), deriveSigningKeySeed(masterKey)])
@@ -100,12 +102,13 @@ export async function wrapFieldKeys(
 /**
  * Unwrap multiple field keys with the KEK.
  *
- * Verifies the AAD (field name + version) for each key, so any version
- * mismatch or data tampering will cause a DecryptionError.
+ * Decrypts each wrapped field key using AES-256-GCM with AAD (field name + version).
+ * The AAD is verified during decryption, so any version mismatch or data tampering
+ * will cause a DecryptionError. Returns imported CryptoKeys ready for encryption.
  *
  * @param fieldKeys - Wrapped field keys fetched from server
  * @param kek - Key Encryption Key (CryptoKey) to unwrap with
- * @returns Map of field name → plaintext field key
+ * @returns Map of field name → decrypted field key as CryptoKey
  */
 export async function unwrapFieldKeys(fieldKeys: ServerFieldKey[], kek: CryptoKey): Promise<Map<string, CryptoKey>> {
   const entries = await Promise.all(

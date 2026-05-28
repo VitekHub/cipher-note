@@ -1,10 +1,3 @@
-/**
- * Registration crypto flow: derives all keys and wraps them for server storage.
- *
- * This is a pure crypto function — no auth calls, no DB writes, no side effects.
- * The caller (auth-flow.ts) handles Supabase Auth signup and data upload.
- */
-
 import { importKey, encrypt } from '@/shared/crypto/aes-gcm'
 import { generateIV, generateSalt, zeroFill } from '@/shared/crypto/crypto-utils'
 import { generateMnemonic, wrapMasterKeyWithRecovery } from '@/shared/crypto/mnemonic'
@@ -18,6 +11,12 @@ import { deriveAuthCredentials } from '@/shared/crypto/split-kdf'
 import { FIELD_KEY_VERSION, MASTER_KEY_PASSWORD_AAD } from '@/shared/types/crypto.types'
 import type { RegistrationResult } from '@/shared/types/crypto.types'
 
+/**
+ * Derive all keys needed for registration and wrap them for server storage.
+ *
+ * This is a pure crypto function - no auth calls, no DB writes, no side effects.
+ * The caller (auth-flow.ts) needs to handle Supabase Auth signup and data upload.
+ */
 export async function deriveRegistrationKeys(password: string): Promise<RegistrationResult> {
   // Derive auth credentials + master key + key hierarchy
   const { authHash, passwordKey, authSalt, keySalt } = await deriveAuthCredentials(password)

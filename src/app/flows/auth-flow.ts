@@ -153,6 +153,14 @@ export function subscribeToAuthChanges(): () => void {
   })
 }
 
+/**
+ * Unlock the vault by deriving the KEK from the password and populating the
+ * KeyVault with non-extractable CryptoKey objects.
+ *
+ * Uses the cached envelope when available to skip network calls. If decryption
+ * fails with the cached envelope (e.g., stale cache from a password change in
+ * another session), clears the cache and fetches fresh key material from the server.
+ */
 export async function unlockVault(password: string): Promise<void> {
   const user = useAuthStore.getState().user
   if (!user) {
