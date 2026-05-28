@@ -34,10 +34,11 @@ function renderWithRouter(authOverrides: Partial<AuthContext> = {}, initialPath 
 }
 
 describe('Router redirects', () => {
-  it('redirects / to /login when not authenticated', async () => {
+  it('does not redirect / to /login when not authenticated', async () => {
     const { router } = renderWithRouter({}, '/')
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/login')
+      expect(router.state.location.pathname).not.toBe('/login')
+      expect(router.state.location.pathname).toBe('/')
     })
   })
 

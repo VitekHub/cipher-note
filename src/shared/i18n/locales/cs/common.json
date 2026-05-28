@@ -16,6 +16,10 @@
     "loading": "Načítání...",
     "error": "Něco se pokazilo"
   },
+  "preAlpha": {
+    "ariaLabel": "Upozornění na předběžnou verzi",
+    "message": "Cipher Note je předběžná alfa verze. Očekávejte zásadní změny a občasné resety dat."
+  },
   "nav": {
     "dashboard": "Nástěnka",
     "settings": "Nastavení",

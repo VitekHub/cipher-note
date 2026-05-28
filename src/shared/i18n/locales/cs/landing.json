@@ -1,0 +1,48 @@
+{
+  "hero": {
+    "title": "Vaše poznámky. Vaše klíče.",
+    "subtitle": "End-to-end šifrované poznámky, které ani naše servery nedokážou přečíst. Postaveno na zero-knowledge kryptografii.",
+    "cta": "Vytvořit účet zdarma",
+    "login": "Přihlásit se"
+  },
+  "features": {
+    "heading": "Bezpečnost bez kompromisu",
+    "zeroKnowledge": {
+      "title": "Zero-Knowledge šifrování",
+      "description": "Vaše heslo nikdy neopustí zařízení. Šifrovací klíče odvozujeme lokálně - server vidí pouze šifrovaný text."
+    },
+    "splitKey": {
+      "title": "Rozdělená derivace klíčů",
+      "description": "Jedno heslo, dva nezávislé klíče: jeden pro autentizaci, druhý pro šifrování. Ani narušení serveru nic neodhalí."
+    },
+    "recovery": {
+      "title": "Záloha obnovovací frází",
+      "description": "BIP-39 mnemonická fráze vám umožní obnovit data, pokud zapomenete heslo. Zapište si ji a uložte na bezpečné místo."
+    },
+    "openDesign": {
+      "title": "Transparentní architektura",
+      "description": "Postaveno na AES-256-GCM, Argon2id a HKDF. Žádné proprietární algoritmy. Každé kryptografické rozhodnutí je ověřitelné."
+    }
+  },
+  "howItWorks": {
+    "heading": "Jak to funguje",
+    "step1": {
+      "title": "Vytvořte si účet",
+      "description": "Zvolte uživatelské jméno a heslo. Vaše heslo se nikdy neodesílá na server - k autentizaci se používá pouze odvozený hash."
+    },
+    "step2": {
+      "title": "Zapište své poznámky",
+      "description": "Přidejte poznámky, webové stránky a e-maily do šifrovaného trezoru. Rozhraní je jednoduché a přehledné."
+    },
+    "step3": {
+      "title": "Okamžitě zašifrováno",
+      "description": "Každé pole je zašifrováno jedinečným klíčem před opuštěním prohlížeče. Server ukládá pouze šifrovaný text."
+    }
+  },
+  "security": {
+    "statement": "Postaveno na AES-256-GCM, Argon2id a HKDF. Žádné sledování. Žádné reklamy. Žádné kompromisy."
+  },
+  "footer": {
+    "tagline": "Soukromí není vymoženost - je to základ."
+  }
+}
