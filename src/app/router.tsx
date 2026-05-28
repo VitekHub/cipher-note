@@ -7,6 +7,7 @@ import type { AuthContext } from '@/shared/auth/auth-context'
 function createAppRouter(auth: AuthContext) {
   const router = createRouter({
     routeTree,
+    basepath: import.meta.env.BASE_URL.replace(/\/$/, '') || '/',
     context: { auth },
     defaultPendingComponent: PageSkeleton,
     defaultErrorComponent: RootErrorBoundary,
