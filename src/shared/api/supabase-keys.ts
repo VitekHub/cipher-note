@@ -65,7 +65,7 @@ export async function fetchFieldKeys(userId: string): Promise<ServerFieldKey[]> 
     .eq('user_id', userId)
 
   if (error) throw wrapApiError(error)
-  if (!data) {
+  if (!data || data.length === 0) {
     throw new ApiError(ApiErrorCode.NOT_FOUND)
   }
 

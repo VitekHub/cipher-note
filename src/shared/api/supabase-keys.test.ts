@@ -201,14 +201,19 @@ describe('fetchFieldKeys', () => {
     ])
   })
 
-  it('returns empty array when no data', async () => {
+  it('throws NOT_FOUND when data is empty array', async () => {
     mockEq.mockResolvedValueOnce({
       data: [],
       error: null,
     })
 
-    const result = await fetchFieldKeys('user-1')
-    expect(result).toEqual([])
+    try {
+      await fetchFieldKeys('user-1')
+      expect.unreachable('should have thrown')
+    } catch (e) {
+      expect(e).toBeInstanceOf(ApiError)
+      expect((e as ApiError).code).toBe(ApiErrorCode.NOT_FOUND)
+    }
   })
 
   it('throws NOT_FOUND when data is null', async () => {

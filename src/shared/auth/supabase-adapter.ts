@@ -101,6 +101,8 @@ export function mapSupabaseToAuthResult(
 
 export const authAdapter = new SupabaseAuthAdapter()
 
+// Supabase auth errors have their own status/code mapping (e.g. 400 invalid_credentials,
+// 409 user_already_exists), so we can't use the generic wrapAuthError here.
 function wrapSupabaseAuthError(error: unknown): AuthError {
   if (isNetworkError(error)) {
     return new AuthError(AuthErrorCode.NETWORK_ERROR, { cause: error instanceof Error ? error : undefined })
