@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest'
 import { FIELD_KEY_VERSION } from '@/shared/types/crypto.types'
 import type { RegistrationResult, RecoveryData } from '@/shared/types/crypto.types'
+import { ApiError, ApiErrorCode } from '@/shared/api/api-errors'
 
 vi.mock('@/shared/api/supabase-client', () => {
   const insert = vi.fn().mockResolvedValue({ error: null })
@@ -114,25 +115,37 @@ describe('uploadRegistrationData', () => {
     expect(recoveryRow.recovery_iv).toHaveLength(24)
   })
 
-  it('throws on keys insert error', async () => {
+  it('throws ApiError on keys insert error', async () => {
     const insert = getMockInsert()
     insert.mockResolvedValueOnce({ error: new Error('keys insert failed') })
     const data = makeRegistrationResult()
 
-    await expect(uploadRegistrationData(data, USER_ID)).rejects.toThrow('keys insert failed')
+    try {
+      await uploadRegistrationData(data, USER_ID)
+      expect.unreachable('should have thrown')
+    } catch (e) {
+      expect(e).toBeInstanceOf(ApiError)
+      expect((e as ApiError).code).toBe(ApiErrorCode.UNEXPECTED)
+    }
   })
 
-  it('throws on field_keys insert error', async () => {
+  it('throws ApiError on field_keys insert error', async () => {
     const insert = getMockInsert()
     insert
       .mockResolvedValueOnce({ error: null })
       .mockResolvedValueOnce({ error: new Error('field_keys insert failed') })
     const data = makeRegistrationResult()
 
-    await expect(uploadRegistrationData(data, USER_ID)).rejects.toThrow('field_keys insert failed')
+    try {
+      await uploadRegistrationData(data, USER_ID)
+      expect.unreachable('should have thrown')
+    } catch (e) {
+      expect(e).toBeInstanceOf(ApiError)
+      expect((e as ApiError).code).toBe(ApiErrorCode.UNEXPECTED)
+    }
   })
 
-  it('throws on recovery insert error', async () => {
+  it('throws ApiError on recovery insert error', async () => {
     const insert = getMockInsert()
     insert
       .mockResolvedValueOnce({ error: null })
@@ -140,6 +153,12 @@ describe('uploadRegistrationData', () => {
       .mockResolvedValueOnce({ error: new Error('recovery insert failed') })
     const data = makeRegistrationResult()
 
-    await expect(uploadRegistrationData(data, USER_ID)).rejects.toThrow('recovery insert failed')
+    try {
+      await uploadRegistrationData(data, USER_ID)
+      expect.unreachable('should have thrown')
+    } catch (e) {
+      expect(e).toBeInstanceOf(ApiError)
+      expect((e as ApiError).code).toBe(ApiErrorCode.UNEXPECTED)
+    }
   })
 })

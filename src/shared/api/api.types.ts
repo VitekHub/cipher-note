@@ -13,9 +13,9 @@ export interface IApiAdapter {
   fetchFieldKeys(userId: string): Promise<ServerFieldKey[]>
   saveWrappedKey(userId: string, data: SaveWrappedKeyData): Promise<void>
 
-  getField(userId: string, fieldName: string): Promise<ServerEncryptedField | null>
+  fetchField(userId: string, fieldName: string): Promise<ServerEncryptedField | null>
   saveField(userId: string, fieldName: string, data: SaveFieldData): Promise<void>
 
   saveRecoveryData(userId: string, data: SaveRecoveryData): Promise<void>
-  getRecoveryData(userId: string): Promise<ServerRecoveryData | null>
+  fetchRecoveryData(userId: string): Promise<ServerRecoveryData | null>
 }

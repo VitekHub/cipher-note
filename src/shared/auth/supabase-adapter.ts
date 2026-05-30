@@ -8,7 +8,8 @@ import type {
 } from '@/shared/auth/auth.types'
 import { getSupabase } from '@/shared/api/supabase-client'
 import { toSupabaseEmail, fromSupabaseEmail } from '@/shared/auth/username-utils'
-import { AuthError, AuthErrorCode, isNetworkError } from '@/shared/auth/auth-errors'
+import { AuthError, AuthErrorCode } from '@/shared/auth/auth-errors'
+import { isNetworkError } from '@/shared/lib/network-errors'
 
 class SupabaseAuthAdapter implements IAuthAdapter {
   async login(username: string, authHash: string): Promise<AuthResult> {
@@ -100,6 +101,8 @@ export function mapSupabaseToAuthResult(
 
 export const authAdapter = new SupabaseAuthAdapter()
 
+// Supabase auth errors have their own status/code mapping (e.g. 400 invalid_credentials,
+// 409 user_already_exists), so we can't use the generic wrapAuthError here.
 function wrapSupabaseAuthError(error: unknown): AuthError {
   if (isNetworkError(error)) {
     return new AuthError(AuthErrorCode.NETWORK_ERROR, { cause: error instanceof Error ? error : undefined })

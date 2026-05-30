@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { AuthError, AuthErrorCode } from '@/shared/auth/auth-errors'
+import { ApiError, ApiErrorCode } from '@/shared/api/api-errors'
 
 // Mock Supabase client
 const mockFrom = vi.fn()
@@ -7,6 +8,7 @@ const mockRpc = vi.fn()
 const mockSelect = vi.fn()
 const mockEq = vi.fn()
 const mockSingle = vi.fn()
+const mockUpsert = vi.fn()
 
 vi.mock('@/shared/api/supabase-client', () => ({
   getSupabase: () => ({
@@ -15,7 +17,7 @@ vi.mock('@/shared/api/supabase-client', () => ({
   }),
 }))
 
-import { fetchLoginSalts, fetchMasterKeyEnvelope, fetchFieldKeys } from '@/shared/api/supabase-keys'
+import { fetchLoginSalts, fetchMasterKeyEnvelope, fetchFieldKeys, saveWrappedKey } from '@/shared/api/supabase-keys'
 
 describe('fetchLoginSalts', () => {
   beforeEach(() => {
@@ -134,16 +136,22 @@ describe('fetchMasterKeyEnvelope', () => {
     })
   })
 
-  it('throws when query returns error', async () => {
+  it('throws ApiError on query error', async () => {
     mockSingle.mockResolvedValueOnce({
       data: null,
       error: { message: 'Query error' },
     })
 
-    await expect(fetchMasterKeyEnvelope('user-1')).rejects.toThrow()
+    try {
+      await fetchMasterKeyEnvelope('user-1')
+      expect.unreachable('should have thrown')
+    } catch (e) {
+      expect(e).toBeInstanceOf(ApiError)
+      expect((e as ApiError).code).toBe(ApiErrorCode.UNEXPECTED)
+    }
   })
 
-  it('throws KEYS_NOT_FOUND when no data found', async () => {
+  it('throws NOT_FOUND when no data found', async () => {
     mockSingle.mockResolvedValueOnce({
       data: null,
       error: null,
@@ -153,8 +161,8 @@ describe('fetchMasterKeyEnvelope', () => {
       await fetchMasterKeyEnvelope('user-1')
       expect.unreachable('should have thrown')
     } catch (e) {
-      expect(e).toBeInstanceOf(AuthError)
-      expect((e as AuthError).code).toBe(AuthErrorCode.KEYS_NOT_FOUND)
+      expect(e).toBeInstanceOf(ApiError)
+      expect((e as ApiError).code).toBe(ApiErrorCode.NOT_FOUND)
     }
   })
 })
@@ -193,17 +201,22 @@ describe('fetchFieldKeys', () => {
     ])
   })
 
-  it('returns empty array when no data', async () => {
+  it('throws NOT_FOUND when data is empty array', async () => {
     mockEq.mockResolvedValueOnce({
       data: [],
       error: null,
     })
 
-    const result = await fetchFieldKeys('user-1')
-    expect(result).toEqual([])
+    try {
+      await fetchFieldKeys('user-1')
+      expect.unreachable('should have thrown')
+    } catch (e) {
+      expect(e).toBeInstanceOf(ApiError)
+      expect((e as ApiError).code).toBe(ApiErrorCode.NOT_FOUND)
+    }
   })
 
-  it('throws KEYS_NOT_FOUND when data is null', async () => {
+  it('throws NOT_FOUND when data is null', async () => {
     mockEq.mockResolvedValueOnce({
       data: null,
       error: null,
@@ -213,17 +226,76 @@ describe('fetchFieldKeys', () => {
       await fetchFieldKeys('user-1')
       expect.unreachable('should have thrown')
     } catch (e) {
-      expect(e).toBeInstanceOf(AuthError)
-      expect((e as AuthError).code).toBe(AuthErrorCode.KEYS_NOT_FOUND)
+      expect(e).toBeInstanceOf(ApiError)
+      expect((e as ApiError).code).toBe(ApiErrorCode.NOT_FOUND)
     }
   })
 
-  it('throws when query returns error', async () => {
+  it('throws ApiError on query error', async () => {
     mockEq.mockResolvedValueOnce({
       data: null,
       error: { message: 'Query error' },
     })
 
-    await expect(fetchFieldKeys('user-1')).rejects.toThrow()
+    try {
+      await fetchFieldKeys('user-1')
+      expect.unreachable('should have thrown')
+    } catch (e) {
+      expect(e).toBeInstanceOf(ApiError)
+      expect((e as ApiError).code).toBe(ApiErrorCode.UNEXPECTED)
+    }
+  })
+})
+
+describe('saveWrappedKey', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+
+    mockFrom.mockReturnValue({
+      upsert: mockUpsert,
+    })
+  })
+
+  it('calls upsert with correct data and onConflict', async () => {
+    mockUpsert.mockResolvedValueOnce({ data: null, error: null })
+
+    await saveWrappedKey('user-1', {
+      fieldName: 'note',
+      version: 1,
+      wrappedKey: 'aa'.repeat(48),
+      keyIV: 'bb'.repeat(12),
+    })
+
+    expect(mockFrom).toHaveBeenCalledWith('field_keys')
+    expect(mockUpsert).toHaveBeenCalledWith(
+      {
+        user_id: 'user-1',
+        field_name: 'note',
+        version: 1,
+        wrapped_key: 'aa'.repeat(48),
+        key_iv: 'bb'.repeat(12),
+      },
+      { onConflict: 'user_id,field_name,version' },
+    )
+  })
+
+  it('throws ApiError on upsert error', async () => {
+    mockUpsert.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'Upsert failed' },
+    })
+
+    try {
+      await saveWrappedKey('user-1', {
+        fieldName: 'note',
+        version: 1,
+        wrappedKey: 'aa'.repeat(48),
+        keyIV: 'bb'.repeat(12),
+      })
+      expect.unreachable('should have thrown')
+    } catch (e) {
+      expect(e).toBeInstanceOf(ApiError)
+      expect((e as ApiError).code).toBe(ApiErrorCode.UNEXPECTED)
+    }
   })
 })

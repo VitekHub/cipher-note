@@ -2,6 +2,7 @@ import type { TFunction } from 'i18next'
 import { describe, it, expect, vi } from 'vitest'
 import { getAuthErrorMessage } from '@/features/auth/model/auth-error-messages'
 import { AuthError, AuthErrorCode } from '@/shared/auth/auth-errors'
+import { ApiError, ApiErrorCode } from '@/shared/api/api-errors'
 
 const t = vi.fn((key: string) => key) as unknown as TFunction<'auth'>
 
@@ -26,13 +27,25 @@ describe('getAuthErrorMessage', () => {
       expect(t).toHaveBeenCalledWith('errors.networkError')
     })
 
-    it('maps KEYS_NOT_FOUND to unexpectedError', () => {
-      getAuthErrorMessage(new AuthError(AuthErrorCode.KEYS_NOT_FOUND), t)
+    it('maps UNEXPECTED to unexpectedError', () => {
+      getAuthErrorMessage(new AuthError(AuthErrorCode.UNEXPECTED), t)
+      expect(t).toHaveBeenCalledWith('errors.unexpectedError')
+    })
+  })
+
+  describe('ApiError code mapping', () => {
+    it('maps NETWORK_ERROR to networkError', () => {
+      getAuthErrorMessage(new ApiError(ApiErrorCode.NETWORK_ERROR), t)
+      expect(t).toHaveBeenCalledWith('errors.networkError')
+    })
+
+    it('maps NOT_FOUND to unexpectedError', () => {
+      getAuthErrorMessage(new ApiError(ApiErrorCode.NOT_FOUND), t)
       expect(t).toHaveBeenCalledWith('errors.unexpectedError')
     })
 
     it('maps UNEXPECTED to unexpectedError', () => {
-      getAuthErrorMessage(new AuthError(AuthErrorCode.UNEXPECTED), t)
+      getAuthErrorMessage(new ApiError(ApiErrorCode.UNEXPECTED), t)
       expect(t).toHaveBeenCalledWith('errors.unexpectedError')
     })
   })

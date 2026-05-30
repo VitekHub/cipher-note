@@ -1,31 +1,30 @@
 # Phase 6: Encrypted Data Layer
 
-## Step 24 — Supabase API Adapter
+## Step 24 — Supabase API Adapter ✅
 
 **Goal:** Full CRUD implementation for all database operations, split into focused modules.
 
 **Code:**
-- `src/shared/api/supabase-client.ts` — Supabase client initialization and export only (no business logic)
+- `src/shared/api/api-errors.ts` — `ApiError` class + `ApiErrorCode` (`NETWORK_ERROR`, `NOT_FOUND`, `UNEXPECTED`), `isApiError()` type guard, `wrapApiError()` (reuses `isNetworkError` from auth-errors)
 - `src/shared/api/supabase-keys.ts` — Keys CRUD:
-  - `getMasterKeyEnvelope(userId: string): Promise<ServerKeys>` — fetch auth_salt, key_salt, wrapped_master_key, master_key_iv
-  - `getFieldKeys(userId: string): Promise<ServerFieldKey[]>` — fetch all wrapped field keys with versions
-  - `saveWrappedKey(userId: string, data: WrappedKeyData): Promise<void>` — save/update wrapped key data
+  - `fetchMasterKeyEnvelope(userId)` — now throws `ApiError(NOT_FOUND)` instead of `AuthError(KEYS_NOT_FOUND)`
+  - `fetchFieldKeys(userId)` — same error refactor
+  - `saveWrappedKey(userId, data: SaveWrappedKeyData)` — upsert on `field_keys` with `onConflict: 'user_id,field_name,version'`
+  - `fetchLoginSalts` stays with `AuthError` (pre-auth, not an IApiAdapter method); local error helper renamed to `wrapAuthError`
 - `src/shared/api/supabase-fields.ts` — Fields CRUD:
-  - `getField(userId: string, fieldName: string): Promise<ServerEncryptedField | null>` — fetch encrypted field data
-  - `saveField(userId: string, fieldName: string, blob: Uint8Array, iv: Uint8Array): Promise<void>` — upsert encrypted field
+  - `fetchField(userId, fieldName)` — `.maybeSingle()` on `encrypted_fields`, returns `null` if missing, maps snake_case → camelCase
+  - `saveField(userId, fieldName, data: SaveFieldData)` — `.upsert()` with `onConflict: 'user_id,field_name'`
 - `src/shared/api/supabase-recovery.ts` — Recovery data CRUD:
-  - `saveRecoveryData(userId: string, data: RecoveryData): Promise<void>` — save recovery data
-  - `getRecoveryData(userId: string): Promise<ServerRecoveryData | null>` — fetch recovery data
-- All queries use Supabase client with RLS (user can only access own data)
-- `ServerKeys`, `ServerFieldKey`, `ServerEncryptedField`, `ServerRecoveryData` types in api.types.ts
+  - `fetchRecoveryData(userId)` — `.maybeSingle()` on `recovery`, returns `null` if missing
+  - `saveRecoveryData(userId, data: SaveRecoveryData)` — `.upsert()` with `onConflict: 'user_id'`
+- All data flows as hex strings in the API layer — no Uint8Array conversion at this boundary
+- Remove `KEYS_NOT_FOUND` from `AuthErrorCode`; update `auth-error-messages.ts` to handle `ApiError` codes
+- Update `IApiAdapter` interface: rename `getField` → `fetchField`, `getRecoveryData` → `fetchRecoveryData`
 
 **Tests:**
-- Integration tests against local Supabase:
-  - Create user → save keys → fetch keys → verify match
-  - Create user → save field → fetch field → verify match
-  - Update field → fetch → verify updated
-  - RLS: user A cannot read user B's data
-  - RLS: unauthenticated user cannot read any data
+- Unit tests with mocked Supabase client for all CRUD functions
+- `api-errors.test.ts` — construction, type guard, `wrapApiError` mapping
+- Error assertions: `ApiError(NOT_FOUND)` for missing data, `ApiError(UNEXPECTED)` for query failures
 
 ---
 

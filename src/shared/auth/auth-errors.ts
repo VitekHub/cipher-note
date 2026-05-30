@@ -1,8 +1,9 @@
+import { isNetworkError } from '@/shared/lib/network-errors'
+
 export const AuthErrorCode = {
   INVALID_CREDENTIALS: 'INVALID_CREDENTIALS',
   USERNAME_TAKEN: 'USERNAME_TAKEN',
   NETWORK_ERROR: 'NETWORK_ERROR',
-  KEYS_NOT_FOUND: 'KEYS_NOT_FOUND',
   UNEXPECTED: 'UNEXPECTED',
 } as const
 
@@ -22,13 +23,14 @@ export function isAuthError(error: unknown): error is AuthError {
   return error instanceof AuthError
 }
 
-export function isNetworkError(error: unknown): boolean {
-  if (error instanceof TypeError && error.message === 'Failed to fetch') return true
-  if (error instanceof Error) {
-    const msg = error.message
-    if (msg === 'Failed to fetch' || msg === 'NetworkError') return true
-    const lower = msg.toLowerCase()
-    if (lower.includes('network') || lower.includes('failed to fetch')) return true
+/**
+ * Wrap an unknown error as an AuthError.
+ * Network errors map to NETWORK_ERROR, everything else to UNEXPECTED.
+ */
+export function wrapAuthError(error: unknown): AuthError {
+  const cause = error instanceof Error ? error : undefined
+  if (isNetworkError(error)) {
+    return new AuthError(AuthErrorCode.NETWORK_ERROR, { cause })
   }
-  return false
+  return new AuthError(AuthErrorCode.UNEXPECTED, { cause })
 }

@@ -16,6 +16,10 @@
     "loading": "Loading...",
     "error": "Something went wrong"
   },
+  "errors": {
+    "networkError": "Network error. Please try again.",
+    "unexpectedError": "An unexpected error occurred. Please try again."
+  },
   "preAlpha": {
     "ariaLabel": "Pre-alpha software notice",
     "message": "Cipher Note is in pre-alpha version. Expect breaking changes and periodic data resets."

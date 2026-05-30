@@ -1,21 +1,37 @@
 import { useTranslation } from 'react-i18next'
 import type { ErrorComponentProps } from '@tanstack/react-router'
 import { Button } from '@/shared/ui/button'
-import { DecryptionError, CorruptedDataError } from '@/shared/crypto/errors'
+import { Argon2Error, CorruptedDataError, DecryptionError, MnemonicError } from '@/shared/crypto/errors'
+import { AuthError, AuthErrorCode } from '@/shared/auth/auth-errors'
+import { ApiError, ApiErrorCode } from '@/shared/api/api-errors'
+
+/** Crypto errors with fixed descriptions — add new ones here instead of extending the if-chain. */
+const CRYPTO_ERRORS: readonly (readonly [new () => Error, string])[] = [
+  [DecryptionError, 'crypto:errors.decryptFailed'],
+  [CorruptedDataError, 'crypto:errors.corruptedData'],
+  [Argon2Error, 'crypto:errors.argon2Failed'],
+  [MnemonicError, 'crypto:errors.mnemonicFailed'],
+]
 
 function getErrorMessage(error: Error): { title: string; description: string } {
-  if (error instanceof DecryptionError) {
-    return {
-      title: 'common:status.error',
-      description: 'crypto:errors.decryptFailed',
+  for (const [ErrorClass, description] of CRYPTO_ERRORS) {
+    if (error instanceof ErrorClass) {
+      return { title: 'common:status.error', description }
     }
   }
-  if (error instanceof CorruptedDataError) {
-    return {
-      title: 'common:status.error',
-      description: 'crypto:errors.corruptedData',
-    }
+
+  if (error instanceof AuthError) {
+    return error.code === AuthErrorCode.NETWORK_ERROR
+      ? { title: 'common:status.error', description: 'common:errors.networkError' }
+      : { title: 'common:status.error', description: 'common:errors.unexpectedError' }
   }
+
+  if (error instanceof ApiError) {
+    return error.code === ApiErrorCode.NETWORK_ERROR
+      ? { title: 'common:status.error', description: 'common:errors.networkError' }
+      : { title: 'common:status.error', description: 'common:errors.unexpectedError' }
+  }
+
   return {
     title: 'common:status.error',
     description: error.message || 'common:status.error',
