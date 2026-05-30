@@ -1,7 +1,9 @@
 import { getSupabase } from '@/shared/api/supabase-client'
 import { USERNAME_PATTERN } from '@/shared/auth/username-utils'
-import { AuthError, AuthErrorCode, isNetworkError } from '@/shared/auth/auth-errors'
-import type { ServerMasterKeyEnvelope, ServerFieldKey } from '@/shared/types/api.types'
+import { AuthError, AuthErrorCode } from '@/shared/auth/auth-errors'
+import { isNetworkError } from '@/shared/auth/auth-errors'
+import { ApiError, ApiErrorCode, wrapApiError } from '@/shared/api/api-errors'
+import type { ServerMasterKeyEnvelope, ServerFieldKey, SaveWrappedKeyData } from '@/shared/types/api.types'
 
 export interface LoginSalts {
   authSalt: string
@@ -21,7 +23,7 @@ export async function fetchLoginSalts(username: string): Promise<LoginSalts> {
   const supabase = getSupabase()
   const { data, error } = await supabase.rpc('get_login_salts', { p_username: username })
 
-  if (error) throw wrapApiError(error)
+  if (error) throw wrapAuthError(error)
   if (!data || data.length === 0) {
     throw new AuthError(AuthErrorCode.INVALID_CREDENTIALS)
   }
@@ -43,7 +45,7 @@ export async function fetchMasterKeyEnvelope(userId: string): Promise<ServerMast
     .single()
 
   if (error) throw wrapApiError(error)
-  if (!data) throw new AuthError(AuthErrorCode.KEYS_NOT_FOUND)
+  if (!data) throw new ApiError(ApiErrorCode.NOT_FOUND)
 
   return {
     authSalt: data.auth_salt,
@@ -65,7 +67,7 @@ export async function fetchFieldKeys(userId: string): Promise<ServerFieldKey[]> 
 
   if (error) throw wrapApiError(error)
   if (!data) {
-    throw new AuthError(AuthErrorCode.KEYS_NOT_FOUND)
+    throw new ApiError(ApiErrorCode.NOT_FOUND)
   }
 
   return data.map((row) => ({
@@ -76,7 +78,31 @@ export async function fetchFieldKeys(userId: string): Promise<ServerFieldKey[]> 
   }))
 }
 
-function wrapApiError(error: unknown): AuthError {
+/**
+ * Upsert a wrapped field key for a user.
+ * Uses onConflict to handle the unique (user_id, field_name, version) constraint.
+ */
+export async function saveWrappedKey(userId: string, data: SaveWrappedKeyData): Promise<void> {
+  const supabase = getSupabase()
+  const { error } = await supabase.from('field_keys').upsert(
+    {
+      user_id: userId,
+      field_name: data.fieldName,
+      version: data.version,
+      wrapped_key: data.wrappedKey,
+      key_iv: data.keyIV,
+    },
+    { onConflict: 'user_id,field_name,version' },
+  )
+
+  if (error) throw wrapApiError(error)
+}
+
+/**
+ * Wrap a Supabase/unknown error as an AuthError for the pre-auth login salts flow.
+ * Only used by fetchLoginSalts — all other functions use wrapApiError from api-errors.ts.
+ */
+function wrapAuthError(error: unknown): AuthError {
   if (isNetworkError(error)) {
     return new AuthError(AuthErrorCode.NETWORK_ERROR, { cause: error instanceof Error ? error : undefined })
   }

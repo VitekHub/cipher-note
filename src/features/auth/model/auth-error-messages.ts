@@ -1,5 +1,6 @@
 import type { TFunction } from 'i18next'
 import { AuthErrorCode, isAuthError, isNetworkError } from '@/shared/auth/auth-errors'
+import { ApiErrorCode, isApiError } from '@/shared/api/api-errors'
 
 export function getAuthErrorMessage(error: unknown, t: TFunction<'auth'>): string {
   if (isAuthError(error)) {
@@ -10,8 +11,17 @@ export function getAuthErrorMessage(error: unknown, t: TFunction<'auth'>): strin
         return t('errors.usernameTaken')
       case AuthErrorCode.NETWORK_ERROR:
         return t('errors.networkError')
-      case AuthErrorCode.KEYS_NOT_FOUND:
       case AuthErrorCode.UNEXPECTED:
+        return t('errors.unexpectedError')
+    }
+  }
+
+  if (isApiError(error)) {
+    switch (error.code) {
+      case ApiErrorCode.NETWORK_ERROR:
+        return t('errors.networkError')
+      case ApiErrorCode.NOT_FOUND:
+      case ApiErrorCode.UNEXPECTED:
         return t('errors.unexpectedError')
     }
   }
