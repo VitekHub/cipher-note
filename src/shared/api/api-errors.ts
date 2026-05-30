@@ -1,4 +1,4 @@
-import { isNetworkError } from '@/shared/auth/auth-errors'
+import { isNetworkError } from '@/shared/lib/network-errors'
 
 export const ApiErrorCode = {
   NETWORK_ERROR: 'NETWORK_ERROR',

@@ -1,7 +1,9 @@
 import { useTranslation } from 'react-i18next'
 import type { ErrorComponentProps } from '@tanstack/react-router'
 import { Button } from '@/shared/ui/button'
-import { DecryptionError, CorruptedDataError } from '@/shared/crypto/errors'
+import { Argon2Error, CorruptedDataError, DecryptionError, MnemonicError } from '@/shared/crypto/errors'
+import { AuthError, AuthErrorCode } from '@/shared/auth/auth-errors'
+import { ApiError, ApiErrorCode } from '@/shared/api/api-errors'
 
 function getErrorMessage(error: Error): { title: string; description: string } {
   if (error instanceof DecryptionError) {
@@ -14,6 +16,42 @@ function getErrorMessage(error: Error): { title: string; description: string } {
     return {
       title: 'common:status.error',
       description: 'crypto:errors.corruptedData',
+    }
+  }
+  if (error instanceof Argon2Error) {
+    return {
+      title: 'common:status.error',
+      description: 'crypto:errors.argon2Failed',
+    }
+  }
+  if (error instanceof MnemonicError) {
+    return {
+      title: 'common:status.error',
+      description: 'crypto:errors.mnemonicFailed',
+    }
+  }
+  if (error instanceof AuthError) {
+    if (error.code === AuthErrorCode.NETWORK_ERROR) {
+      return {
+        title: 'common:status.error',
+        description: 'common:errors.networkError',
+      }
+    }
+    return {
+      title: 'common:status.error',
+      description: 'common:errors.unexpectedError',
+    }
+  }
+  if (error instanceof ApiError) {
+    if (error.code === ApiErrorCode.NETWORK_ERROR) {
+      return {
+        title: 'common:status.error',
+        description: 'common:errors.networkError',
+      }
+    }
+    return {
+      title: 'common:status.error',
+      description: 'common:errors.unexpectedError',
     }
   }
   return {

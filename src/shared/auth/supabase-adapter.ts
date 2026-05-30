@@ -8,7 +8,8 @@ import type {
 } from '@/shared/auth/auth.types'
 import { getSupabase } from '@/shared/api/supabase-client'
 import { toSupabaseEmail, fromSupabaseEmail } from '@/shared/auth/username-utils'
-import { AuthError, AuthErrorCode, isNetworkError } from '@/shared/auth/auth-errors'
+import { AuthError, AuthErrorCode } from '@/shared/auth/auth-errors'
+import { isNetworkError } from '@/shared/lib/network-errors'
 
 class SupabaseAuthAdapter implements IAuthAdapter {
   async login(username: string, authHash: string): Promise<AuthResult> {

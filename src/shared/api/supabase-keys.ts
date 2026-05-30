@@ -1,7 +1,6 @@
 import { getSupabase } from '@/shared/api/supabase-client'
 import { USERNAME_PATTERN } from '@/shared/auth/username-utils'
-import { AuthError, AuthErrorCode } from '@/shared/auth/auth-errors'
-import { isNetworkError } from '@/shared/auth/auth-errors'
+import { AuthError, AuthErrorCode, wrapAuthError } from '@/shared/auth/auth-errors'
 import { ApiError, ApiErrorCode, wrapApiError } from '@/shared/api/api-errors'
 import type { ServerMasterKeyEnvelope, ServerFieldKey, SaveWrappedKeyData } from '@/shared/types/api.types'
 
@@ -96,15 +95,4 @@ export async function saveWrappedKey(userId: string, data: SaveWrappedKeyData): 
   )
 
   if (error) throw wrapApiError(error)
-}
-
-/**
- * Wrap a Supabase/unknown error as an AuthError for the pre-auth login salts flow.
- * Only used by fetchLoginSalts — all other functions use wrapApiError from api-errors.ts.
- */
-function wrapAuthError(error: unknown): AuthError {
-  if (isNetworkError(error)) {
-    return new AuthError(AuthErrorCode.NETWORK_ERROR, { cause: error instanceof Error ? error : undefined })
-  }
-  return new AuthError(AuthErrorCode.UNEXPECTED, { cause: error instanceof Error ? error : undefined })
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { AuthError, AuthErrorCode, isAuthError, isNetworkError } from '@/shared/auth/auth-errors'
+import { AuthError, AuthErrorCode, isAuthError, wrapAuthError } from '@/shared/auth/auth-errors'
 
 describe('AuthError', () => {
   it('sets name to AuthError', () => {
@@ -47,35 +47,31 @@ describe('isAuthError', () => {
   })
 })
 
-describe('isNetworkError', () => {
-  it('detects TypeError with "Failed to fetch" message', () => {
-    expect(isNetworkError(new TypeError('Failed to fetch'))).toBe(true)
+describe('wrapAuthError', () => {
+  it('maps network errors to NETWORK_ERROR', () => {
+    const error = wrapAuthError(new TypeError('Failed to fetch'))
+    expect(error).toBeInstanceOf(AuthError)
+    expect(error.code).toBe(AuthErrorCode.NETWORK_ERROR)
   })
 
-  it('detects Error with "Failed to fetch" message', () => {
-    expect(isNetworkError(new Error('Failed to fetch'))).toBe(true)
+  it('maps non-network errors to UNEXPECTED', () => {
+    const original = new Error('something else')
+    const error = wrapAuthError(original)
+    expect(error).toBeInstanceOf(AuthError)
+    expect(error.code).toBe(AuthErrorCode.UNEXPECTED)
+    expect(error.cause).toBe(original)
   })
 
-  it('detects Error with "NetworkError" message', () => {
-    expect(isNetworkError(new Error('NetworkError'))).toBe(true)
+  it('preserves cause for network errors', () => {
+    const original = new TypeError('Failed to fetch')
+    const error = wrapAuthError(original)
+    expect(error.cause).toBe(original)
   })
 
-  it('detects Error with "network" (case-insensitive)', () => {
-    expect(isNetworkError(new Error('A Network failure occurred'))).toBe(true)
-  })
-
-  it('detects Error with "failed to fetch" in message (case-insensitive)', () => {
-    expect(isNetworkError(new Error('Request failed to fetch data'))).toBe(true)
-  })
-
-  it('returns false for non-network errors', () => {
-    expect(isNetworkError(new Error('Invalid credentials'))).toBe(false)
-    expect(isNetworkError(new Error('Something went wrong'))).toBe(false)
-  })
-
-  it('returns false for non-Error values', () => {
-    expect(isNetworkError(null)).toBe(false)
-    expect(isNetworkError('string')).toBe(false)
-    expect(isNetworkError(42)).toBe(false)
+  it('maps non-Error values to UNEXPECTED without cause', () => {
+    const error = wrapAuthError('string error')
+    expect(error).toBeInstanceOf(AuthError)
+    expect(error.code).toBe(AuthErrorCode.UNEXPECTED)
+    expect(error.cause).toBeUndefined()
   })
 })

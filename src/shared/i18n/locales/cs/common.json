@@ -16,6 +16,10 @@
     "loading": "Načítání...",
     "error": "Něco se pokazilo"
   },
+  "errors": {
+    "networkError": "Chyba sítě. Zkuste to prosím znovu.",
+    "unexpectedError": "Došlo k neočekávané chybě. Zkuste to prosím znovu."
+  },
   "preAlpha": {
     "ariaLabel": "Upozornění na předběžnou verzi",
     "message": "Cipher Note je předběžná alfa verze. Očekávejte zásadní změny a občasné resety dat."

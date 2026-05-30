@@ -1,7 +1,7 @@
 import type { TFunction } from 'i18next'
 
 import { DecryptionError, CorruptedDataError, Argon2Error } from '@/shared/crypto/errors'
-import { isNetworkError } from '@/shared/auth/auth-errors'
+import { isNetworkError } from '@/shared/lib/network-errors'
 
 export function getCryptoErrorMessage(error: unknown, t: TFunction<'crypto'>): string {
   if (error instanceof DecryptionError) return t('errors.wrongPassword')

@@ -15,9 +15,7 @@ export function createSupabaseQueryMocks() {
  * Create a mock Supabase query builder for chaining `select().eq().maybeSingle()`
  * and `upsert()` calls. Terminal methods delegate to the provided mocks.
  */
-export function createQueryBuilder(
-  terminalMocks: ReturnType<typeof createSupabaseQueryMocks>,
-) {
+export function createQueryBuilder(terminalMocks: ReturnType<typeof createSupabaseQueryMocks>) {
   const qb: Record<string, ReturnType<typeof vi.fn>> = {}
   qb.select = vi.fn().mockReturnValue(qb)
   qb.eq = vi.fn().mockReturnValue(qb)

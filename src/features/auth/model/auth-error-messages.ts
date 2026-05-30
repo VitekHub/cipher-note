@@ -1,5 +1,6 @@
 import type { TFunction } from 'i18next'
-import { AuthErrorCode, isAuthError, isNetworkError } from '@/shared/auth/auth-errors'
+import { AuthErrorCode, isAuthError } from '@/shared/auth/auth-errors'
+import { isNetworkError } from '@/shared/lib/network-errors'
 import { ApiErrorCode, isApiError } from '@/shared/api/api-errors'
 
 export function getAuthErrorMessage(error: unknown, t: TFunction<'auth'>): string {
