@@ -254,7 +254,7 @@ describe('useAutoSave', () => {
     expect(mockSaveField).not.toHaveBeenCalled()
   })
 
-  it('removes online listener when status leaves error', async () => {
+  it('does not retry on online event after error is resolved', async () => {
     mockSaveField.mockRejectedValueOnce(new Error('Network error')).mockResolvedValue(undefined)
     const { result } = renderHook(() => useAutoSave('note'), {
       wrapper: createWrapper(queryClient),
@@ -290,7 +290,7 @@ describe('useAutoSave', () => {
     )
 
     // Fire another online event — should NOT trigger another save
-    // (listener was removed when status changed from 'error')
+    // (handler checks status imperatively; status is now 'saved', not 'error')
     act(() => {
       window.dispatchEvent(new Event('online'))
     })

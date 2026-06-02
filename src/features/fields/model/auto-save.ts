@@ -20,25 +20,26 @@ export interface UseAutoSaveResult {
  * Auto-save hook for encrypted fields.
  *
  * Manages a local draft that takes priority over query data while editing,
- * debounces saves (4s after last keystroke), and tracks sync status.
+ * debounces saves (1s after last keystroke), and tracks sync status.
  */
 function useAutoSave(fieldName: FieldName): UseAutoSaveResult {
   const fieldQuery = useField(fieldName)
   const saveMutation = useSaveField(fieldName)
   const setStatus = useSyncStatusStore((s) => s.setStatus)
-  const getStatus = useSyncStatusStore((s) => s.status[fieldName])
+  const syncStatus = useSyncStatusStore((s) => s.status[fieldName])
   const isVaultLocked = useCryptoStore((s) => s.isVaultLocked)
 
-  // Reset stale "saved" status on mount
-  useEffect(() => {
-    if (useSyncStatusStore.getState().status[fieldName] === 'saved') {
-      setStatus(fieldName, 'idle')
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps -- intentional mount-only
-
-  // Local draft: null means "not yet initialized from query data"
+  // Local draft: null means "use query data"
   const [draft, setDraft] = useState<string | null>(null)
-  const isEditingRef = useRef(false)
+
+  // Reset draft when vault locks
+  const [prevIsVaultLocked, setPrevIsVaultLocked] = useState(isVaultLocked)
+  if (isVaultLocked !== prevIsVaultLocked) {
+    setPrevIsVaultLocked(isVaultLocked)
+    if (isVaultLocked) {
+      setDraft(null)
+    }
+  }
   const latestValueRef = useRef('')
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -50,7 +51,7 @@ function useAutoSave(fieldName: FieldName): UseAutoSaveResult {
     mutateRef.current = saveMutation.mutate
   }, [saveMutation.mutate])
 
-  // When vault locks, clear timers and reset editing state (no setState — just refs/timers)
+  // When vault locks, clear pending timers
   useEffect(() => {
     if (isVaultLocked) {
       if (debounceTimerRef.current !== null) {
@@ -61,39 +62,15 @@ function useAutoSave(fieldName: FieldName): UseAutoSaveResult {
         clearTimeout(savedTimerRef.current)
         savedTimerRef.current = null
       }
-      isEditingRef.current = false
     }
   }, [isVaultLocked])
 
-  // Initialize draft from query data when not editing
+  // Reset stale "saved" status on mount
   useEffect(() => {
-    if (!isEditingRef.current && fieldQuery.data !== undefined) {
-      setDraft(fieldQuery.data ?? '')
+    if (useSyncStatusStore.getState().status[fieldName] === 'saved') {
+      setStatus(fieldName, 'idle')
     }
-  }, [fieldQuery.data])
-
-  // Track mutation success/error for sync status
-  useEffect(() => {
-    if (saveMutation.isSuccess) {
-      setStatus(fieldName, 'saved')
-      if (savedTimerRef.current !== null) {
-        clearTimeout(savedTimerRef.current)
-      }
-      savedTimerRef.current = setTimeout(() => {
-        const current = useSyncStatusStore.getState().status[fieldName]
-        if (current === 'saved') {
-          setStatus(fieldName, 'idle')
-        }
-        savedTimerRef.current = null
-      }, SAVED_DISPLAY_MS)
-    }
-  }, [saveMutation.isSuccess, fieldName, setStatus])
-
-  useEffect(() => {
-    if (saveMutation.isError) {
-      setStatus(fieldName, 'error')
-    }
-  }, [saveMutation.isError, fieldName, setStatus])
+  }, [fieldName, setStatus])
 
   // Cleanup timers on unmount
   useEffect(() => {
@@ -105,16 +82,32 @@ function useAutoSave(fieldName: FieldName): UseAutoSaveResult {
 
   const triggerSave = useCallback(
     (value: string) => {
-      mutateRef.current(value)
+      mutateRef.current(value, {
+        onSuccess: () => {
+          setStatus(fieldName, 'saved')
+          if (savedTimerRef.current !== null) {
+            clearTimeout(savedTimerRef.current)
+          }
+          savedTimerRef.current = setTimeout(() => {
+            const current = useSyncStatusStore.getState().status[fieldName]
+            if (current === 'saved') {
+              setStatus(fieldName, 'idle')
+            }
+            savedTimerRef.current = null
+          }, SAVED_DISPLAY_MS)
+        },
+        onError: () => {
+          setStatus(fieldName, 'error')
+        },
+      })
     },
-    [], // mutateRef is stable via ref pattern
+    [fieldName, setStatus],
   )
 
   const setValue = useCallback(
     (value: string) => {
       setDraft(value)
       latestValueRef.current = value
-      isEditingRef.current = true
 
       if (debounceTimerRef.current !== null) {
         clearTimeout(debounceTimerRef.current)
@@ -134,20 +127,21 @@ function useAutoSave(fieldName: FieldName): UseAutoSaveResult {
     setStatus(fieldName, 'saving')
   }, [fieldName, setStatus, triggerSave])
 
-  // Sync status from store
-  const syncStatus: SyncStatus = getStatus
-
-  // Auto-retry when the browser regains connectivity
+  // Auto-retry when the browser regains connectivity — listener is always
+  // registered; the handler checks status imperatively to avoid add/remove churn.
   useEffect(() => {
-    if (syncStatus !== 'error') return
-    const handleOnline = () => retry()
+    const handleOnline = () => {
+      if (useSyncStatusStore.getState().status[fieldName] === 'error') {
+        retry()
+      }
+    }
     window.addEventListener('online', handleOnline)
     return () => window.removeEventListener('online', handleOnline)
-  }, [syncStatus, retry])
+  }, [fieldName, retry])
 
   // Value resolution: draft takes priority while editing, otherwise query data.
   // When vault is locked, return empty string (query cache is purged by lockVault).
-  // Stale draft from before lock is acceptable — query data effect refreshes it on unlock.
+  // draft=null means "not yet edited" — falls through to fieldQuery.data.
   const value = isVaultLocked ? '' : (draft ?? fieldQuery.data ?? '')
 
   return { value, setValue, syncStatus, retry }
