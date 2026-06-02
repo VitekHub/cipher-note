@@ -7,9 +7,9 @@ export const FIELD_NAMES: readonly FieldName[] = ['note', 'website', 'email'] as
 /** A field as stored on the server — ciphertext, IV, and metadata. */
 export interface EncryptedField {
   fieldName: FieldName
-  /** Base64-encoded AES-GCM ciphertext. */
+  /** Hex-encoded AES-GCM ciphertext. */
   encryptedBlob: string
-  /** Base64-encoded initialization vector for AES-GCM. */
+  /** Hex-encoded initialization vector for AES-GCM. */
   iv: string
   updatedAt: string
 }

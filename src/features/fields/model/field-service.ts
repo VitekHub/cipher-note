@@ -50,9 +50,9 @@ class FieldService {
    * Load and decrypt all three fields (note, website, email) in parallel.
    * Returns a Record mapping field names to their plaintext content (or null if never saved).
    */
-  async loadAllFields(): Promise<Record<string, string | null>> {
+  async loadAllFields(): Promise<Record<FieldName, string | null>> {
     const results = await Promise.all(FIELD_NAMES.map(async (name) => [name, await this.loadField(name)] as const))
-    return Object.fromEntries(results)
+    return Object.fromEntries(results) as Record<FieldName, string | null>
   }
 }
 

@@ -98,15 +98,32 @@ describe('useField', () => {
     expect(result.current.data).toBe('hello')
   })
 
-  it('sets error state when loadField throws', async () => {
-    mockLoadField.mockRejectedValue(new Error('Network error'))
+  it('sets error state immediately for DecryptionError (no retry)', async () => {
+    const { DecryptionError } = await import('@/shared/crypto/errors')
+    mockLoadField.mockRejectedValue(new DecryptionError('Decryption failed'))
 
     const { result } = renderHook(() => useField('note'), { wrapper })
 
     await waitFor(() => {
       expect(result.current.isError).toBe(true)
     })
-    expect(result.current.error).toBeInstanceOf(Error)
-    expect(result.current.error?.message).toBe('Network error')
+    expect(result.current.error).toBeInstanceOf(DecryptionError)
+    expect(mockLoadField).toHaveBeenCalledTimes(1) // no retry for crypto errors
+  })
+
+  it('retries on non-crypto errors before failing', async () => {
+    mockLoadField.mockRejectedValue(new Error('Network error'))
+
+    const { result } = renderHook(() => useField('note'), { wrapper })
+
+    // Allow time for retries with backoff (1s + 2s = ~3s total)
+    await waitFor(
+      () => {
+        expect(result.current.isError).toBe(true)
+      },
+      { timeout: 5000 },
+    )
+    // retry: (failureCount, error) => failureCount < 2 → 3 total attempts
+    expect(mockLoadField).toHaveBeenCalledTimes(3)
   })
 })
