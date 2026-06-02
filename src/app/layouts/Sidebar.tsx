@@ -8,9 +8,9 @@ import { NavLink } from '@/shared/ui/nav/NavLink'
 import { Separator } from '@/shared/ui/separator'
 import { AppLogo } from '@/shared/ui/brand/AppLogo'
 import { useAuthStore } from '@/features/auth/model/auth-store'
-import { useCryptoStore } from '@/features/encryption/model/crypto-store'
-import { useVaultDialogStore } from '@/features/encryption/model/vault-dialog-store'
-import { keyVault } from '@/features/encryption/model/key-vault'
+import { useCryptoStore } from '@/shared/crypto/crypto-store'
+import { useVaultDialogStore } from '@/shared/crypto/vault-dialog-store'
+import { keyVault } from '@/shared/crypto/key-vault'
 
 interface SidebarProps {
   onClose?: () => void

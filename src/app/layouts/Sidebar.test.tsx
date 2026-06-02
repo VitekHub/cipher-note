@@ -3,8 +3,8 @@ import userEvent from '@testing-library/user-event'
 import React from 'react'
 import { render, screen } from '@/test/utils'
 import { useAuthStore } from '@/features/auth/model/auth-store'
-import { useCryptoStore } from '@/features/encryption/model/crypto-store'
-import { useVaultDialogStore } from '@/features/encryption/model/vault-dialog-store'
+import { useCryptoStore } from '@/shared/crypto/crypto-store'
+import { useVaultDialogStore } from '@/shared/crypto/vault-dialog-store'
 
 const { mockNavigate, mockLockVault } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
@@ -17,7 +17,7 @@ vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => mockNavigate,
 }))
 
-vi.mock('@/features/encryption/model/key-vault', () => ({
+vi.mock('@/shared/crypto/key-vault', () => ({
   keyVault: {
     lockVault: mockLockVault,
   },

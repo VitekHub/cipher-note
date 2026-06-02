@@ -14,7 +14,7 @@ import fieldsCs from '@/shared/i18n/locales/cs/fields.json'
 import settingsCs from '@/shared/i18n/locales/cs/settings.json'
 import cryptoCs from '@/shared/i18n/locales/cs/crypto.json'
 import { useAuthStore } from '@/features/auth/model/auth-store'
-import { useCryptoStore } from '@/features/encryption/model/crypto-store'
+import { useCryptoStore } from '@/shared/crypto/crypto-store'
 import { useUiStore } from '@/features/settings/model/ui-store'
 
 afterEach(() => {

@@ -1,6 +1,4 @@
-import { createContext, useContext, useMemo, type ReactNode } from 'react'
-import { useAuthStore, isAuthenticated as isAuthenticatedGetter } from '@/features/auth/model/auth-store'
-import { authAdapter } from '@/shared/auth/supabase-adapter'
+import { createContext, useContext } from 'react'
 import type { IAuthAdapter } from '@/shared/auth/auth.types'
 
 export interface AuthContext {
@@ -11,22 +9,7 @@ export interface AuthContext {
   adapter: IAuthAdapter
 }
 
-const AuthContext = createContext<AuthContext | null>(null)
-
-function AuthProvider({ children }: { children: ReactNode }) {
-  const user = useAuthStore((s) => s.user)
-  const isAuthenticated = useAuthStore(isAuthenticatedGetter)
-  const isLoading = useAuthStore((s) => s.isLoading)
-  const isRestoringSession = useAuthStore((s) => s.isRestoringSession)
-
-  const value = useMemo<AuthContext>(
-    () => ({ isAuthenticated, user, isLoading, isRestoringSession, adapter: authAdapter }),
-    // authAdapter is a module-level singleton — stable reference, no need in deps
-    [isAuthenticated, user, isLoading, isRestoringSession],
-  )
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-}
+export const AuthContext = createContext<AuthContext | null>(null)
 
 function useAuth(): AuthContext {
   const context = useContext(AuthContext)
@@ -36,4 +19,4 @@ function useAuth(): AuthContext {
   return context
 }
 
-export { AuthProvider, useAuth }
+export { useAuth }

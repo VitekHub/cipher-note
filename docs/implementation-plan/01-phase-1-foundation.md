@@ -95,7 +95,7 @@
 - Create `src/app/Providers.tsx` — QueryClientProvider + i18n provider
 - Create Zustand stores:
   - `src/features/auth/model/auth-store.ts` — session, user, isAuthenticated. **No devtools middleware** — auth tokens must not be exposed in browser DevTools.
-  - `src/features/encryption/model/crypto-store.ts` — masterKey, KEK, fieldKeys, isVaultLocked (memory only, no persist). **Use plain `Record<string, string>` (hex-encoded) for fieldKeys instead of `Map<string, Uint8Array>`** — Zustand uses `Object.is` for shallow comparison, which fails on Map mutations and Uint8Array references. Hex strings are comparable by value and trigger correct re-renders. **No devtools middleware** — crypto keys must not be exposed in browser DevTools.
+  - `src/shared/crypto/crypto-store.ts` — masterKey, KEK, fieldKeys, isVaultLocked (memory only, no persist). **Use plain `Record<string, string>` (hex-encoded) for fieldKeys instead of `Map<string, Uint8Array>`** — Zustand uses `Object.is` for shallow comparison, which fails on Map mutations and Uint8Array references. Hex strings are comparable by value and trigger correct re-renders. **No devtools middleware** — crypto keys must not be exposed in browser DevTools.
   - `src/features/settings/model/ui-store.ts` — sidebarOpen, activeField. **Do NOT store `language` here** — `i18next` is the source of truth for language state. Only store UI state that i18next doesn't manage.
 - Create adapter interfaces:
   - `src/shared/auth/auth.types.ts` — `IAuthAdapter` interface: `login(username, authHash)`, `logout()`, `getSession()`, `signup(username, authHash)`, `recoverPassword()`

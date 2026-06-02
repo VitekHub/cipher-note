@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { AuthProvider, useAuth } from '@/shared/auth/auth-context'
+import { AuthProvider } from '@/features/auth/ui/auth-provider'
+import { useAuth } from '@/shared/auth/auth-context'
 import { RouterProvider } from '@tanstack/react-router'
 import { createAppRouter } from './router'
 import { restoreSession, subscribeToAuthChanges } from '@/app/flows/auth-flow'
-import { setQueryClient } from '@/features/encryption/model/crypto-store'
+import { setQueryClient } from '@/shared/crypto/crypto-store'
 import { PageSkeleton } from '@/app/Pending'
 
 const queryClient = new QueryClient({

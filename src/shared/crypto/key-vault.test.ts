@@ -17,7 +17,7 @@ const createStoreState = () => ({
   updateActivity: vi.fn(),
 })
 
-vi.mock('@/features/encryption/model/crypto-store', () => ({
+vi.mock('@/shared/crypto/crypto-store', () => ({
   useCryptoStore: {
     getState: vi.fn(() => createStoreState()),
   },
@@ -28,7 +28,7 @@ vi.mock('@/shared/crypto/argon2id', () => ({
   terminateWorker: vi.fn(),
 }))
 
-import { keyVault } from '@/features/encryption/model/key-vault'
+import { keyVault } from '@/shared/crypto/key-vault'
 
 describe('key-vault', () => {
   beforeEach(() => {

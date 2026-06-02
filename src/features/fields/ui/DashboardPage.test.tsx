@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@/test/utils'
-import { useCryptoStore } from '@/features/encryption/model/crypto-store'
+import { useCryptoStore } from '@/shared/crypto/crypto-store'
 
 import { DashboardPage } from './DashboardPage'
 
