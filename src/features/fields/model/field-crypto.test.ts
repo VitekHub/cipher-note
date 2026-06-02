@@ -2,11 +2,10 @@ import { describe, it, expect } from 'vitest'
 import { importKey } from '@/shared/crypto/aes-gcm'
 import { DecryptionError } from '@/shared/crypto/errors'
 import { encryptField, decryptField, toSaveFieldData, toEncryptedFieldData } from '@/features/fields/model/field-crypto'
+import { FIELD_NAMES } from '@/shared/types/entities/field.types'
 import type { FieldName } from '@/shared/types/entities/field.types'
 
 const generateKey = async () => await importKey(crypto.getRandomValues(new Uint8Array(32)))
-
-const FIELD_NAMES: FieldName[] = ['note', 'website', 'email']
 
 describe('encryptField + decryptField', () => {
   it('round-trips plaintext for all field names', async () => {

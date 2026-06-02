@@ -12,14 +12,13 @@ import type { FieldName } from '@/shared/types/entities/field.types'
  * crypto-store purges field queries so unlock triggers a fresh fetch.
  */
 export function useField(fieldName: FieldName) {
-  const isVaultLocked = useCryptoStore((s) => s.isVaultLocked)
-  const hasFieldKey = useCryptoStore((s) => s.loadedFieldKeys[fieldName] === true)
   const userId = useAuth().user?.id ?? ''
+  const enabled = useCryptoStore((s) => !s.isVaultLocked && s.loadedFieldKeys[fieldName] === true) && !!userId
 
   return useQuery({
     queryKey: ['field', fieldName],
     queryFn: () => fieldService.loadField(userId, fieldName),
-    enabled: !isVaultLocked && hasFieldKey && !!userId,
+    enabled,
     retry: (failureCount, error) => {
       if (error instanceof DecryptionError) return false
       return failureCount < 2

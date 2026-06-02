@@ -4,6 +4,8 @@ import { FIELD_NAMES } from '@/shared/types/entities/field.types'
 import type { FieldName } from '@/shared/types/entities/field.types'
 import { encryptField, decryptField, toEncryptedFieldData, toSaveFieldData } from '@/features/fields/model/field-crypto'
 
+const USER_ID_REQUIRED = 'userId is required'
+
 class FieldService {
   private getFieldKey(fieldName: FieldName): CryptoKey {
     const key = keyVault.getKey(fieldName)
@@ -16,7 +18,7 @@ class FieldService {
    * Returns null if the field has never been saved.
    */
   async loadField(userId: string, fieldName: FieldName): Promise<string | null> {
-    if (!userId) throw new Error('userId is required')
+    if (!userId) throw new Error(USER_ID_REQUIRED)
     const fieldKey = this.getFieldKey(fieldName)
 
     const serverField = await fetchField(userId, fieldName)
@@ -31,7 +33,7 @@ class FieldService {
    * Uses upsert — will create or update the field.
    */
   async saveField(userId: string, fieldName: FieldName, plaintext: string): Promise<void> {
-    if (!userId) throw new Error('userId is required')
+    if (!userId) throw new Error(USER_ID_REQUIRED)
     const fieldKey = this.getFieldKey(fieldName)
 
     const encryptedData = await encryptField(plaintext, fieldKey, fieldName)
@@ -41,14 +43,21 @@ class FieldService {
 
   /**
    * Load and decrypt all three fields (note, website, email) in parallel.
-   * Returns a Record mapping field names to their plaintext content (or null if never saved).
+   * If a single field fails (e.g. network error), the others still succeed.
+   * Returns null for fields that failed or were never saved.
    */
   async loadAllFields(userId: string): Promise<Record<FieldName, string | null>> {
-    if (!userId) throw new Error('userId is required')
-    const results = await Promise.all(
+    if (!userId) throw new Error(USER_ID_REQUIRED)
+    const results = await Promise.allSettled(
       FIELD_NAMES.map(async (name) => [name, await this.loadField(userId, name)] as const),
     )
-    return Object.fromEntries(results) as Record<FieldName, string | null>
+    return Object.fromEntries(
+      results.map((result, i) => {
+        const name = FIELD_NAMES[i]
+        if (result.status === 'fulfilled') return [name, result.value[1]] as const
+        return [name, null] as const
+      }),
+    ) as Record<FieldName, string | null>
   }
 }
 

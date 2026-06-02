@@ -155,5 +155,26 @@ describe('FieldService', () => {
       expect(result.website).toBe('https://example.com')
       expect(result.email).toBeNull()
     })
+
+    it('returns null for a field that fails without killing other fields', async () => {
+      const noteKey = await generateTestKey()
+
+      mockGetKey.mockImplementation((id: string) => {
+        if (id === 'note') return noteKey
+        return undefined // website and email keys unavailable
+      })
+
+      const noteServerField = await encryptForServer('My note', noteKey, 'note')
+      mockFetchField.mockImplementation(async (_userId: string, fieldName: string) => {
+        if (fieldName === 'note') return noteServerField
+        return null
+      })
+
+      const result = await fieldService.loadAllFields(TEST_USER_ID)
+      expect(result.note).toBe('My note')
+      // website and email return null because keys are unavailable (throws caught by allSettled)
+      expect(result.website).toBeNull()
+      expect(result.email).toBeNull()
+    })
   })
 })

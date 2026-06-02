@@ -2,7 +2,7 @@
 export type FieldName = 'note' | 'website' | 'email'
 
 /** Canonical list of all field names — single source of truth. */
-export const FIELD_NAMES: readonly FieldName[] = ['note', 'website', 'email'] as const
+export const FIELD_NAMES = ['note', 'website', 'email'] as const
 
 /** A field as stored on the server — ciphertext, IV, and metadata. */
 export interface EncryptedField {
