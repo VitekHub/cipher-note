@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
-import { AuthProvider, useAuth } from './auth-context'
-import { useAuthStore } from '@/features/auth/model/auth-store'
 import type { ReactNode } from 'react'
+import { AuthProvider } from './auth-provider'
+import { useAuth } from '@/shared/auth/auth-context'
+import { useAuthStore } from '@/features/auth/model/auth-store'
 
 vi.mock('@/shared/api/supabase-client', () => ({
   getSupabase: () => ({
@@ -22,7 +23,7 @@ function wrapper({ children }: { children: ReactNode }) {
   return <AuthProvider>{children}</AuthProvider>
 }
 
-describe('auth-context', () => {
+describe('auth-provider', () => {
   beforeEach(() => {
     useAuthStore.setState({
       user: null,

@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 
-import { useCryptoStore } from '@/features/encryption/model/crypto-store'
-import { useVaultDialogStore } from '@/features/encryption/model/vault-dialog-store'
+import { useCryptoStore } from '@/shared/crypto/crypto-store'
+import { useVaultDialogStore } from '@/shared/crypto/vault-dialog-store'
 import { FieldCard } from '@/features/fields/ui/FieldCard'
 import { NoteField } from '@/features/fields/ui/NoteField'
 import { WebsiteField } from '@/features/fields/ui/WebsiteField'

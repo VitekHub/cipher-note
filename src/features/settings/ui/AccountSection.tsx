@@ -1,14 +1,14 @@
 import { useTranslation } from 'react-i18next'
 import { Trash2 } from 'lucide-react'
 
-import { useCurrentUser } from '@/shared/auth/use-current-user'
+import { useAuth } from '@/shared/auth/auth-context'
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/ui/card'
 import { Separator } from '@/shared/ui/separator'
 
 function AccountSection() {
   const { t } = useTranslation('settings')
-  const username = useCurrentUser()?.username
+  const username = useAuth().user?.username
 
   return (
     <Card>

@@ -4,7 +4,7 @@ import { Suspense } from 'react'
 import { afterEach } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from '@/shared/lib/theme-provider'
-import { AuthProvider } from '@/shared/auth/auth-context'
+import { AuthProvider } from '@/features/auth/ui/auth-provider'
 
 const testQueryClient = new QueryClient({
   defaultOptions: {

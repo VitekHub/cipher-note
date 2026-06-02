@@ -52,7 +52,7 @@ vi.mock('@/features/encryption/model/registration', () => ({
 const { mockClearVault } = vi.hoisted(() => ({
   mockClearVault: vi.fn<() => void>(),
 }))
-vi.mock('@/features/encryption/model/key-vault', () => ({
+vi.mock('@/shared/crypto/key-vault', () => ({
   keyVault: {
     lockVault: vi.fn<() => void>(),
     storeKey: vi.fn<() => void>(),
@@ -184,7 +184,7 @@ const cryptoStoreState = {
   clearVault: mockClearVault,
 }
 
-vi.mock('@/features/encryption/model/crypto-store', () => ({
+vi.mock('@/shared/crypto/crypto-store', () => ({
   useCryptoStore: {
     getState: vi.fn(() => cryptoStoreState),
     setState: vi.fn(),
@@ -206,7 +206,7 @@ import { fetchLoginSalts, fetchMasterKeyEnvelope, fetchFieldKeys } from '@/share
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { AuthError, AuthErrorCode } from '@/shared/auth/auth-errors'
 import type { AuthResult } from '@/shared/auth/auth.types'
-import { keyVault } from '@/features/encryption/model/key-vault'
+import { keyVault } from '@/shared/crypto/key-vault'
 import { deriveAuthHash, derivePasswordKey, terminateWorker } from '@/shared/crypto/argon2id'
 import { unwrapFieldKeys } from '@/shared/crypto/key-hierarchy'
 import { deriveKEK } from '@/shared/crypto/hkdf'

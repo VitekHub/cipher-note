@@ -3,9 +3,9 @@ import { LayoutDashboard, Lock, Unlock, Settings } from 'lucide-react'
 
 import { Button } from '@/shared/ui/button'
 import { NavLink } from '@/shared/ui/nav/NavLink'
-import { useCryptoStore } from '@/features/encryption/model/crypto-store'
-import { useVaultDialogStore } from '@/features/encryption/model/vault-dialog-store'
-import { keyVault } from '@/features/encryption/model/key-vault'
+import { useCryptoStore } from '@/shared/crypto/crypto-store'
+import { useVaultDialogStore } from '@/shared/crypto/vault-dialog-store'
+import { keyVault } from '@/shared/crypto/key-vault'
 
 function MobileNav() {
   const { t } = useTranslation(['common', 'crypto'])

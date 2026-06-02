@@ -1,4 +1,4 @@
-import { useCryptoStore } from '@/features/encryption/model/crypto-store'
+import { useCryptoStore } from '@/shared/crypto/crypto-store'
 
 /**
  * Module-scoped crypto key vault.
