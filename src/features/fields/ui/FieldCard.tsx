@@ -19,10 +19,11 @@ interface FieldCardProps {
   isLocked: boolean
   children: () => ReactNode
   onUnlock?: () => void
+  statusIndicator?: ReactNode
   entranceIndex?: number
 }
 
-function FieldCard({ fieldName, isLocked, children, onUnlock, entranceIndex }: FieldCardProps) {
+function FieldCard({ fieldName, isLocked, children, onUnlock, statusIndicator, entranceIndex }: FieldCardProps) {
   const { t } = useTranslation('fields')
   const keys = FIELD_I18N_KEYS[fieldName]
 
@@ -34,11 +35,7 @@ function FieldCard({ fieldName, isLocked, children, onUnlock, entranceIndex }: F
     >
       <CardHeader>
         <CardTitle>{t(keys.label)}</CardTitle>
-        {isLocked && (
-          <CardAction>
-            <Lock className="text-muted-foreground size-4" />
-          </CardAction>
-        )}
+        <CardAction>{isLocked ? <Lock className="text-muted-foreground size-4" /> : statusIndicator}</CardAction>
       </CardHeader>
       <CardContent>
         {isLocked ? (

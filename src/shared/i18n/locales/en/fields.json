@@ -17,5 +17,11 @@
     "locked": "Unlock vault to view",
     "unlock": "Unlock"
   },
-  "lastUpdated": "Last updated: {{date}}"
+  "lastUpdated": "Last updated: {{date}}",
+  "status": {
+    "saving": "Saving...",
+    "saved": "Saved",
+    "error": "Save failed",
+    "retry": "Retry"
+  }
 }

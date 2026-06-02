@@ -173,6 +173,7 @@ See `IMPLEMENTATION-PLAN.md` for the full 36-step plan.
 - Step 23 (Non-Extractable Key Vault + Zustand Store Refactor) — complete
 - Step 24 (Supabase API Adapter) — complete
 - Step 25 (Encrypted Field CRUD) — complete
+- Step 26 (Auto-Save + Sync Flow) — complete
 
 ### Implementation Notes
 

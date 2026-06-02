@@ -1,45 +1,64 @@
+import { useEffect, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
 import { useVaultDialogStore } from '@/shared/crypto/vault-dialog-store'
+import { useSyncStatusStore } from '@/features/fields/model/sync-status'
+import { useAutoSave } from '@/features/fields/model/auto-save'
 import { FieldCard } from '@/features/fields/ui/FieldCard'
 import { NoteField } from '@/features/fields/ui/NoteField'
 import { WebsiteField } from '@/features/fields/ui/WebsiteField'
 import { EmailField } from '@/features/fields/ui/EmailField'
+import { SaveIndicator } from '@/features/fields/ui/SaveIndicator'
 import { FIELD_NAMES } from '@/shared/types/entities/field.types'
 import type { FieldName } from '@/shared/types/entities/field.types'
-import type { ReactNode } from 'react'
 
-function getFieldEditor(fieldName: FieldName): ReactNode {
+function getFieldEditor(fieldName: FieldName, value: string, onChange: (value: string) => void): ReactNode {
   switch (fieldName) {
     case 'note':
-      return <NoteField />
+      return <NoteField value={value} onChange={onChange} />
     case 'website':
-      return <WebsiteField />
+      return <WebsiteField value={value} onChange={onChange} />
     case 'email':
-      return <EmailField />
+      return <EmailField value={value} onChange={onChange} />
   }
+}
+
+function FieldEditorWrapper({ fieldName }: { fieldName: FieldName }) {
+  const isVaultLocked = useCryptoStore((s) => s.isVaultLocked)
+  const openUnlockDialog = useVaultDialogStore((s) => s.openUnlockDialog)
+  const { value, setValue, syncStatus, retry } = useAutoSave(fieldName)
+
+  return (
+    <FieldCard
+      fieldName={fieldName}
+      isLocked={isVaultLocked}
+      onUnlock={isVaultLocked ? openUnlockDialog : undefined}
+      statusIndicator={<SaveIndicator status={syncStatus} onRetry={syncStatus === 'error' ? retry : undefined} />}
+    >
+      {() => getFieldEditor(fieldName, value, setValue)}
+    </FieldCard>
+  )
 }
 
 function DashboardPage() {
   const { t } = useTranslation('common')
   const isVaultLocked = useCryptoStore((s) => s.isVaultLocked)
-  const openUnlockDialog = useVaultDialogStore((s) => s.openUnlockDialog)
+  const resetAllSyncStatus = useSyncStatusStore((s) => s.resetAll)
+
+  // Reset sync status when vault locks
+  useEffect(() => {
+    if (isVaultLocked) {
+      resetAllSyncStatus()
+    }
+  }, [isVaultLocked, resetAllSyncStatus])
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-balance">{t('nav.dashboard')}</h1>
       <div className="grid gap-4 *:min-w-0 sm:grid-cols-2 lg:grid-cols-3">
-        {FIELD_NAMES.map((fieldName, index) => (
-          <FieldCard
-            key={fieldName}
-            fieldName={fieldName}
-            isLocked={isVaultLocked}
-            onUnlock={isVaultLocked ? openUnlockDialog : undefined}
-            entranceIndex={index}
-          >
-            {() => getFieldEditor(fieldName)}
-          </FieldCard>
+        {FIELD_NAMES.map((fieldName) => (
+          <FieldEditorWrapper key={fieldName} fieldName={fieldName} />
         ))}
       </div>
     </div>

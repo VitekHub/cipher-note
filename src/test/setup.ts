@@ -16,6 +16,7 @@ import cryptoCs from '@/shared/i18n/locales/cs/crypto.json'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
 import { useUiStore } from '@/features/settings/model/ui-store'
+import { useSyncStatusStore } from '@/features/fields/model/sync-status'
 
 afterEach(() => {
   cleanup()
@@ -35,6 +36,7 @@ afterEach(() => {
     activeField: null,
     sidebarWidth: 240,
   })
+  useSyncStatusStore.getState().resetAll()
 })
 
 beforeAll(async () => {
