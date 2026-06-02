@@ -10,7 +10,7 @@ function LandingPage() {
   const { t } = useTranslation('landing')
 
   return (
-    <div className="bg-background text-foreground relative min-h-screen">
+    <div className="bg-background text-foreground relative min-h-[calc(100vh-var(--banner-height))]">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--color-primary)_0,_transparent_70%)] opacity-[0.06]" />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--color-primary)_0,_transparent_50%)] opacity-[0.03]" />
 

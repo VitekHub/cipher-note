@@ -1,0 +1,142 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { renderHook, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { createElement, type ReactNode } from 'react'
+
+// --- Hoisted mocks ---
+
+const { mockSaveField } = vi.hoisted(() => ({
+  mockSaveField: vi.fn<(userId: string, fieldName: string, plaintext: string) => Promise<void>>(),
+}))
+
+const { mockUseAuth } = vi.hoisted(() => ({
+  mockUseAuth: vi.fn<() => { user: { id: string; username: string } | null }>(),
+}))
+
+vi.mock('@/features/fields/model/field-service', () => ({
+  fieldService: { saveField: mockSaveField },
+}))
+
+vi.mock('@/shared/auth/auth-context', () => ({
+  useAuth: mockUseAuth,
+}))
+
+// --- Import after mocks ---
+
+import { useSaveField } from '@/features/fields/model/use-save-field'
+
+function createQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  })
+}
+
+function wrapper({ children }: { children: ReactNode }) {
+  const queryClient = createQueryClient()
+  return createElement(QueryClientProvider, { client: queryClient }, children)
+}
+
+describe('useSaveField', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockSaveField.mockResolvedValue(undefined)
+    mockUseAuth.mockReturnValue({ user: { id: 'user-123', username: 'testuser' } })
+  })
+
+  it('calls fieldService.saveField with userId, field name and plaintext on mutate', async () => {
+    const { result } = renderHook(() => useSaveField('note'), { wrapper })
+
+    result.current.mutate('My note content')
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true)
+    })
+    expect(mockSaveField).toHaveBeenCalledWith('user-123', 'note', 'My note content')
+  })
+
+  it('optimistically updates the field query cache on mutate', async () => {
+    const queryClient = createQueryClient()
+    // Pre-populate cache with existing data
+    queryClient.setQueryData(['field', 'note'], 'old content')
+
+    const localWrapper = ({ children }: { children: ReactNode }) =>
+      createElement(QueryClientProvider, { client: queryClient }, children)
+
+    const { result } = renderHook(() => useSaveField('note'), { wrapper: localWrapper })
+
+    result.current.mutate('new content')
+
+    // Optimistic update should be visible immediately
+    await waitFor(() => {
+      expect(queryClient.getQueryData(['field', 'note'])).toBe('new content')
+    })
+  })
+
+  it('rolls back cache on error', async () => {
+    mockSaveField.mockRejectedValue(new Error('Save failed'))
+
+    const queryClient = createQueryClient()
+    queryClient.setQueryData(['field', 'note'], 'original content')
+
+    const localWrapper = ({ children }: { children: ReactNode }) =>
+      createElement(QueryClientProvider, { client: queryClient }, children)
+
+    const { result } = renderHook(() => useSaveField('note'), { wrapper: localWrapper })
+
+    result.current.mutate('new content')
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true)
+    })
+    // Cache should be rolled back
+    expect(queryClient.getQueryData(['field', 'note'])).toBe('original content')
+  })
+
+  it('invalidates the field query on settled', async () => {
+    const queryClient = createQueryClient()
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
+
+    const localWrapper = ({ children }: { children: ReactNode }) =>
+      createElement(QueryClientProvider, { client: queryClient }, children)
+
+    const { result } = renderHook(() => useSaveField('note'), { wrapper: localWrapper })
+
+    result.current.mutate('My note content')
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true)
+    })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['field', 'note'] })
+  })
+
+  it('sets error state when saveField throws', async () => {
+    mockSaveField.mockRejectedValue(new Error('Save failed'))
+
+    const { result } = renderHook(() => useSaveField('note'), { wrapper })
+
+    result.current.mutate('test')
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true)
+    })
+    expect(result.current.error).toBeInstanceOf(Error)
+    expect(result.current.error?.message).toBe('Save failed')
+  })
+
+  it('throws when userId is empty (no authenticated user)', async () => {
+    mockUseAuth.mockReturnValue({ user: null })
+
+    const { result } = renderHook(() => useSaveField('note'), { wrapper })
+
+    result.current.mutate('test')
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true)
+    })
+    expect(result.current.error?.message).toBe('useSaveField requires an authenticated user')
+  })
+})

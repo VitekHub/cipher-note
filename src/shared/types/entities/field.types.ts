@@ -1,12 +1,15 @@
 /** The three encrypted fields each user owns. */
 export type FieldName = 'note' | 'website' | 'email'
 
+/** Canonical list of all field names — single source of truth. */
+export const FIELD_NAMES = ['note', 'website', 'email'] as const
+
 /** A field as stored on the server — ciphertext, IV, and metadata. */
 export interface EncryptedField {
   fieldName: FieldName
-  /** Base64-encoded AES-GCM ciphertext. */
+  /** Hex-encoded AES-GCM ciphertext. */
   encryptedBlob: string
-  /** Base64-encoded initialization vector for AES-GCM. */
+  /** Hex-encoded initialization vector for AES-GCM. */
   iv: string
   updatedAt: string
 }

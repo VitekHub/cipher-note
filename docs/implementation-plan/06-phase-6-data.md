@@ -28,29 +28,36 @@
 
 ---
 
-## Step 25 — Encrypted Field CRUD
+## Step 25 — Encrypted Field CRUD ✅
 
 **Goal:** Encrypt/decrypt all three field types (note, website, email) end-to-end.
 
 **Code:**
 - `src/features/fields/model/field-crypto.ts`:
-  - `encryptField(plaintext: string, fieldKey: Uint8Array): Promise<EncryptedFieldData>`
+  - `encryptField(plaintext: string, fieldKey: CryptoKey, fieldName: FieldName): Promise<EncryptedFieldData>`
     - Convert string to Uint8Array (TextEncoder)
     - Generate random IV
-    - Encrypt with AES-256-GCM using field key
+    - Encrypt with AES-256-GCM using non-extractable CryptoKey from KeyVault
+    - Bind ciphertext to field name + key version via AAD (prevents ciphertext swapping between fields)
     - Return `{ ciphertext: Uint8Array, iv: Uint8Array }`
-  - `decryptField(encryptedData: EncryptedFieldData, fieldKey: Uint8Array): Promise<string>`
-    - Decrypt with AES-256-GCM
+  - `decryptField(encryptedData: EncryptedFieldData, fieldKey: CryptoKey, fieldName: FieldName): Promise<string>`
+    - Decrypt with AES-256-GCM, reconstructing AAD from fieldName + version
     - Convert Uint8Array to string (TextDecoder)
     - Return plaintext string
+  - `toSaveFieldData(encryptedData)` — convert binary `EncryptedFieldData` to hex-string `SaveFieldData` for the API
+  - `toEncryptedFieldData(serverField)` — convert hex-string `ServerEncryptedField` from the API to binary `EncryptedFieldData`
 - `src/features/fields/model/field-service.ts`:
-  - `loadField(fieldName: string): Promise<string | null>` — fetch from server, decrypt, return plaintext
-  - `saveField(fieldName: string, plaintext: string): Promise<void>` — encrypt, save to server
-  - `loadAllFields(): Promise<Record<string, string | null>>` — load all three fields
+  - `FieldService` class (singleton `fieldService`) encapsulating auth + key vault access:
+    - `loadField(fieldName): Promise<string | null>` — fetch from server, decrypt, return plaintext
+    - `saveField(fieldName, plaintext): Promise<void>` — encrypt, save to server
+    - `loadAllFields(): Promise<Record<string, string | null>>` — load all three fields in parallel
+  - Gets user ID from auth store, gets CryptoKey from KeyVault (no separate hook needed)
 - Wire into TanStack Query hooks:
-  - `useField(fieldName)` — query + cache decrypted field content. **Must invalidate/purge this cache when vault is locked** (see Step 23).
-  - `useSaveField(fieldName)` — mutation for saving field content
-  - `useFieldKey(fieldName)` — get field key from crypto store (hex-decode from store before use)
+  - `useField(fieldName)` — query + cache decrypted field content, disabled while vault locked or field key not loaded
+  - `useSaveField(fieldName)` — mutation for saving field content, invalidates field query on success
+- `src/shared/types/entities/field.types.ts`:
+  - `FieldName` type (`'note' | 'website' | 'email'`), `FIELD_NAMES` canonical list
+  - `EncryptedField` and `DecryptedField` interfaces for server/client representations
 
 **Tests:**
 - Unit: encrypt then decrypt returns original string

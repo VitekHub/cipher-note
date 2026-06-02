@@ -172,6 +172,7 @@ See `IMPLEMENTATION-PLAN.md` for the full 36-step plan.
 - Step 22 (Login UI + Vault Unlock) — complete
 - Step 23 (Non-Extractable Key Vault + Zustand Store Refactor) — complete
 - Step 24 (Supabase API Adapter) — complete
+- Step 25 (Encrypted Field CRUD) — complete
 
 ### Implementation Notes
 

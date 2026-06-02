@@ -1,12 +1,13 @@
 import { getSupabase } from '@/shared/api/supabase-client'
 import { wrapApiError } from '@/shared/api/api-errors'
 import type { ServerEncryptedField, SaveFieldData } from '@/shared/types/api.types'
+import type { FieldName } from '@/shared/types/entities/field.types'
 
 /**
  * Fetch a single encrypted field for a user.
  * Returns null if the field does not exist.
  */
-export async function fetchField(userId: string, fieldName: string): Promise<ServerEncryptedField | null> {
+export async function fetchField(userId: string, fieldName: FieldName): Promise<ServerEncryptedField | null> {
   const supabase = getSupabase()
   const { data, error } = await supabase
     .from('encrypted_fields')
@@ -19,7 +20,7 @@ export async function fetchField(userId: string, fieldName: string): Promise<Ser
   if (!data) return null
 
   return {
-    fieldName: data.field_name,
+    fieldName: data.field_name as FieldName,
     encryptedBlob: data.encrypted_blob,
     iv: data.iv,
     updatedAt: data.updated_at,
@@ -30,7 +31,7 @@ export async function fetchField(userId: string, fieldName: string): Promise<Ser
  * Upsert an encrypted field for a user.
  * Uses onConflict to handle the unique (user_id, field_name) constraint.
  */
-export async function saveField(userId: string, fieldName: string, data: SaveFieldData): Promise<void> {
+export async function saveField(userId: string, fieldName: FieldName, data: SaveFieldData): Promise<void> {
   const supabase = getSupabase()
   const { error } = await supabase.from('encrypted_fields').upsert(
     {

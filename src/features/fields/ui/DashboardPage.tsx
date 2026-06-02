@@ -6,10 +6,9 @@ import { FieldCard } from '@/features/fields/ui/FieldCard'
 import { NoteField } from '@/features/fields/ui/NoteField'
 import { WebsiteField } from '@/features/fields/ui/WebsiteField'
 import { EmailField } from '@/features/fields/ui/EmailField'
+import { FIELD_NAMES } from '@/shared/types/entities/field.types'
 import type { FieldName } from '@/shared/types/entities/field.types'
 import type { ReactNode } from 'react'
-
-const FIELD_NAMES: FieldName[] = ['note', 'website', 'email']
 
 function getFieldEditor(fieldName: FieldName): ReactNode {
   switch (fieldName) {

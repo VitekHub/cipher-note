@@ -7,7 +7,7 @@ function HeroSection() {
   const { t } = useTranslation('landing')
 
   return (
-    <section className="relative flex min-h-screen flex-col items-center justify-center px-6 py-32 text-center">
+    <section className="relative flex flex-col items-center justify-center px-6 py-16 text-center md:py-32">
       <div className="animate-fade-in-up relative z-10 mx-auto max-w-4xl">
         <div className="mb-8 flex items-center justify-center gap-3">
           <CipherNoteIcon className="size-14" />
