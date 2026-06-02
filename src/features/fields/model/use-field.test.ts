@@ -2,16 +2,21 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createElement, type ReactNode } from 'react'
-import { useCryptoStore } from '@/features/encryption/model/crypto-store'
+import { useCryptoStore } from '@/shared/crypto/crypto-store'
 
 // --- Hoisted mocks ---
 
-const { mockLoadField } = vi.hoisted(() => ({
-  mockLoadField: vi.fn<(fieldName: string) => Promise<string | null>>(),
+const { mockLoadField, mockUseAuth } = vi.hoisted(() => ({
+  mockLoadField: vi.fn<(userId: string, fieldName: string) => Promise<string | null>>(),
+  mockUseAuth: vi.fn<() => { user: { id: string; username: string } | null }>(),
 }))
 
 vi.mock('@/features/fields/model/field-service', () => ({
   fieldService: { loadField: mockLoadField },
+}))
+
+vi.mock('@/shared/auth/auth-context', () => ({
+  useAuth: mockUseAuth,
 }))
 
 // --- Import after mocks ---
@@ -38,7 +43,8 @@ afterEach(() => {
 describe('useField', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    // Default: vault unlocked with keys loaded
+    // Default: authenticated user, vault unlocked with keys loaded
+    mockUseAuth.mockReturnValue({ user: { id: 'user-123', username: 'testuser' } })
     useCryptoStore.setState({
       loadedFieldKeys: { note: true, website: true, email: true },
       isVaultLocked: false,
@@ -57,7 +63,7 @@ describe('useField', () => {
       expect(result.current.isSuccess).toBe(true)
     })
     expect(result.current.data).toBe('My note content')
-    expect(mockLoadField).toHaveBeenCalledWith('note')
+    expect(mockLoadField).toHaveBeenCalledWith('user-123', 'note')
   })
 
   it('returns null when field has never been saved', async () => {
@@ -69,6 +75,14 @@ describe('useField', () => {
       expect(result.current.isSuccess).toBe(true)
     })
     expect(result.current.data).toBeNull()
+  })
+
+  it('is disabled when userId is empty (no authenticated user)', () => {
+    mockUseAuth.mockReturnValue({ user: null })
+
+    const { result } = renderHook(() => useField('note'), { wrapper })
+    expect(result.current.fetchStatus).toBe('idle')
+    expect(mockLoadField).not.toHaveBeenCalled()
   })
 
   it('is disabled when vault is locked', () => {

@@ -6,27 +6,11 @@ import type { ServerEncryptedField, SaveFieldData } from '@/shared/types/api.typ
 
 // --- Hoisted mocks (must be declared before vi.mock factories that reference them) ---
 
-const { mockFetchField, mockSaveField, mockGetKey, mockUser, mockGetAuthState } = vi.hoisted(() => {
-  const mockUser = { id: 'user-123', username: 'testuser', createdAt: '2025-01-01T00:00:00Z' }
-  const mockGetAuthState = vi.fn(() => ({
-    user: mockUser,
-    session: { accessToken: 'test-token', expiresAt: Date.now() + 3600000 },
-    isLoading: false,
-    isRestoringSession: false,
-    setLoading: vi.fn(),
-    setAuth: vi.fn(),
-    setRestoringSession: vi.fn(),
-    reset: vi.fn(),
-    setUser: vi.fn(),
-    setSession: vi.fn(),
-  }))
-
+const { mockFetchField, mockSaveField, mockGetKey } = vi.hoisted(() => {
   return {
     mockFetchField: vi.fn<(...args: [string, string]) => Promise<ServerEncryptedField | null>>(),
     mockSaveField: vi.fn<(userId: string, fieldName: string, data: SaveFieldData) => Promise<void>>(),
     mockGetKey: vi.fn<(id: string) => CryptoKey | undefined>(),
-    mockUser,
-    mockGetAuthState,
   }
 })
 
@@ -35,15 +19,8 @@ vi.mock('@/shared/api/supabase-fields', () => ({
   saveField: mockSaveField,
 }))
 
-vi.mock('@/features/encryption/model/key-vault', () => ({
+vi.mock('@/shared/crypto/key-vault', () => ({
   keyVault: { getKey: mockGetKey },
-}))
-
-vi.mock('@/features/auth/model/auth-store', () => ({
-  useAuthStore: {
-    getState: mockGetAuthState,
-    setState: vi.fn(),
-  },
 }))
 
 // --- Import after mocks ---
@@ -70,34 +47,27 @@ async function encryptForServer(
   }
 }
 
+const TEST_USER_ID = 'user-123'
+
 describe('FieldService', () => {
   let testKey: CryptoKey
 
   beforeEach(async () => {
     vi.clearAllMocks()
-    // Restore the default auth state after clearAllMocks
-    mockGetAuthState.mockReturnValue({
-      user: mockUser,
-      session: { accessToken: 'test-token', expiresAt: Date.now() + 3600000 },
-      isLoading: false,
-      isRestoringSession: false,
-      setLoading: vi.fn(),
-      setAuth: vi.fn(),
-      setRestoringSession: vi.fn(),
-      reset: vi.fn(),
-      setUser: vi.fn(),
-      setSession: vi.fn(),
-    })
     testKey = await generateTestKey()
     mockGetKey.mockReturnValue(testKey)
   })
 
   describe('loadField', () => {
+    it('throws when userId is empty', async () => {
+      await expect(fieldService.loadField('', 'note')).rejects.toThrow('userId is required')
+    })
+
     it('returns null when server returns null (field never saved)', async () => {
       mockFetchField.mockResolvedValue(null)
-      const result = await fieldService.loadField('note')
+      const result = await fieldService.loadField(TEST_USER_ID, 'note')
       expect(result).toBeNull()
-      expect(mockFetchField).toHaveBeenCalledWith('user-123', 'note')
+      expect(mockFetchField).toHaveBeenCalledWith(TEST_USER_ID, 'note')
     })
 
     it('decrypts and returns plaintext when server returns field data', async () => {
@@ -105,41 +75,28 @@ describe('FieldService', () => {
       const serverField = await encryptForServer(plaintext, testKey, 'note')
       mockFetchField.mockResolvedValue(serverField)
 
-      const result = await fieldService.loadField('note')
+      const result = await fieldService.loadField(TEST_USER_ID, 'note')
       expect(result).toBe(plaintext)
     })
 
     it('throws when field key is not available (vault locked)', async () => {
       mockGetKey.mockReturnValue(undefined)
-      await expect(fieldService.loadField('note')).rejects.toThrow('Field key not available for "note"')
-    })
-
-    it('throws when user is not authenticated', async () => {
-      mockGetAuthState.mockReturnValue({
-        user: null as unknown as typeof mockUser,
-        session: null as unknown as { accessToken: string; expiresAt: number },
-        isLoading: false,
-        isRestoringSession: false,
-        setLoading: vi.fn(),
-        setAuth: vi.fn(),
-        setRestoringSession: vi.fn(),
-        reset: vi.fn(),
-        setUser: vi.fn(),
-        setSession: vi.fn(),
-      })
-
-      await expect(fieldService.loadField('note')).rejects.toThrow('Not authenticated')
+      await expect(fieldService.loadField(TEST_USER_ID, 'note')).rejects.toThrow('Field key not available for "note"')
     })
   })
 
   describe('saveField', () => {
+    it('throws when userId is empty', async () => {
+      await expect(fieldService.saveField('', 'note', 'test')).rejects.toThrow('userId is required')
+    })
+
     it('encrypts plaintext and calls saveFieldToServer with hex-encoded data', async () => {
       mockSaveField.mockResolvedValue(undefined)
 
-      await fieldService.saveField('note', 'My secret note')
+      await fieldService.saveField(TEST_USER_ID, 'note', 'My secret note')
 
       expect(mockSaveField).toHaveBeenCalledWith(
-        'user-123',
+        TEST_USER_ID,
         'note',
         expect.objectContaining({
           encryptedBlob: expect.any(String),
@@ -154,14 +111,20 @@ describe('FieldService', () => {
 
     it('throws when field key is not available (vault locked)', async () => {
       mockGetKey.mockReturnValue(undefined)
-      await expect(fieldService.saveField('note', 'test')).rejects.toThrow('Field key not available for "note"')
+      await expect(fieldService.saveField(TEST_USER_ID, 'note', 'test')).rejects.toThrow(
+        'Field key not available for "note"',
+      )
     })
   })
 
   describe('loadAllFields', () => {
+    it('throws when userId is empty', async () => {
+      await expect(fieldService.loadAllFields('')).rejects.toThrow('userId is required')
+    })
+
     it('loads all three fields in parallel and returns null for unsaved fields', async () => {
       mockFetchField.mockResolvedValue(null)
-      const result = await fieldService.loadAllFields()
+      const result = await fieldService.loadAllFields(TEST_USER_ID)
       expect(result).toEqual({ note: null, website: null, email: null })
       expect(mockFetchField).toHaveBeenCalledTimes(3)
     })
@@ -187,7 +150,7 @@ describe('FieldService', () => {
         return null // email never saved
       })
 
-      const result = await fieldService.loadAllFields()
+      const result = await fieldService.loadAllFields(TEST_USER_ID)
       expect(result.note).toBe('My note')
       expect(result.website).toBe('https://example.com')
       expect(result.email).toBeNull()

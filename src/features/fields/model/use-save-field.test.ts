@@ -6,11 +6,15 @@ import { createElement, type ReactNode } from 'react'
 // --- Hoisted mocks ---
 
 const { mockSaveField } = vi.hoisted(() => ({
-  mockSaveField: vi.fn<(fieldName: string, plaintext: string) => Promise<void>>(),
+  mockSaveField: vi.fn<(userId: string, fieldName: string, plaintext: string) => Promise<void>>(),
 }))
 
 vi.mock('@/features/fields/model/field-service', () => ({
   fieldService: { saveField: mockSaveField },
+}))
+
+vi.mock('@/shared/auth/auth-context', () => ({
+  useAuth: () => ({ user: { id: 'user-123', username: 'testuser' } }),
 }))
 
 // --- Import after mocks ---
@@ -40,7 +44,7 @@ describe('useSaveField', () => {
     mockSaveField.mockResolvedValue(undefined)
   })
 
-  it('calls fieldService.saveField with the field name and plaintext on mutate', async () => {
+  it('calls fieldService.saveField with userId, field name and plaintext on mutate', async () => {
     const { result } = renderHook(() => useSaveField('note'), { wrapper })
 
     result.current.mutate('My note content')
@@ -48,7 +52,7 @@ describe('useSaveField', () => {
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true)
     })
-    expect(mockSaveField).toHaveBeenCalledWith('note', 'My note content')
+    expect(mockSaveField).toHaveBeenCalledWith('user-123', 'note', 'My note content')
   })
 
   it('invalidates the field query on success', async () => {

@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useAuth } from '@/shared/auth/auth-context'
 import { fieldService } from '@/features/fields/model/field-service'
 import type { FieldName } from '@/shared/types/entities/field.types'
 
@@ -10,9 +11,10 @@ import type { FieldName } from '@/shared/types/entities/field.types'
  */
 export function useSaveField(fieldName: FieldName) {
   const queryClient = useQueryClient()
+  const userId = useAuth().user?.id ?? ''
 
   return useMutation({
-    mutationFn: (plaintext: string) => fieldService.saveField(fieldName, plaintext),
+    mutationFn: (plaintext: string) => fieldService.saveField(userId, fieldName, plaintext),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['field', fieldName] })
     },
