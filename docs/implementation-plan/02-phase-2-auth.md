@@ -12,7 +12,7 @@
   - `logout()` → calls `supabase.auth.signOut()`
   - `getSession()` → calls `supabase.auth.getSession()`
   - `recoverPassword()` → placeholder for seed phrase recovery
-- Create `src/shared/auth/auth-context.tsx` — React context providing the auth adapter
+- Create `src/shared/auth/auth-context.tsx` — React context + `useAuth` hook. `AuthProvider` component lives in `src/features/auth/ui/auth-provider.tsx` (it wires the auth store into the context, so it depends on features)
 - Create `src/shared/api/supabase-client.ts` — Supabase client initialization from env vars (combined with API adapter)
 - Create `src/shared/auth/username-utils.ts` — `toSupabaseEmail(username)`, `fromSupabaseEmail(email)`
 - Configure Supabase Auth to accept 64-character hex strings as passwords (disable default password complexity rules since the "password" is already an Argon2id hash)

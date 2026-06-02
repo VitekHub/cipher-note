@@ -74,6 +74,8 @@ cipher-note-react/
       layouts/
         PublicLayout.tsx        # Centered card layout for auth pages
         ProtectedLayout.tsx     # Sidebar + header + main content
+        Sidebar.tsx             # Responsive sidebar component
+        MobileNav.tsx            # Bottom navigation for mobile
       routes/
         __root.tsx              # Root route with providers + Suspense boundary
         _public.tsx              # Public layout route (GuestOnly)
@@ -92,6 +94,7 @@ cipher-note-react/
           login-schema.ts      # Zod validation
         ui/
           AuthLayout.tsx       # Shared layout for auth pages
+          AuthProvider.tsx     # Wires auth store into AuthContext (depends on features, so not in shared/)
           MnemonicDialog.tsx   # Seed phrase display
           MnemonicInput.tsx    # 12-word input with BIP-39 validation
           PasswordStrength.tsx # Password strength indicator
@@ -113,7 +116,6 @@ cipher-note-react/
           ConflictNotification.tsx
       encryption/
         model/
-          crypto-store.ts      # Zustand: masterKey, KEK, fieldKeys (memory only, hex strings)
           vault-timeout.ts     # Auto-lock after inactivity
           key-rotation.ts      # Rotate individual field keys
           multi-device.ts      # Handle key changes from other sessions
@@ -139,8 +141,6 @@ cipher-note-react/
         nav/
           NavLink.tsx
           LanguageSwitcher.tsx
-          MobileNav.tsx
-          Sidebar.tsx
           ResizeHandle.tsx
         form/
           FormField.tsx
@@ -158,6 +158,9 @@ cipher-note-react/
         split-kdf.ts          # Split KDF (auth + key derivation from password)
         mnemonic.ts           # BIP-39 generate/validate/wrap/unwrap (lazy-loaded)
         crypto-utils.ts       # hexEncode, hexDecode, generateIV, generateSalt, generateKey, encodeAAD, zeroFill, copyToUint8Array
+        key-vault.ts          # Module-scoped CryptoKey vault (non-extractable keys)
+        crypto-store.ts       # Zustand: loadedFieldKeys, isVaultLocked (memory only, no devtools)
+        vault-dialog-store.ts # Zustand: vault unlock dialog state (open/close)
       api/
         api.types.ts          # IApiAdapter interface
         supabase-client.ts    # Supabase client initialization only
@@ -170,7 +173,7 @@ cipher-note-react/
         auth.types.ts         # IAuthAdapter interface
         auth-errors.ts        # AuthError, AuthErrorCode, isAuthError, isNetworkError
         supabase-adapter.ts   # Supabase Auth implementation
-        auth-context.tsx       # React context for auth adapter
+        auth-context.tsx       # React context + useAuth hook (AuthProvider is in features/auth/)
         username-utils.ts     # toSupabaseEmail, fromSupabaseEmail
         # future: custom-jwt-adapter.ts, opaque-adapter.ts
       realtime/
@@ -229,5 +232,5 @@ Dependency rules: `routes` → `features` → `shared`. No cross-feature imports
 - **Types in separate `.types.ts` files.** Keep type definitions separate from implementation. A consumer should import types without pulling in crypto dependencies.
 - **Each test file mirrors its source.** `aes-gcm.ts` → `aes-gcm.test.ts` in the same directory. No separate `__tests__` folders — colocate tests with the code they test.
 - **No barrel files (index.ts).** Import components directly by path: `import { Button } from '@/shared/ui/button'` not `import { Button } from '@/shared/ui'`. Barrel files defeat tree-shaking and cause the entire module graph to be analyzed even when only one export is needed. This applies to all directories — `shared/ui/`, `shared/crypto/`, `shared/auth/`, etc.
-- **File naming convention.** Component files (`.tsx` exporting a React component) use PascalCase: `LoginPage.tsx`, `FormField.tsx`. Non-component files use kebab-case: `auth-store.ts`, `login-schema.ts`. Exceptions: shadcn/ui primitives stay kebab-case (`button.tsx`, `input.tsx`), context/provider modules that export both component and hook stay kebab-case (`auth-context.tsx`, `theme-provider.tsx`), and route files follow TanStack Router convention.
+- **File naming convention.** Component files (`.tsx` exporting a React component) use PascalCase: `LoginPage.tsx`, `FormField.tsx`. Non-component files use kebab-case: `auth-store.ts`, `login-schema.ts`. Exceptions: shadcn/ui primitives stay kebab-case (`button.tsx`, `input.tsx`), context modules that export a context and hook stay kebab-case (`auth-context.tsx`), provider components that export only a component also stay kebab-case (`auth-provider.tsx`, `theme-provider.tsx`), and route files follow TanStack Router convention.
 - **Lazy-load heavy crypto modules.** `argon2-browser` (WASM, ~200KB+) and `@scure/bip39` (2048-word dictionary) must be dynamically imported via `await import(...)` only when the user is actually authenticating or recovering. Never import them at the top level of a module that loads on app startup. **Important:** always import `argon2-browser/dist/argon2-bundled.min.js`, not `argon2-browser` — the default import tries to load a `.wasm` file which Vite cannot handle; the bundled build embeds WASM as base64 in JS.

@@ -11,8 +11,8 @@
   - Sidebar: app logo, nav links (Dashboard, Settings), user info, lock vault button, language switcher
   - Header: page title, vault lock/unlock indicator
 - `src/shared/ui/brand/AppLogo.tsx`
-- `src/shared/ui/nav/Sidebar.tsx` — responsive sidebar component, shared between desktop aside and mobile Sheet overlay, with optional `onClose` prop for closing the Sheet on navigation
-- `src/shared/ui/nav/MobileNav.tsx` — bottom navigation for mobile with vault toggle center button
+- `src/app/layouts/Sidebar.tsx` — responsive sidebar component, shared between desktop aside and mobile Sheet overlay, with optional `onClose` prop for closing the Sheet on navigation
+- `src/app/layouts/MobileNav.tsx` — bottom navigation for mobile with vault toggle center button
 - `src/shared/ui/nav/ResizeHandle.tsx` — thin drag handle between sidebar and main content on desktop, 2×3 dot matrix grip indicator with hover/drag accent colors, hidden on mobile
 - `src/shared/lib/use-resizable.ts` — custom hook managing drag resize logic: local state for smooth 60fps dragging, commits final width to Zustand store on release, pointer events for unified mouse+touch support
 - `src/features/settings/model/ui-store.ts` — added `sidebarWidth: number` (default 240) and `setSidebarWidth` action, persisted to localStorage via `partialize`
@@ -78,7 +78,7 @@
 - `src/features/settings/ui/PreferencesSection.tsx` — language switcher (full variant)
 - `src/features/settings/ui/AccountSection.tsx` — account info + delete
 - Enhance `LanguageSwitcher` with `variant` prop: `compact` (toggle button in sidebar/mobile) and `full` (button group showing language names, used in Preferences)
-- Shared `useCurrentUser` hook in `src/shared/auth/` to access current user data without cross-feature imports from auth store
+- `useAuth()` context hook in `src/shared/auth/auth-context.tsx` provides `user` — features access current user data without cross-feature imports from auth store
 - Add i18n strings to `settings.json` (including `languageName.en/cs` for full variant labels)
 
 **Tests:**
