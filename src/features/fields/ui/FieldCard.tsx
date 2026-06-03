@@ -40,7 +40,7 @@ function FieldCard({ fieldName, isLocked, children, onUnlock, statusIndicator, e
       <CardContent>
         {isLocked ? (
           <div className="relative flex flex-col items-center gap-3 overflow-hidden rounded-lg py-4">
-            <div className="bg-primary/5 absolute inset-0 [mask-image:radial-gradient(circle_at_center,black_40%,transparent_100%)]" />
+            <div className="bg-primary/5 absolute inset-0 [mask-image:radial-gradient(circle_at_center,black_60%,transparent_100%)]" />
             <Lock className="text-muted-foreground/60 relative size-8" />
             <p className="text-muted-foreground relative text-sm">{t(keys.locked)}</p>
             {onUnlock && (

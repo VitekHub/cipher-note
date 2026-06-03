@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
@@ -13,21 +13,10 @@ import { SaveIndicator } from '@/features/fields/ui/SaveIndicator'
 import { FIELD_NAMES } from '@/shared/types/entities/field.types'
 import type { FieldName } from '@/shared/types/entities/field.types'
 
-function getFieldEditor(fieldName: FieldName, value: string, onChange: (value: string) => void): ReactNode {
-  switch (fieldName) {
-    case 'note':
-      return <NoteField value={value} onChange={onChange} />
-    case 'website':
-      return <WebsiteField value={value} onChange={onChange} />
-    case 'email':
-      return <EmailField value={value} onChange={onChange} />
-  }
-}
-
 function FieldEditorWrapper({ fieldName }: { fieldName: FieldName }) {
   const isVaultLocked = useCryptoStore((s) => s.isVaultLocked)
   const openUnlockDialog = useVaultDialogStore((s) => s.openUnlockDialog)
-  const { value, setValue, syncStatus, retry } = useAutoSave(fieldName)
+  const { fieldValue, setFieldValue, syncStatus, retry } = useAutoSave(fieldName)
 
   return (
     <FieldCard
@@ -36,7 +25,16 @@ function FieldEditorWrapper({ fieldName }: { fieldName: FieldName }) {
       onUnlock={isVaultLocked ? openUnlockDialog : undefined}
       statusIndicator={<SaveIndicator status={syncStatus} onRetry={syncStatus === 'error' ? retry : undefined} />}
     >
-      {() => getFieldEditor(fieldName, value, setValue)}
+      {() => {
+        switch (fieldName) {
+          case 'note':
+            return <NoteField value={fieldValue} onChange={setFieldValue} />
+          case 'website':
+            return <WebsiteField value={fieldValue} onChange={setFieldValue} />
+          case 'email':
+            return <EmailField value={fieldValue} onChange={setFieldValue} />
+        }
+      }}
     </FieldCard>
   )
 }

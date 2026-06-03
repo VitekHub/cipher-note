@@ -66,13 +66,13 @@ describe('useAutoSave', () => {
     vi.useRealTimers()
   })
 
-  it('loads initial value from query data', async () => {
+  it('loads initial fieldValue from query data', async () => {
     const { result } = renderHook(() => useAutoSave('note'), {
       wrapper: createWrapper(queryClient),
     })
 
     await waitFor(() => {
-      expect(result.current.value).toBe('initial content')
+      expect(result.current.fieldValue).toBe('initial content')
     })
   })
 
@@ -83,40 +83,40 @@ describe('useAutoSave', () => {
     })
 
     await waitFor(() => {
-      expect(result.current.value).toBe('')
+      expect(result.current.fieldValue).toBe('')
     })
   })
 
-  it('updates value immediately on setValue (optimistic)', async () => {
+  it('updates fieldValue immediately on setFieldValue (optimistic)', async () => {
     const { result } = renderHook(() => useAutoSave('note'), {
       wrapper: createWrapper(queryClient),
     })
 
     await waitFor(() => {
-      expect(result.current.value).toBe('initial content')
+      expect(result.current.fieldValue).toBe('initial content')
     })
 
     act(() => {
-      result.current.setValue('new content')
+      result.current.setFieldValue('new content')
     })
 
-    expect(result.current.value).toBe('new content')
+    expect(result.current.fieldValue).toBe('new content')
   })
 
-  it('keeps status idle immediately after setValue', async () => {
+  it('keeps status idle immediately after setFieldValue', async () => {
     const { result } = renderHook(() => useAutoSave('note'), {
       wrapper: createWrapper(queryClient),
     })
 
     await waitFor(() => {
-      expect(result.current.value).toBe('initial content')
+      expect(result.current.fieldValue).toBe('initial content')
     })
 
     act(() => {
-      result.current.setValue('new content')
+      result.current.setFieldValue('new content')
     })
 
-    // Status should still be 'idle' immediately after setValue
+    // Status should still be 'idle' immediately after setFieldValue
     // (it will transition to 'saving' only when the debounce fires)
     expect(result.current.syncStatus).toBe('idle')
   })
@@ -128,11 +128,11 @@ describe('useAutoSave', () => {
     })
 
     await waitFor(() => {
-      expect(result.current.value).toBe('initial content')
+      expect(result.current.fieldValue).toBe('initial content')
     })
 
     act(() => {
-      result.current.setValue('new content')
+      result.current.setFieldValue('new content')
     })
 
     // Wait for the debounce + mutation to complete
@@ -144,7 +144,7 @@ describe('useAutoSave', () => {
     )
 
     // Draft is preserved on error
-    expect(result.current.value).toBe('new content')
+    expect(result.current.fieldValue).toBe('new content')
   })
 
   it('resets draft when vault locks', async () => {
@@ -153,13 +153,13 @@ describe('useAutoSave', () => {
     })
 
     await waitFor(() => {
-      expect(result.current.value).toBe('initial content')
+      expect(result.current.fieldValue).toBe('initial content')
     })
 
     act(() => {
-      result.current.setValue('edited content')
+      result.current.setFieldValue('edited content')
     })
-    expect(result.current.value).toBe('edited content')
+    expect(result.current.fieldValue).toBe('edited content')
 
     // Lock vault
     act(() => {
@@ -168,7 +168,7 @@ describe('useAutoSave', () => {
 
     // After vault lock, draft is reset and query is disabled
     await waitFor(() => {
-      expect(result.current.value).toBe('')
+      expect(result.current.fieldValue).toBe('')
     })
   })
 
@@ -178,11 +178,11 @@ describe('useAutoSave', () => {
       wrapper: createWrapper(queryClient),
     })
 
-    // The value should be empty string since the query is disabled (no user)
-    expect(result.current.value).toBe('')
+    // The fieldValue should be empty string since the query is disabled (no user)
+    expect(result.current.fieldValue).toBe('')
 
     act(() => {
-      result.current.setValue('content')
+      result.current.setFieldValue('content')
     })
 
     // Wait a bit to ensure no save is triggered
@@ -197,11 +197,11 @@ describe('useAutoSave', () => {
     })
 
     await waitFor(() => {
-      expect(result.current.value).toBe('initial content')
+      expect(result.current.fieldValue).toBe('initial content')
     })
 
     act(() => {
-      result.current.setValue('offline content')
+      result.current.setFieldValue('offline content')
     })
 
     // Wait for the debounce + failed mutation
@@ -228,7 +228,7 @@ describe('useAutoSave', () => {
       { timeout: 5000 },
     )
 
-    // First call failed, second call succeeded with latest value
+    // First call failed, second call succeeded with latest fieldValue
     expect(mockSaveField).toHaveBeenCalledTimes(2)
     expect(mockSaveField).toHaveBeenLastCalledWith('user-123', 'note', 'offline content')
   })
@@ -239,7 +239,7 @@ describe('useAutoSave', () => {
     })
 
     await waitFor(() => {
-      expect(result.current.value).toBe('initial content')
+      expect(result.current.fieldValue).toBe('initial content')
     })
 
     // Status is 'idle' — firing online should NOT trigger a save
@@ -261,11 +261,11 @@ describe('useAutoSave', () => {
     })
 
     await waitFor(() => {
-      expect(result.current.value).toBe('initial content')
+      expect(result.current.fieldValue).toBe('initial content')
     })
 
     act(() => {
-      result.current.setValue('offline content')
+      result.current.setFieldValue('offline content')
     })
 
     // Wait for debounce + failed mutation
@@ -325,7 +325,7 @@ describe('useAutoSave (debounce)', () => {
     queryClient.clear()
   })
 
-  it('debounces saves — rapid setValue calls trigger only one save', async () => {
+  it('debounces saves — rapid setFieldValue calls trigger only one save', async () => {
     const { result } = renderHook(() => useAutoSave('note'), {
       wrapper: createWrapper(queryClient),
     })
@@ -337,19 +337,19 @@ describe('useAutoSave (debounce)', () => {
 
     // Rapid keystrokes
     act(() => {
-      result.current.setValue('a')
+      result.current.setFieldValue('a')
     })
     act(() => {
       vi.advanceTimersByTime(300)
     })
     act(() => {
-      result.current.setValue('ab')
+      result.current.setFieldValue('ab')
     })
     act(() => {
       vi.advanceTimersByTime(300)
     })
     act(() => {
-      result.current.setValue('abc')
+      result.current.setFieldValue('abc')
     })
 
     // Not yet saved, status still idle
@@ -376,9 +376,9 @@ describe('useAutoSave (debounce)', () => {
     })
 
     act(() => {
-      result.current.setValue('new content')
+      result.current.setFieldValue('new content')
     })
-    // Status is still 'idle' immediately after setValue
+    // Status is still 'idle' immediately after setFieldValue
     expect(result.current.syncStatus).toBe('idle')
 
     // Partway through the debounce period, status is still 'idle'
@@ -418,7 +418,7 @@ describe('useAutoSave (debounce)', () => {
     })
 
     act(() => {
-      result.current.setValue('new content')
+      result.current.setFieldValue('new content')
     })
 
     // Advance past debounce to trigger the save (which will fail)

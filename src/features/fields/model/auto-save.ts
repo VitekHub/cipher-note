@@ -10,8 +10,8 @@ const DEBOUNCE_MS = 1000
 const SAVED_DISPLAY_MS = 3000
 
 export interface UseAutoSaveResult {
-  value: string
-  setValue: (value: string) => void
+  fieldValue: string
+  setFieldValue: (value: string) => void
   syncStatus: SyncStatus
   retry: () => void
 }
@@ -25,11 +25,14 @@ export interface UseAutoSaveResult {
 function useAutoSave(fieldName: FieldName): UseAutoSaveResult {
   const fieldQuery = useField(fieldName)
   const saveMutation = useSaveField(fieldName)
-  const setStatus = useSyncStatusStore((s) => s.setStatus)
+  const setSyncStatus = useSyncStatusStore((s) => s.setStatus)
   const syncStatus = useSyncStatusStore((s) => s.status[fieldName])
   const isVaultLocked = useCryptoStore((s) => s.isVaultLocked)
 
-  // Local draft: null means "use query data"
+  // Local draft for optimistic editing.
+  // - null: not editing → display server data (fieldQuery.data)
+  // - non-null: user is typing → display draft (overrides server data)
+  // Cleared on successful save, vault lock, or component unmount.
   const [draft, setDraft] = useState<string | null>(null)
 
   // Reset draft when vault locks
@@ -68,9 +71,9 @@ function useAutoSave(fieldName: FieldName): UseAutoSaveResult {
   // Reset stale "saved" status on mount
   useEffect(() => {
     if (useSyncStatusStore.getState().status[fieldName] === 'saved') {
-      setStatus(fieldName, 'idle')
+      setSyncStatus(fieldName, 'idle')
     }
-  }, [fieldName, setStatus])
+  }, [fieldName, setSyncStatus])
 
   // Cleanup timers on unmount
   useEffect(() => {
@@ -84,27 +87,27 @@ function useAutoSave(fieldName: FieldName): UseAutoSaveResult {
     (value: string) => {
       mutateRef.current(value, {
         onSuccess: () => {
-          setStatus(fieldName, 'saved')
+          setSyncStatus(fieldName, 'saved')
           if (savedTimerRef.current !== null) {
             clearTimeout(savedTimerRef.current)
           }
           savedTimerRef.current = setTimeout(() => {
             const current = useSyncStatusStore.getState().status[fieldName]
             if (current === 'saved') {
-              setStatus(fieldName, 'idle')
+              setSyncStatus(fieldName, 'idle')
             }
             savedTimerRef.current = null
           }, SAVED_DISPLAY_MS)
         },
         onError: () => {
-          setStatus(fieldName, 'error')
+          setSyncStatus(fieldName, 'error')
         },
       })
     },
-    [fieldName, setStatus],
+    [fieldName, setSyncStatus],
   )
 
-  const setValue = useCallback(
+  const setFieldValue = useCallback(
     (value: string) => {
       setDraft(value)
       latestValueRef.current = value
@@ -114,18 +117,18 @@ function useAutoSave(fieldName: FieldName): UseAutoSaveResult {
       }
 
       debounceTimerRef.current = setTimeout(() => {
-        setStatus(fieldName, 'saving')
+        setSyncStatus(fieldName, 'saving')
         triggerSave(value)
         debounceTimerRef.current = null
       }, DEBOUNCE_MS)
     },
-    [fieldName, setStatus, triggerSave],
+    [fieldName, setSyncStatus, triggerSave],
   )
 
   const retry = useCallback(() => {
     triggerSave(latestValueRef.current)
-    setStatus(fieldName, 'saving')
-  }, [fieldName, setStatus, triggerSave])
+    setSyncStatus(fieldName, 'saving')
+  }, [fieldName, setSyncStatus, triggerSave])
 
   // Auto-retry when the browser regains connectivity — listener is always
   // registered; the handler checks status imperatively to avoid add/remove churn.
@@ -139,12 +142,10 @@ function useAutoSave(fieldName: FieldName): UseAutoSaveResult {
     return () => window.removeEventListener('online', handleOnline)
   }, [fieldName, retry])
 
-  // Value resolution: draft takes priority while editing, otherwise query data.
-  // When vault is locked, return empty string (query cache is purged by lockVault).
-  // draft=null means "not yet edited" — falls through to fieldQuery.data.
-  const value = isVaultLocked ? '' : (draft ?? fieldQuery.data ?? '')
+  // FieldValue resolution: draft takes priority while editing, otherwise query data.
+  const fieldValue = isVaultLocked ? '' : (draft ?? fieldQuery.data ?? '')
 
-  return { value, setValue, syncStatus, retry }
+  return { fieldValue, setFieldValue, syncStatus, retry }
 }
 
 export { useAutoSave }
