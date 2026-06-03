@@ -9,19 +9,38 @@ const { mockUnlockVault } = vi.hoisted(() => ({
   mockUnlockVault: vi.fn(),
 }))
 
-vi.mock('@/app/flows/auth-flow', () => ({
+vi.mock('@/features/encryption/model/vault-unlock', () => ({
   unlockVault: mockUnlockVault,
 }))
 
+// Mock auth context — keep real AuthContext (needed by AuthProvider), mock useAuth
+vi.mock('@/shared/auth/auth-context', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/shared/auth/auth-context')>()
+  return {
+    ...actual,
+    useAuth: vi.fn(),
+  }
+})
+
 import { VaultUnlockDialog } from './VaultUnlockDialog'
+import { useAuth } from '@/shared/auth/auth-context'
 
 describe('VaultUnlockDialog', () => {
+  const mockUser = { id: 'user-1', username: 'testuser' }
+
   beforeEach(() => {
     vi.clearAllMocks()
     // Reset stores to clean state
     useCryptoStore.getState().clearVault()
     useCryptoStore.setState({ isVaultLocked: true })
     useVaultDialogStore.setState({ isUnlockDialogOpen: true })
+    vi.mocked(useAuth).mockReturnValue({
+      isAuthenticated: true,
+      user: mockUser,
+      isLoading: false,
+      isRestoringSession: false,
+      adapter: {} as import('@/shared/auth/auth.types').IAuthAdapter,
+    })
   })
 
   it('renders dialog when isUnlockDialogOpen is true', () => {
@@ -49,7 +68,7 @@ describe('VaultUnlockDialog', () => {
     await user.type(screen.getByLabelText(/password/i), 'my-password')
     await user.click(screen.getByRole('button', { name: /unlock/i }))
 
-    expect(mockUnlockVault).toHaveBeenCalledWith('my-password')
+    expect(mockUnlockVault).toHaveBeenCalledWith(mockUser.id, 'my-password')
   })
 
   it('shows loading spinner during unlock', async () => {

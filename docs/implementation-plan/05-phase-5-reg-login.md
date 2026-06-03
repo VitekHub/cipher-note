@@ -5,7 +5,7 @@
 **Goal:** Wire up the full registration flow: derive keys, wrap, store on server.
 
 **Code:**
-- `src/features/encryption/model/registration.ts`:
+- `src/features/auth/model/registration-crypto.ts`:
   - `deriveRegistrationKeys(password: string): Promise<RegistrationResult>` — pure crypto function with no side effects (no auth calls, no DB writes). The auth orchestration (signup, upload, store population) remains in the auth operations module.
     1. Generate salts (auth_salt, key_salt) via `generateSalt()` from `crypto-utils.ts`
     2. Derive auth credentials: auth_hash + password_key
@@ -25,7 +25,7 @@
 - `src/shared/crypto/crypto-utils.ts` (defined in Step 12):
   - `hexEncode` / `hexDecode` — used by registration flow to encode binary keys for Zustand storage and decode server hex strings for crypto operations
   - `zeroFill` — securely overwrite sensitive key material after use
-- `src/app/flows/auth-flow.ts`
+- `src/features/auth/model/auth-service.ts`
   - `signUpUser(username: string, password: string): Promise<string>` — orchestrates the full registration flow: derives keys, signs up via auth adapter, uploads registration data, populates crypto store with hex-encoded keys, returns mnemonic as a string. Sets auth store loading state. On upload failure after successful signup, attempts best-effort cleanup via `authAdapter.logout()`
   - `loginUser`, `logoutUser`, `restoreSession`, `subscribeToAuthChanges` — move from `features/auth/model/auth-credentials.ts` (and delete). These functions will be replaced by proper flow-level implementations in Steps 21–23.
 - Update `IAuthAdapter.signup` to remove `keySalt` parameter — salts are stored in the `keys` table by `supabase-registration.ts`, not in `user_metadata`
@@ -82,7 +82,7 @@
 - Login crypto module (pure function, no side effects):
   - `deriveLoginKeys(passwordKey, wrappedMasterKey, masterKeyIV, serverFieldKeys): Promise<LoginResult>` — takes already-derived passwordKey (avoids double Argon2id), unwraps master key, derives KEK, unwraps field keys. Hex-decodes server field key data internally.
   - `LoginResult` type: `{ masterKey, kek (CryptoKey), fieldKeys (Map) }` — no authHash (caller already has it)
-- Auth flow orchestration (in existing auth-flow module):
+- Auth flow orchestration (in existing auth-service module):
   - `loginUser(username, password)` — fetches salts via pre-auth RPC, derives credentials, authenticates, fetches key material, unwraps via `deriveLoginKeys`, populates crypto store with hex-encoded keys
   - `logoutUser` — calls `clearVault()` before resetting auth store
   - `subscribeToAuthChanges` — calls `clearVault()` when auth state becomes null (sign-out from another tab)
@@ -106,8 +106,8 @@
 - Unit: `unlockVault` with valid password populates crypto store
 - Unit: `unlockVault` without authenticated user throws
 - Unit: `getLoginSalts`, `getMasterKeyEnvelope`, `getFieldKeys` server data access
-- Unit: auth-flow `loginUser` calls correct sequence of operations
-- Unit: auth-flow `logoutUser` calls `lockVault()` before resetting store
+- Unit: `src/features/auth/model/auth-service.ts` `loginUser` calls correct sequence of operations
+- Unit: `src/features/auth/model/auth-service.ts` `logoutUser` calls `lockVault()` before resetting store
 
 ---
 
@@ -130,7 +130,7 @@
   - Auto-closes dialog and resets form when vault transitions from locked → unlocked (uses `wasLockedRef` + `useEffect` watching `isVaultLocked`)
 - `crypto-error-messages.ts` — maps crypto error types to i18n keys for vault unlock error display
 - Sidebar/MobileNav lock button — calls `lockVault()` when vault is unlocked; unlock button calls `openUnlockDialog()` from `vault-dialog-store` (VaultUnlockDialog handles the actual unlock)
-- `vault-timeout.ts` (`useVaultTimeout` hook):
+- `use-vault-timeout.ts` (`useVaultTimeout` hook):
   - Default 15-minute timeout (exported as `DEFAULT_VAULT_TIMEOUT_MS`)
   - Resets timer on user activity: `mousemove`, `keydown`, `mousedown`, `touchstart`, `scroll`
   - Does not start timer when vault is already locked
@@ -159,13 +159,13 @@
 **Code:**
 - Replace hex-encoded keys in crypto store (`masterKey`, `kek`, `fieldKeys`) with a `KeyVault` class (`key-vault.ts`) that stores non-extractable `CryptoKey` objects in a module-scoped `Map`. Crypto store now only tracks `loadedFieldKeys: Record<string, boolean>` (which field names are loaded, not the actual key bytes). Remove `selectFieldKey` — consumers call `keyVault.getKey(id)` instead
 - `KeyVault.storeFieldKeys(kek, fieldKeys)` stores KEK + field CryptoKeys and calls `setKeys(fieldKeyNames)` on the Zustand store. `keyVault.lockVault()` clears the Map and sets `isVaultLocked`; `keyVault.clearVault()` additionally purges the cached envelope and query cache
-- Move `unlockVault()` from `vault-lock.ts` into `auth-flow.ts`, inlining the derivation steps into focused helpers (`fetchFreshEnvelope`, `deriveKekFromEnvelope`, `storeFieldKeys`). Zero-fill all intermediate key material (`passwordKey`, `masterKey`, `kekBytes`) after use. On stale-cache `DecryptionError`, clear the vault and retry from server
-- Delete `vault-lock.ts` and `login.ts` — their logic absorbed by `key-vault.ts` and `auth-flow.ts`. Update all callers (`Sidebar`, `MobileNav`, `VaultUnlockDialog`, `vault-timeout`) to use `keyVault.lockVault()` instead of the removed `lockVault()` function
+- Move `unlockVault()` from `vault-lock.ts` into `src/features/auth/model/auth-service.ts`, inlining the derivation steps into focused helpers (`fetchFreshEnvelope`, `deriveKekFromEnvelope`, `storeFieldKeys`). Zero-fill all intermediate key material (`passwordKey`, `masterKey`, `kekBytes`) after use. On stale-cache `DecryptionError`, clear the vault and retry from server
+- Delete `vault-lock.ts` and `login.ts` — their logic absorbed by `key-vault.ts` and `src/features/auth/model/auth-service.ts`. Update all callers (`Sidebar`, `MobileNav`, `VaultUnlockDialog`, `use-vault-timeout`) to use `keyVault.lockVault()` instead of the removed `lockVault()` function
 - `generateFieldKeys()` now returns `{ rawFieldKeys, cryptoFieldKeys }` — raw bytes for wrapping, `CryptoKey` objects for encryption. `deriveFullKeyHierarchy` imports KEK as non-extractable (`extractable: false`). `unwrapFieldKeys` accepts `ServerFieldKey[]` directly and returns `Map<string, CryptoKey>`. `RegistrationResult` uses `CryptoKey` types for `kek` and `fieldKeys`; `masterKey` removed from the return type
 - Simplify `split-kdf.ts`: remove `deriveLoginCredentials` and `LoginCredentials` type; `changePassword` reuses `deriveAuthCredentials` instead of a separate derivation path. `deriveAuthCredentials` returns `authHash` + `passwordKey` directly (login no longer needs both salts in one call since `authHash` is derived first, then `passwordKey` separately from the envelope's `keySalt`)
 - Rename API fetchers: `getLoginSalts` → `fetchLoginSalts`, `getMasterKeyEnvelope` → `fetchMasterKeyEnvelope`, `getFieldKeys` → `fetchFieldKeys` (consistent verb convention). Update `IApiAdapter` interface accordingly
 - Extend `zeroFill` in `crypto-utils.ts` to accept `Iterable<Uint8Array>` so you can zero-fill `rawFieldKeys.values()` in one call. Extract `HKDF_ALGORITHM` constant in `hkdf.ts` for DRY
-- `clearVault()` in crypto store no longer calls `terminateWorker()` — worker termination moved to `logoutCleanup()` in `auth-flow.ts` alongside `keyVault.clearVault()` and `store.reset()`
+- `clearVault()` in crypto store no longer calls `terminateWorker()` — worker termination moved to `logoutCleanup()` in `src/features/auth/model/auth-service.ts` alongside `keyVault.clearVault()` and `store.reset()`
 - Verify `devtools` middleware is not in auth store or crypto store (secrets must not appear in browser DevTools). Verify no crypto keys appear in localStorage, sessionStorage, or IndexedDB. Verify `setQueryClient(client)` is wired in app providers
 
 **Tests:**

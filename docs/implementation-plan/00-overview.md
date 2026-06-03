@@ -65,8 +65,6 @@ cipher-note-react/
   src/
     app/
       Providers.tsx            # QueryClientProvider, i18n, AuthProvider
-      flows/
-        auth-flow.ts            # Orchestrate: signup, login, logout, session restore, unlock vault
       router.tsx               # TanStack Router route tree
       ErrorBoundary.tsx       # Root error boundary with crypto error handling
       styles/
@@ -95,9 +93,12 @@ cipher-note-react/
         ui/
           AuthLayout.tsx       # Shared layout for auth pages
           AuthProvider.tsx     # Wires auth store into AuthContext (depends on features, so not in shared/)
+          LoginPage.tsx        # Login page with password input
+          RegisterPage.tsx     # Registration page with mnemonic display
           MnemonicDialog.tsx   # Seed phrase display
           MnemonicInput.tsx    # 12-word input with BIP-39 validation
           PasswordStrength.tsx # Password strength indicator
+          UsernameAvailability.tsx  # Real-time username availability check
         lib/
           RequireAuth.tsx      # Redirect to /login if not authenticated
           GuestOnly.tsx        # Redirect to /dashboard if authenticated
@@ -105,8 +106,11 @@ cipher-note-react/
         model/
           field-crypto.ts      # encrypt/decrypt field content
           field-service.ts     # load/save fields via API
-          auto-save.ts         # Debounced auto-save with optimistic updates
-          sync-status.ts       # Zustand: per-field sync status
+          use-field-editor.ts  # Local draft + debounce logic
+          use-save-scheduler.ts  # Debounced save with refs
+          use-field-query.ts   # TanStack Query hook for field content
+          use-field-mutation.ts  # TanStack Query mutation for saves
+          sync-status-store.ts # Zustand: per-field sync status
         ui/
           FieldCard.tsx        # Locked/unlocked field display
           NoteField.tsx        # Textarea for note content
@@ -114,19 +118,25 @@ cipher-note-react/
           EmailField.tsx       # Input for email address
           SaveIndicator.tsx    # "Saving..." / "Saved" / "Error"
           ConflictNotification.tsx
+          DashboardPage.tsx    # Main dashboard with all three fields
       encryption/
         model/
-          vault-timeout.ts     # Auto-lock after inactivity
-          key-rotation.ts      # Rotate individual field keys
-          multi-device.ts      # Handle key changes from other sessions
-          registration.ts      # Pure crypto: deriveRegistrationKeys
-          encryption-facade.ts # Thin public API for other features to call
+          key-rotation.ts          # Rotate individual field keys
+          multi-device.ts          # Handle key changes from other sessions
+          encryption-facade.ts     # Thin public API for other features to call
+          use-vault-timeout.ts     # Auto-lock after inactivity (15-min idle timer)
+          vault-unlock.ts          # Vault unlock crypto flow
+          crypto-error-messages.ts # Maps crypto errors to i18n keys
+          registration-crypto.ts   # Pure crypto: deriveRegistrationKeys
         ui/
           VaultUnlockDialog.tsx
           VaultIndicator.tsx
       settings/
+        model/
+          ui-store.ts          # Zustand: settings UI state (expanded sections)
         ui/
           SecuritySection.tsx  # Change password, seed phrase, key versions
+          SettingsPage.tsx     # Settings page shell
           PreferencesSection.tsx  # Language switcher
           AccountSection.tsx   # Username, delete account
           ChangePasswordDialog.tsx
@@ -150,6 +160,12 @@ cipher-note-react/
         dialog.tsx
         sonner.tsx
         # etc. — each shadcn component in its own file, imported directly
+      lib/
+        network-errors.ts      # isNetworkError helper (shared by auth + api adapters)
+        utils.ts               # cn() utility for conditional classes
+        theme-provider.tsx     # NextThemes provider wrapper
+        use-debounced-value.ts # Debounce hook for search inputs
+        use-resizable.ts       # Resizable panel hook for sidebar
       crypto/
         aes-gcm.ts            # AES-256-GCM encrypt/decrypt/importKey/exportKey
         argon2id.ts           # Argon2id derivation via argon2-browser bundled build (lazy-loaded)
@@ -158,7 +174,8 @@ cipher-note-react/
         split-kdf.ts          # Split KDF (auth + key derivation from password)
         mnemonic.ts           # BIP-39 generate/validate/wrap/unwrap (lazy-loaded)
         crypto-utils.ts       # hexEncode, hexDecode, generateIV, generateSalt, generateKey, encodeAAD, zeroFill, copyToUint8Array
-        key-vault.ts          # Module-scoped CryptoKey vault (non-extractable keys)
+        key-vault.ts          # Module-scoped Map for non-extractable CryptoKey objects
+        key-vault-service.ts  # KeyVault class: storeFieldKeys, getKey, lockVault, clearVault
         crypto-store.ts       # Zustand: loadedFieldKeys, isVaultLocked (memory only, no devtools)
         vault-dialog-store.ts # Zustand: vault unlock dialog state (open/close)
       api/
@@ -175,33 +192,33 @@ cipher-note-react/
         supabase-adapter.ts   # Supabase Auth implementation
         auth-context.tsx       # React context + useAuth hook (AuthProvider is in features/auth/)
         username-utils.ts     # toSupabaseEmail, fromSupabaseEmail
+        password-utils.ts     # Password strength validation
         # future: custom-jwt-adapter.ts, opaque-adapter.ts
       realtime/
         realtime.types.ts     # IRealtimeAdapter interface
         supabase-realtime.ts  # Supabase Realtime implementation
         # future: ws-realtime.ts
       i18n/
-        config.ts             # i18next init + language detector + http backend
-        locales/
-          en/
-            common.json
-            auth.json
-            fields.json
-            settings.json
-            crypto.json
-          cs/
-            common.json
-            auth.json
-            fields.json
-            settings.json
-            crypto.json
+        config.ts             # i18next initialization + resource bundles
+        locales/en/           # English translations (auth, crypto, landing)
+        locales/cs/           # Czech translations (auth, crypto, landing)
       types/
-        crypto.types.ts       # AesGcmOptions, RecoveryWrapOptions, WrappedFieldKey, EncryptedField, etc.
-        api.types.ts          # ServerKeys, ServerFieldKey, etc.
-        entities/
-          user.types.ts       # User entity types
-          field.types.ts      # Field entity types
-          key.types.ts        # Key entity types
+        api.types.ts          # IApiAdapter interface, ApiError types
+        crypto.types.ts       # Crypto primitives, KeyHierarchy, WrappedFieldKey
+        entities/             # Typed entities: field, key, user
+      test/
+        setup.ts              # Vitest setup: store resets, mocks
+        utils.tsx             # Custom render with ThemeProvider wrapper
+        supabase-mock.ts      # Supabase client mocks
+    features/
+      landing/
+        ui/
+          LandingPage.tsx     # Landing page shell
+          HeroSection.tsx     # Hero with headline + CTA
+          FeaturesGrid.tsx    # Feature cards
+          HowItWorks.tsx      # Step-by-step explainer
+          SecurityBanner.tsx  # "No credit card" banner
+          CtaButtons.tsx      # Primary/secondary CTA buttons
     e2e/
       auth.spec.ts
       fields.spec.ts

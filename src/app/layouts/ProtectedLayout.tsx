@@ -11,8 +11,8 @@ import { VaultIndicator } from '@/features/encryption/ui/VaultIndicator'
 import { VaultUnlockDialog } from '@/features/encryption/ui/VaultUnlockDialog'
 import { useUiStore } from '@/features/settings/model/ui-store'
 import { useResizable } from '@/shared/lib/use-resizable'
-import { useVaultTimeout } from '@/features/encryption/model/vault-timeout'
-import { logoutUser } from '@/app/flows/auth-flow'
+import { useVaultTimeout } from '@/features/encryption/model/use-vault-timeout'
+import { logoutUser } from '@/features/auth/model/auth-service'
 
 function ProtectedLayout() {
   const { t } = useTranslation('common')
