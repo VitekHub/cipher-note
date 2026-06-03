@@ -30,14 +30,21 @@ function useFieldEditor(fieldName: FieldName): UseFieldEditorResult {
   // Local draft for optimistic editing.
   // - null: not editing → display server data (fieldQuery.data)
   // - non-null: user is typing → display draft (overrides server data)
-  // Cleared on successful save, vault lock, or component unmount.
+  // Cleared on successful save or vault lock.
   const [draft, setDraft] = useState<string | null>(null)
 
-  // Reset draft when vault locks (synchronous render-phase update)
+  // Clear draft when vault locks or save succeeds (derive resets during render)
   const [prevIsVaultLocked, setPrevIsVaultLocked] = useState(isVaultLocked)
+  const [prevSyncStatus, setPrevSyncStatus] = useState(syncStatus)
   if (isVaultLocked !== prevIsVaultLocked) {
     setPrevIsVaultLocked(isVaultLocked)
     if (isVaultLocked) {
+      setDraft(null)
+    }
+  }
+  if (syncStatus !== prevSyncStatus) {
+    setPrevSyncStatus(syncStatus)
+    if (syncStatus === 'saved') {
       setDraft(null)
     }
   }

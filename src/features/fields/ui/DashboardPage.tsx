@@ -13,7 +13,7 @@ import { SaveIndicator } from '@/features/fields/ui/SaveIndicator'
 import { FIELD_NAMES } from '@/shared/types/entities/field.types'
 import type { FieldName } from '@/shared/types/entities/field.types'
 
-function FieldEditorWrapper({ fieldName }: { fieldName: FieldName }) {
+function FieldEditorWrapper({ fieldName, entranceIndex }: { fieldName: FieldName; entranceIndex: number }) {
   const isVaultLocked = useCryptoStore((s) => s.isVaultLocked)
   const openUnlockDialog = useVaultDialogStore((s) => s.openUnlockDialog)
   const { fieldValue, saveFieldValue, fieldSyncStatus, retrySave } = useFieldEditor(fieldName)
@@ -23,6 +23,7 @@ function FieldEditorWrapper({ fieldName }: { fieldName: FieldName }) {
       fieldName={fieldName}
       isLocked={isVaultLocked}
       onUnlock={isVaultLocked ? openUnlockDialog : undefined}
+      entranceIndex={entranceIndex}
       statusIndicator={
         <SaveIndicator status={fieldSyncStatus} onRetry={fieldSyncStatus === 'error' ? retrySave : undefined} />
       }
@@ -57,8 +58,8 @@ function DashboardPage() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-balance">{t('nav.dashboard')}</h1>
       <div className="grid gap-4 *:min-w-0 sm:grid-cols-2 lg:grid-cols-3">
-        {FIELD_NAMES.map((fieldName) => (
-          <FieldEditorWrapper key={fieldName} fieldName={fieldName} />
+        {FIELD_NAMES.map((fieldName, index) => (
+          <FieldEditorWrapper key={fieldName} fieldName={fieldName} entranceIndex={index} />
         ))}
       </div>
     </div>
