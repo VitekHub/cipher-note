@@ -53,8 +53,8 @@
     - `loadAllFields(): Promise<Record<string, string | null>>` — load all three fields in parallel
   - Gets user ID from auth store, gets CryptoKey from KeyVault (no separate hook needed)
 - Wire into TanStack Query hooks:
-  - `useField(fieldName)` — query + cache decrypted field content, disabled while vault locked or field key not loaded
-  - `useSaveField(fieldName)` — mutation for saving field content, invalidates field query on success
+  - `useFieldQuery(fieldName)` — query + cache decrypted field content, disabled while vault locked or field key not loaded
+  - `useFieldMutation(fieldName)` — mutation for saving field content, invalidates field query on success
 - `src/shared/types/entities/field.types.ts`:
   - `FieldName` type (`'note' | 'website' | 'email'`), `FIELD_NAMES` canonical list
   - `EncryptedField` and `DecryptedField` interfaces for server/client representations

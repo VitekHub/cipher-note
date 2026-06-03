@@ -1,18 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, act } from '@/test/utils'
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
-import { useSyncStatusStore } from '@/features/fields/model/sync-status'
+import { useSyncStatusStore } from '@/features/fields/model/sync-status-store'
 
 import { DashboardPage } from './DashboardPage'
 
-// Mock useAutoSave to avoid needing full TanStack Query + auth setup
-vi.mock('@/features/fields/model/auto-save', () => {
+// Mock useFieldEditor to avoid needing full TanStack Query + auth setup
+vi.mock('@/features/fields/model/use-field-editor', () => {
   return {
-    useAutoSave: (fieldName: string) => ({
-      value: `mock-${fieldName}-value`,
-      setValue: vi.fn(),
-      syncStatus: 'idle' as const,
-      retry: vi.fn(),
+    useFieldEditor: (fieldName: string) => ({
+      fieldValue: `mock-${fieldName}-value`,
+      saveFieldValue: vi.fn(),
+      fieldSyncStatus: 'idle' as const,
+      retrySave: vi.fn(),
     }),
   }
 })

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { useSyncStatusStore } from '@/features/fields/model/sync-status'
+import { useSyncStatusStore } from '@/features/fields/model/sync-status-store'
 import { FIELD_NAMES } from '@/shared/types/entities/field.types'
 
 describe('useSyncStatusStore', () => {

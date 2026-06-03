@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next'
 
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
 import { useVaultDialogStore } from '@/shared/crypto/vault-dialog-store'
-import { useSyncStatusStore } from '@/features/fields/model/sync-status'
-import { useAutoSave } from '@/features/fields/model/auto-save'
+import { useSyncStatusStore } from '@/features/fields/model/sync-status-store'
+import { useFieldEditor } from '@/features/fields/model/use-field-editor'
 import { FieldCard } from '@/features/fields/ui/FieldCard'
 import { NoteField } from '@/features/fields/ui/NoteField'
 import { WebsiteField } from '@/features/fields/ui/WebsiteField'
@@ -16,23 +16,25 @@ import type { FieldName } from '@/shared/types/entities/field.types'
 function FieldEditorWrapper({ fieldName }: { fieldName: FieldName }) {
   const isVaultLocked = useCryptoStore((s) => s.isVaultLocked)
   const openUnlockDialog = useVaultDialogStore((s) => s.openUnlockDialog)
-  const { fieldValue, setFieldValue, syncStatus, retry } = useAutoSave(fieldName)
+  const { fieldValue, saveFieldValue, fieldSyncStatus, retrySave } = useFieldEditor(fieldName)
 
   return (
     <FieldCard
       fieldName={fieldName}
       isLocked={isVaultLocked}
       onUnlock={isVaultLocked ? openUnlockDialog : undefined}
-      statusIndicator={<SaveIndicator status={syncStatus} onRetry={syncStatus === 'error' ? retry : undefined} />}
+      statusIndicator={
+        <SaveIndicator status={fieldSyncStatus} onRetry={fieldSyncStatus === 'error' ? retrySave : undefined} />
+      }
     >
       {() => {
         switch (fieldName) {
           case 'note':
-            return <NoteField value={fieldValue} onChange={setFieldValue} />
+            return <NoteField value={fieldValue} onChange={saveFieldValue} />
           case 'website':
-            return <WebsiteField value={fieldValue} onChange={setFieldValue} />
+            return <WebsiteField value={fieldValue} onChange={saveFieldValue} />
           case 'email':
-            return <EmailField value={fieldValue} onChange={setFieldValue} />
+            return <EmailField value={fieldValue} onChange={saveFieldValue} />
         }
       }}
     </FieldCard>

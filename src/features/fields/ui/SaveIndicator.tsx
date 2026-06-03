@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { Loader2, Check, AlertCircle } from 'lucide-react'
-import type { SyncStatus } from '@/features/fields/model/sync-status'
+import type { SyncStatus } from '@/features/fields/model/sync-status-store'
 import { cn } from '@/shared/lib/utils'
 
 // Static keys so i18next-parser can discover them

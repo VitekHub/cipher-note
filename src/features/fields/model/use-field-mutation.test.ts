@@ -23,7 +23,7 @@ vi.mock('@/shared/auth/auth-context', () => ({
 
 // --- Import after mocks ---
 
-import { useSaveField } from '@/features/fields/model/use-save-field'
+import { useFieldMutation } from '@/features/fields/model/use-field-mutation'
 
 function createQueryClient() {
   return new QueryClient({
@@ -40,7 +40,7 @@ function wrapper({ children }: { children: ReactNode }) {
   return createElement(QueryClientProvider, { client: queryClient }, children)
 }
 
-describe('useSaveField', () => {
+describe('useFieldMutation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockSaveField.mockResolvedValue(undefined)
@@ -48,7 +48,7 @@ describe('useSaveField', () => {
   })
 
   it('calls fieldService.saveField with userId, field name and plaintext on mutate', async () => {
-    const { result } = renderHook(() => useSaveField('note'), { wrapper })
+    const { result } = renderHook(() => useFieldMutation('note'), { wrapper })
 
     result.current.mutate('My note content')
 
@@ -66,7 +66,7 @@ describe('useSaveField', () => {
     const localWrapper = ({ children }: { children: ReactNode }) =>
       createElement(QueryClientProvider, { client: queryClient }, children)
 
-    const { result } = renderHook(() => useSaveField('note'), { wrapper: localWrapper })
+    const { result } = renderHook(() => useFieldMutation('note'), { wrapper: localWrapper })
 
     result.current.mutate('new content')
 
@@ -85,7 +85,7 @@ describe('useSaveField', () => {
     const localWrapper = ({ children }: { children: ReactNode }) =>
       createElement(QueryClientProvider, { client: queryClient }, children)
 
-    const { result } = renderHook(() => useSaveField('note'), { wrapper: localWrapper })
+    const { result } = renderHook(() => useFieldMutation('note'), { wrapper: localWrapper })
 
     result.current.mutate('new content')
 
@@ -103,7 +103,7 @@ describe('useSaveField', () => {
     const localWrapper = ({ children }: { children: ReactNode }) =>
       createElement(QueryClientProvider, { client: queryClient }, children)
 
-    const { result } = renderHook(() => useSaveField('note'), { wrapper: localWrapper })
+    const { result } = renderHook(() => useFieldMutation('note'), { wrapper: localWrapper })
 
     result.current.mutate('My note content')
 
@@ -116,7 +116,7 @@ describe('useSaveField', () => {
   it('sets error state when saveField throws', async () => {
     mockSaveField.mockRejectedValue(new Error('Save failed'))
 
-    const { result } = renderHook(() => useSaveField('note'), { wrapper })
+    const { result } = renderHook(() => useFieldMutation('note'), { wrapper })
 
     result.current.mutate('test')
 
@@ -130,13 +130,13 @@ describe('useSaveField', () => {
   it('throws when userId is empty (no authenticated user)', async () => {
     mockUseAuth.mockReturnValue({ user: null })
 
-    const { result } = renderHook(() => useSaveField('note'), { wrapper })
+    const { result } = renderHook(() => useFieldMutation('note'), { wrapper })
 
     result.current.mutate('test')
 
     await waitFor(() => {
       expect(result.current.isError).toBe(true)
     })
-    expect(result.current.error?.message).toBe('useSaveField requires an authenticated user')
+    expect(result.current.error?.message).toBe('useFieldMutation requires an authenticated user')
   })
 })

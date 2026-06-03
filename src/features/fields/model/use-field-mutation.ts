@@ -9,7 +9,7 @@ import type { FieldName } from '@/shared/types/entities/field.types'
  * Optimistically updates the cache so the user sees their change immediately,
  * then confirms with the server. Rolls back on error.
  */
-export function useSaveField(fieldName: FieldName) {
+export function useFieldMutation(fieldName: FieldName) {
   const queryClient = useQueryClient()
   const userId = useAuth().user?.id ?? ''
   const queryKey = ['field', fieldName] as const
@@ -17,7 +17,7 @@ export function useSaveField(fieldName: FieldName) {
   return useMutation({
     networkMode: 'offlineFirst', // run mutation even when offline, so errors surface immediately
     mutationFn: (plaintext: string) => {
-      if (!userId) throw new Error('useSaveField requires an authenticated user')
+      if (!userId) throw new Error('useFieldMutation requires an authenticated user')
       return fieldService.saveField(userId, fieldName, plaintext)
     },
     onMutate: async (plaintext) => {
