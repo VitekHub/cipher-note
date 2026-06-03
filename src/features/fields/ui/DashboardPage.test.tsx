@@ -1,10 +1,31 @@
-import { describe, it, expect } from 'vitest'
-import { render, screen } from '@/test/utils'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, act } from '@/test/utils'
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
+import { useSyncStatusStore } from '@/features/fields/model/sync-status-store'
 
 import { DashboardPage } from './DashboardPage'
 
+// Mock useFieldEditor to avoid needing full TanStack Query + auth setup
+vi.mock('@/features/fields/model/use-field-editor', () => {
+  return {
+    useFieldEditor: (fieldName: string) => ({
+      fieldValue: `mock-${fieldName}-value`,
+      saveFieldValue: vi.fn(),
+      fieldSyncStatus: 'idle' as const,
+      retrySave: vi.fn(),
+    }),
+  }
+})
+
 describe('DashboardPage', () => {
+  beforeEach(() => {
+    useCryptoStore.setState({
+      isVaultLocked: false,
+      loadedFieldKeys: { note: true, website: true, email: true },
+    })
+    useSyncStatusStore.getState().resetAll()
+  })
+
   it('renders all three field cards', () => {
     render(<DashboardPage />)
     expect(screen.getByText('Note')).toBeInTheDocument()
@@ -13,14 +34,13 @@ describe('DashboardPage', () => {
   })
 
   it('shows locked state for all fields when vault is locked', () => {
-    useCryptoStore.setState({ isVaultLocked: true })
+    useCryptoStore.setState({ isVaultLocked: true, loadedFieldKeys: {} })
     render(<DashboardPage />)
     const lockedMessages = screen.getAllByText('Unlock vault to view')
     expect(lockedMessages).toHaveLength(3)
   })
 
   it('shows field editors when vault is unlocked', () => {
-    useCryptoStore.setState({ isVaultLocked: false })
     render(<DashboardPage />)
     expect(screen.getByPlaceholderText('Write your note...')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Enter website URL')).toBeInTheDocument()
@@ -30,5 +50,23 @@ describe('DashboardPage', () => {
   it('renders dashboard heading', () => {
     render(<DashboardPage />)
     expect(screen.getByText('Dashboard')).toBeInTheDocument()
+  })
+
+  it('resets sync status when vault locks', () => {
+    useSyncStatusStore.getState().setStatus('note', 'saving')
+    useSyncStatusStore.getState().setStatus('website', 'saved')
+
+    render(<DashboardPage />)
+
+    // Lock vault — this triggers the useEffect
+    act(() => {
+      useCryptoStore.setState({ isVaultLocked: true, loadedFieldKeys: {} })
+    })
+
+    // Sync status should be reset by the useEffect
+    const { status } = useSyncStatusStore.getState()
+    expect(status.note).toBe('idle')
+    expect(status.website).toBe('idle')
+    expect(status.email).toBe('idle')
   })
 })

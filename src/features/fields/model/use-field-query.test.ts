@@ -21,7 +21,7 @@ vi.mock('@/shared/auth/auth-context', () => ({
 
 // --- Import after mocks ---
 
-import { useField } from '@/features/fields/model/use-field'
+import { useFieldQuery } from '@/features/fields/model/use-field-query'
 
 const testQueryClient = new QueryClient({
   defaultOptions: {
@@ -40,7 +40,7 @@ afterEach(() => {
   testQueryClient.clear()
 })
 
-describe('useField', () => {
+describe('useFieldQuery', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     // Default: authenticated user, vault unlocked with keys loaded
@@ -57,7 +57,7 @@ describe('useField', () => {
   it('fetches and returns decrypted field content when vault is unlocked', async () => {
     mockLoadField.mockResolvedValue('My note content')
 
-    const { result } = renderHook(() => useField('note'), { wrapper })
+    const { result } = renderHook(() => useFieldQuery('note'), { wrapper })
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true)
@@ -69,7 +69,7 @@ describe('useField', () => {
   it('returns null when field has never been saved', async () => {
     mockLoadField.mockResolvedValue(null)
 
-    const { result } = renderHook(() => useField('note'), { wrapper })
+    const { result } = renderHook(() => useFieldQuery('note'), { wrapper })
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true)
@@ -80,7 +80,7 @@ describe('useField', () => {
   it('is disabled when userId is empty (no authenticated user)', () => {
     mockUseAuth.mockReturnValue({ user: null })
 
-    const { result } = renderHook(() => useField('note'), { wrapper })
+    const { result } = renderHook(() => useFieldQuery('note'), { wrapper })
     expect(result.current.fetchStatus).toBe('idle')
     expect(mockLoadField).not.toHaveBeenCalled()
   })
@@ -88,7 +88,7 @@ describe('useField', () => {
   it('is disabled when vault is locked', () => {
     useCryptoStore.setState({ isVaultLocked: true, loadedFieldKeys: {} })
 
-    const { result } = renderHook(() => useField('note'), { wrapper })
+    const { result } = renderHook(() => useFieldQuery('note'), { wrapper })
     expect(result.current.fetchStatus).toBe('idle')
     expect(mockLoadField).not.toHaveBeenCalled()
   })
@@ -96,7 +96,7 @@ describe('useField', () => {
   it('is disabled when field key is not loaded', () => {
     useCryptoStore.setState({ loadedFieldKeys: {} })
 
-    const { result } = renderHook(() => useField('note'), { wrapper })
+    const { result } = renderHook(() => useFieldQuery('note'), { wrapper })
     expect(result.current.fetchStatus).toBe('idle')
     expect(mockLoadField).not.toHaveBeenCalled()
   })
@@ -104,7 +104,7 @@ describe('useField', () => {
   it('is enabled when vault is unlocked and field key is loaded', async () => {
     mockLoadField.mockResolvedValue('hello')
 
-    const { result } = renderHook(() => useField('note'), { wrapper })
+    const { result } = renderHook(() => useFieldQuery('note'), { wrapper })
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true)
@@ -116,7 +116,7 @@ describe('useField', () => {
     const { DecryptionError } = await import('@/shared/crypto/errors')
     mockLoadField.mockRejectedValue(new DecryptionError('Decryption failed'))
 
-    const { result } = renderHook(() => useField('note'), { wrapper })
+    const { result } = renderHook(() => useFieldQuery('note'), { wrapper })
 
     await waitFor(() => {
       expect(result.current.isError).toBe(true)
@@ -128,7 +128,7 @@ describe('useField', () => {
   it('retries on non-crypto errors before failing', async () => {
     mockLoadField.mockRejectedValue(new Error('Network error'))
 
-    const { result } = renderHook(() => useField('note'), { wrapper })
+    const { result } = renderHook(() => useFieldQuery('note'), { wrapper })
 
     // Allow time for retries with backoff (1s + 2s = ~3s total)
     await waitFor(

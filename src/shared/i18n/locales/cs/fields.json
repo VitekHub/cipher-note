@@ -17,5 +17,11 @@
     "locked": "Odemkněte trezor pro zobrazení",
     "unlock": "Odemknout"
   },
-  "lastUpdated": "Poslední aktualizace: {{date}}"
+  "lastUpdated": "Poslední aktualizace: {{date}}",
+  "status": {
+    "saving": "Ukládání...",
+    "saved": "Uloženo",
+    "error": "Uložení selhalo",
+    "retry": "Zkusit znovu"
+  }
 }

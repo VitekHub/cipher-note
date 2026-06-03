@@ -17,7 +17,7 @@ function VaultIndicator() {
         onClick={openUnlockDialog}
         className={cn(
           'flex items-center gap-1.5 text-sm transition-colors duration-300',
-          'text-muted-foreground hover:text-foreground',
+          'text-muted-foreground hover:text-foreground cursor-pointer',
         )}
         aria-label={t('vault.unlock')}
       >

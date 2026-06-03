@@ -53,8 +53,8 @@
     - `loadAllFields(): Promise<Record<string, string | null>>` — load all three fields in parallel
   - Gets user ID from auth store, gets CryptoKey from KeyVault (no separate hook needed)
 - Wire into TanStack Query hooks:
-  - `useField(fieldName)` — query + cache decrypted field content, disabled while vault locked or field key not loaded
-  - `useSaveField(fieldName)` — mutation for saving field content, invalidates field query on success
+  - `useFieldQuery(fieldName)` — query + cache decrypted field content, disabled while vault locked or field key not loaded
+  - `useFieldMutation(fieldName)` — mutation for saving field content, invalidates field query on success
 - `src/shared/types/entities/field.types.ts`:
   - `FieldName` type (`'note' | 'website' | 'email'`), `FIELD_NAMES` canonical list
   - `EncryptedField` and `DecryptedField` interfaces for server/client representations
@@ -70,24 +70,24 @@
 
 ---
 
-## Step 26 — Auto-Save + Sync Flow
+## Step 26 — Auto-Save + Sync Flow ✅
 
-**Goal:** Auto-save encrypted fields with debounce and optimistic updates.
+**Goal:** Auto-save encrypted fields with debounce and local draft pattern.
 
 **Code:**
-- `src/features/fields/model/auto-save.ts`:
-  - Debounced auto-save: 1-second debounce after user stops typing, using a proper debounce utility (not raw `setTimeout`). Consider `useDebouncedCallback` from `usehooks-ts` or a custom hook that cancels on unmount.
-  - Optimistic update: update TanStack Query cache immediately, send to server in background
-  - Revert on error: roll back TanStack Query cache if save fails
-  - Save status indicator: "Saving...", "Saved", "Error — retry?"
-- `src/features/fields/ui/SaveIndicator.tsx` — shows save status next to each field
-- `src/features/fields/model/sync-status.ts` — Zustand store for sync status per field
-- Handle concurrent edits: last-write-wins with version check
+- Auto-save hook:
+  - Debounced save: 1-second debounce after user stops typing, using `setTimeout` with refs to avoid stale closures (ref to latest mutation function, ref to latest value). Clear timeouts on unmount and on vault lock.
+  - Local draft pattern: instead of mutating the TanStack Query cache, maintain a local `draft` state that takes priority over query data while the user is editing. When not editing, fall back to query data. This avoids cache-invalidation race conditions in text editors.
+  - Preserve draft on error: on save failure, keep the draft content and set sync status to `error`. Provide a `retry()` function that re-submits the latest draft immediately (no debounce). Do not roll back to stale server data.
+  - "Saved" auto-dismiss: transition from `saved` → `idle` after 3 seconds so the check mark doesn't persist forever.
+  - Vault lock handling: clear debounce/saved timers and reset editing state on vault lock; return empty string as value since query cache is purged.
+- Save indicator component — renders nothing for `idle`, spinner + "Saving..." for `saving`, check + "Saved" for `saved`, error icon + "Save failed" + "Retry" button for `error`. Uses static i18n key map so i18next-parser can discover the strings.
+- Sync status Zustand store — `Record<FieldName, SyncStatus>` with `setStatus`, `resetField`, `resetAll` actions. Uses devtools middleware. `SyncStatus` type: `'idle' | 'saving' | 'saved' | 'error'`.
 
 **Tests:**
-- Unit: debounce doesn't trigger on rapid keystrokes
-- Unit: optimistic update shows saved content immediately
-- Unit: error reverts to previous content
-- Component test: SaveIndicator shows correct states
-- Integration: type content → auto-save → verify saved in Supabase
-- Integration: type content → network error → retry → success
+- Unit: debounce cancels earlier timers — rapid `setValue` calls trigger only one save
+- Unit: local draft updates immediately on `setValue` (optimistic display)
+- Unit: error preserves draft content and sets status to `error`; `retry` resubmits without debounce
+- Unit: vault lock resets editing state and clears timers
+- Component test: SaveIndicator renders correct UI for each status, including retry button
+- Unit: sync status store transitions through full lifecycle and resets
