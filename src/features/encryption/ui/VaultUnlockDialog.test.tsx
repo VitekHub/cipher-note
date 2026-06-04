@@ -9,8 +9,10 @@ const { mockUnlockVault } = vi.hoisted(() => ({
   mockUnlockVault: vi.fn(),
 }))
 
-vi.mock('@/features/encryption/model/vault-unlock', () => ({
-  unlockVault: mockUnlockVault,
+vi.mock('@/shared/crypto/key-vault', () => ({
+  keyVault: {
+    unlockVault: mockUnlockVault,
+  },
 }))
 
 // Mock auth context — keep real AuthContext (needed by AuthProvider), mock useAuth

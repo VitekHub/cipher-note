@@ -1,4 +1,13 @@
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
+import { fetchMasterKeyEnvelope, fetchFieldKeys } from '@/shared/api/supabase-keys'
+import { hexDecode, zeroFill } from '@/shared/crypto/crypto-utils'
+import { decrypt, importKey } from '@/shared/crypto/aes-gcm'
+import { unwrapFieldKeys } from '@/shared/crypto/key-hierarchy'
+import { deriveKEK } from '@/shared/crypto/hkdf'
+import { MASTER_KEY_PASSWORD_AAD } from '@/shared/types/crypto.types'
+import { derivePasswordKey } from '@/shared/crypto/argon2id'
+import type { CachedVaultEnvelope } from '@/shared/types/api.types'
+import { DecryptionError } from './errors'
 
 /**
  * Module-scoped crypto key vault.
@@ -13,9 +22,7 @@ class KeyVault {
     this.vault.set(id, key)
   }
 
-  async storeFieldKeys(kek: CryptoKey, fieldKeys: Map<string, CryptoKey>): Promise<void> {
-    this.storeKey('kek', kek)
-
+  async storeFieldKeys(fieldKeys: Map<string, CryptoKey>): Promise<void> {
     const fieldKeyNames: Array<string> = []
     for (const [name, key] of fieldKeys) {
       this.storeKey(name, key)
@@ -46,6 +53,80 @@ class KeyVault {
   clearVault(): void {
     this.zeroKeys()
     useCryptoStore.getState().clearVault()
+  }
+
+  /**
+   * Unlock the vault by deriving the KEK from the password and populating the
+   * KeyVault with non-extractable CryptoKey objects.
+   *
+   * Uses the cached envelope when available to skip network calls. If decryption
+   * fails with the cached envelope (e.g., stale cache from a password change in
+   * another session), clears the cache and fetches fresh key material from the server.
+   */
+  async unlockVault(userId: string, password: string): Promise<void> {
+    let staleCache = false
+    const cachedEnvelope = useCryptoStore.getState().cachedEnvelope
+    if (cachedEnvelope) {
+      try {
+        await this.populateKeyVault(password, cachedEnvelope)
+      } catch (error) {
+        if (error instanceof DecryptionError) {
+          // Cached envelope may be stale (password changed in another session).
+          // Clear the stale cache and retry the full network + derivation path.
+          this.clearVault()
+          staleCache = true
+        } else {
+          throw error
+        }
+      }
+    }
+
+    if (!cachedEnvelope || staleCache) {
+      const freshEnvelope = await this.fetchFreshEnvelope(userId)
+      useCryptoStore.getState().setCachedEnvelope(freshEnvelope)
+      await this.populateKeyVault(password, freshEnvelope)
+    }
+  }
+
+  /**
+   * Derives the KEK from a password and a master key envelope, unwraps field keys,
+   * and stores them in the KeyVault as non-extractable CryptoKeys - making the vault operational.
+   *
+   */
+  private async populateKeyVault(password: string, envelope: CachedVaultEnvelope) {
+    // Store KEK and field keys in the vault (non-extractable CryptoKeys)
+    const kek = await this.deriveKekFromEnvelope(password, envelope)
+    this.storeKey('kek', kek)
+    const unwrappedFieldKeys = await unwrapFieldKeys(envelope.fieldKeys, kek)
+    this.storeFieldKeys(unwrappedFieldKeys)
+  }
+
+  private async fetchFreshEnvelope(userId: string): Promise<CachedVaultEnvelope> {
+    // Sequential: both calls require an active auth session;
+    // parallel requests can race on session initialization
+    const masterKeyEnvelope = await fetchMasterKeyEnvelope(userId)
+    const serverFieldKeys = await fetchFieldKeys(userId)
+    const freshEnvelope = { ...masterKeyEnvelope, fieldKeys: serverFieldKeys }
+    return freshEnvelope
+  }
+
+  private async deriveKekFromEnvelope(password: string, envelope: CachedVaultEnvelope): Promise<CryptoKey> {
+    // Derive password key
+    const passwordKey = await derivePasswordKey(password, hexDecode(envelope.keySalt))
+    const cryptoPasswordKey = await importKey(passwordKey)
+    zeroFill(passwordKey)
+
+    // Unwrap master key → derive KEK
+    const wrappedMasterKey = hexDecode(envelope.wrappedMasterKey)
+    const masterKey = await decrypt(wrappedMasterKey, cryptoPasswordKey, {
+      iv: hexDecode(envelope.masterKeyIV),
+      aad: MASTER_KEY_PASSWORD_AAD,
+    })
+    const kekBytes = await deriveKEK(masterKey)
+    const kek = await importKey(kekBytes)
+    zeroFill(kekBytes)
+    zeroFill(masterKey)
+    return kek
   }
 }
 

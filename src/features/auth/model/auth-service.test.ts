@@ -43,8 +43,9 @@ const { mockClearVault } = vi.hoisted(() => ({
 vi.mock('@/shared/crypto/key-vault', () => ({
   keyVault: {
     lockVault: vi.fn<() => void>(),
+    unlockVault: vi.fn<(userId: string, password: string) => void>(),
     storeKey: vi.fn<() => void>(),
-    storeFieldKeys: vi.fn<(kek: CryptoKey, fieldKeys: Map<string, CryptoKey>) => void>(),
+    storeFieldKeys: vi.fn<(fieldKeys: Map<string, CryptoKey>) => void>(),
     clearVault: mockClearVault,
   },
 }))
@@ -150,7 +151,6 @@ import { AuthError, AuthErrorCode } from '@/shared/auth/auth-errors'
 import type { AuthResult } from '@/shared/auth/auth.types'
 import { keyVault } from '@/shared/crypto/key-vault'
 import { terminateWorker } from '@/shared/crypto/argon2id'
-import { populateKeyVault } from '@/shared/crypto/key-vault-service'
 
 describe('signUpUser', () => {
   beforeEach(() => {
@@ -179,7 +179,8 @@ describe('signUpUser', () => {
   it('stores field keys via keyVault.storeFieldKeys', async () => {
     await signUpUser('testuser', 'testpass123')
     const regResult = await (deriveRegistrationKeys as ReturnType<typeof vi.fn>).mock.results[0].value
-    expect(keyVault.storeFieldKeys).toHaveBeenCalledWith(regResult.kek, regResult.fieldKeys)
+    expect(keyVault.storeKey).toHaveBeenCalledWith('kek', regResult.kek)
+    expect(keyVault.storeFieldKeys).toHaveBeenCalledWith(regResult.fieldKeys)
   })
 
   it('caches envelope data after signup', async () => {
@@ -236,7 +237,7 @@ describe('loginUser', () => {
   it('populates key vault after authentication', async () => {
     await loginUser('testuser', 'testpass123')
 
-    expect(populateKeyVault).toHaveBeenCalledWith('1', 'testpass123')
+    expect(keyVault.unlockVault).toHaveBeenCalledWith('1', 'testpass123')
   })
 
   it('sets auth state on success', async () => {
@@ -260,7 +261,7 @@ describe('loginUser', () => {
 
     await expect(loginUser('testuser', 'wrongpass')).rejects.toThrow()
 
-    expect(populateKeyVault).not.toHaveBeenCalled()
+    expect(keyVault.unlockVault).not.toHaveBeenCalled()
     expect(mockSetAuth).not.toHaveBeenCalled()
   })
 
@@ -273,7 +274,7 @@ describe('loginUser', () => {
   })
 
   it('does not set auth when populateKeyVault fails after auth succeeds', async () => {
-    vi.mocked(populateKeyVault).mockRejectedValueOnce(new Error('Unlock failed'))
+    vi.mocked(keyVault.unlockVault).mockRejectedValueOnce(new Error('Unlock failed'))
 
     await expect(loginUser('testuser', 'testpass123')).rejects.toThrow('Unlock failed')
 

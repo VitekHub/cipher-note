@@ -5,9 +5,8 @@ import { authAdapter } from '@/shared/auth/supabase-adapter'
 import { uploadRegistrationData } from '@/shared/api/supabase-registration'
 import { fetchLoginSalts } from '@/shared/api/supabase-keys'
 import { hexDecode, hexEncode } from '@/shared/crypto/crypto-utils'
-import { keyVault } from '@/shared/crypto/key-vault'
 import { deriveAuthHash, terminateWorker } from '@/shared/crypto/argon2id'
-import { populateKeyVault } from '@/shared/crypto/key-vault-service'
+import { keyVault } from '@/shared/crypto/key-vault'
 
 /**
  * Registers a new user: derives keys, signs up on the server, uploads encrypted
@@ -39,7 +38,8 @@ export async function signUpUser(username: string, password: string): Promise<st
     authStore.setAuth(authResult.user, authResult.session)
 
     // Store KEK and field keys in the vault (non-extractable CryptoKeys)
-    keyVault.storeFieldKeys(regResult.kek, regResult.fieldKeys)
+    keyVault.storeKey('kek', regResult.kek)
+    keyVault.storeFieldKeys(regResult.fieldKeys)
 
     useCryptoStore.getState().setCachedEnvelope({
       authSalt: hexEncode(regResult.authSalt),
@@ -74,7 +74,7 @@ export async function loginUser(username: string, password: string) {
     const authResult = await authAdapter.login(username, authHash)
 
     // Fetch wrapped keys (post-auth) → derive KEK → unwrap and store field keys
-    await populateKeyVault(authResult.user.id, password)
+    await keyVault.unlockVault(authResult.user.id, password)
 
     authStore.setAuth(authResult.user, authResult.session)
   } finally {
