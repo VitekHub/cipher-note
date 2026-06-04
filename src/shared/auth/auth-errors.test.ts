@@ -54,6 +54,22 @@ describe('wrapAuthError', () => {
     expect(error.code).toBe(AuthErrorCode.NETWORK_ERROR)
   })
 
+  it('maps plain-object Supabase error with network message to NETWORK_ERROR', () => {
+    // Supabase returns plain objects, not Error instances, at runtime
+    // https://github.com/supabase/supabase-js/pull/2240
+    const supabaseError = { message: 'Failed to fetch', code: '', details: '', hint: '' }
+    const error = wrapAuthError(supabaseError)
+    expect(error).toBeInstanceOf(AuthError)
+    expect(error.code).toBe(AuthErrorCode.NETWORK_ERROR)
+  })
+
+  it('maps plain-object error with non-network message to UNEXPECTED', () => {
+    const supabaseError = { message: 'Invalid input', code: '22P02', details: '', hint: '' }
+    const error = wrapAuthError(supabaseError)
+    expect(error).toBeInstanceOf(AuthError)
+    expect(error.code).toBe(AuthErrorCode.UNEXPECTED)
+  })
+
   it('maps non-network errors to UNEXPECTED', () => {
     const original = new Error('something else')
     const error = wrapAuthError(original)

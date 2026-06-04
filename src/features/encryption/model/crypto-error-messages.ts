@@ -10,5 +10,5 @@ export function getCryptoErrorMessage(error: unknown, t: TFunction<'crypto'>): s
 
   if (isNetworkError(error)) return t('errors.networkError')
 
-  return t('errors.decryptFailed')
+  return t('errors.unexpectedError')
 }
