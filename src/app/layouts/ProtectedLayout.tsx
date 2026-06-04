@@ -36,7 +36,7 @@ function ProtectedLayout() {
     <div className="text-foreground bg-background flex h-[calc(100vh-var(--banner-height))]">
       {/* Desktop sidebar */}
       <aside
-        className="bg-sidebar text-sidebar-foreground border-sidebar-border hidden flex-shrink-0 flex-col border-r md:flex"
+        className="bg-sidebar text-sidebar-foreground border-sidebar-border hidden shrink-0 flex-col border-r md:flex"
         style={{ width: `${currentSidebarWidth}px` }}
       >
         <Sidebar onLogout={logoutUser} />
