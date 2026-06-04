@@ -14,7 +14,9 @@
   },
   "status": {
     "loading": "Loading...",
-    "error": "Something went wrong"
+    "error": "Something went wrong",
+    "offline": "You are offline",
+    "backOnline": "Back online"
   },
   "errors": {
     "networkError": "Network error. Please try again.",

@@ -16,13 +16,14 @@ import type { FieldName } from '@/shared/types/entities/field.types'
 function FieldEditorWrapper({ fieldName, entranceIndex }: { fieldName: FieldName; entranceIndex: number }) {
   const isVaultLocked = useCryptoStore((s) => s.isVaultLocked)
   const openUnlockDialog = useVaultDialogStore((s) => s.openUnlockDialog)
-  const { fieldValue, saveFieldValue, fieldSyncStatus, retrySave } = useFieldEditor(fieldName)
+  const { fieldValue, saveFieldValue, fieldSyncStatus, retrySave, isOfflineAwaitingData } = useFieldEditor(fieldName)
 
   return (
     <FieldCard
       fieldName={fieldName}
       isLocked={isVaultLocked}
       onUnlock={isVaultLocked ? openUnlockDialog : undefined}
+      isOfflineAwaitingData={isOfflineAwaitingData}
       entranceIndex={entranceIndex}
       statusIndicator={
         <SaveIndicator status={fieldSyncStatus} onRetry={fieldSyncStatus === 'error' ? retrySave : undefined} />

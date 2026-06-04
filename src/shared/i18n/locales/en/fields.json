@@ -17,9 +17,11 @@
     "locked": "Unlock vault to view",
     "unlock": "Unlock"
   },
+  "offlineAwaitingData": "Connect to the internet to load your data",
   "lastUpdated": "Last updated: {{date}}",
   "status": {
     "saving": "Saving...",
+    "paused": "Waiting for connection...",
     "saved": "Saved",
     "error": "Save failed",
     "retry": "Retry"

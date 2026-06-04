@@ -17,9 +17,11 @@
     "locked": "Odemkněte trezor pro zobrazení",
     "unlock": "Odemknout"
   },
+  "offlineAwaitingData": "Připojte se k internetu pro načtení dat",
   "lastUpdated": "Poslední aktualizace: {{date}}",
   "status": {
     "saving": "Ukládání...",
+    "paused": "Čeká na připojení...",
     "saved": "Uloženo",
     "error": "Uložení selhalo",
     "retry": "Zkusit znovu"

@@ -9,6 +9,7 @@ import { MobileNav } from './MobileNav'
 import { ResizeHandle } from '@/shared/ui/nav/ResizeHandle'
 import { VaultIndicator } from '@/features/encryption/ui/VaultIndicator'
 import { VaultUnlockDialog } from '@/features/encryption/ui/VaultUnlockDialog'
+import { OfflineBanner } from '@/shared/ui/OfflineBanner'
 import { useUiStore } from '@/features/settings/model/ui-store'
 import { useResizable } from '@/shared/lib/use-resizable'
 import { useVaultTimeout } from '@/features/encryption/model/use-vault-timeout'
@@ -63,6 +64,9 @@ function ProtectedLayout() {
           </div>
           <VaultIndicator />
         </header>
+
+        {/* Offline status banner */}
+        <OfflineBanner />
 
         {/* Main content */}
         <main className="flex-1 overflow-y-auto p-6 pb-20 md:pb-6">

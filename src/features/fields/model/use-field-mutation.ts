@@ -15,7 +15,7 @@ export function useFieldMutation(fieldName: FieldName) {
   const queryKey = ['field', fieldName] as const
 
   return useMutation({
-    networkMode: 'offlineFirst', // run mutation even when offline, so errors surface immediately
+    networkMode: 'online', // pause mutations when offline; auto-resume when back online
     mutationFn: (plaintext: string) => {
       if (!userId) throw new Error('useFieldMutation requires an authenticated user')
       return fieldService.saveField(userId, fieldName, plaintext)
