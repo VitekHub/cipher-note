@@ -107,13 +107,14 @@ describe('OfflineBanner', () => {
     mockNavigatorOnLine(false)
     render(<OfflineBanner />)
 
-    const statusEl = screen.getByRole('status')
-    expect(statusEl.querySelector('svg')).toBeInTheDocument()
+    expect(screen.getByTestId('icon-wifi-off')).toBeInTheDocument()
+    expect(screen.queryByTestId('icon-wifi')).not.toBeInTheDocument()
 
     act(() => {
       goOnline()
     })
-    expect(screen.getByRole('status').querySelector('svg')).toBeInTheDocument()
+    expect(screen.getByTestId('icon-wifi')).toBeInTheDocument()
+    expect(screen.queryByTestId('icon-wifi-off')).not.toBeInTheDocument()
   })
 
   it('has aria-live="polite" for accessibility', () => {

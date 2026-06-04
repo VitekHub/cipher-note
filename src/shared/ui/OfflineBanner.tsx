@@ -10,6 +10,7 @@ const BACK_ONLINE_I18N_KEY = 'status.backOnline'
 type BannerState = 'hidden' | 'offline' | 'back-online' | 'exiting'
 
 const BACK_ONLINE_DISPLAY_MS = 3000
+// Must be >= CSS .animate-fade-out-up duration (0.2s = 200ms)
 const EXIT_ANIMATION_MS = 250
 
 function useOfflineBanner() {
@@ -70,9 +71,9 @@ function OfflineBanner() {
       )}
     >
       {isBackOnline ? (
-        <Wifi className="size-4 shrink-0" aria-hidden="true" />
+        <Wifi className="size-4 shrink-0" aria-hidden="true" data-testid="icon-wifi" />
       ) : (
-        <WifiOff className="size-4 shrink-0" aria-hidden="true" />
+        <WifiOff className="size-4 shrink-0" aria-hidden="true" data-testid="icon-wifi-off" />
       )}
       <span className="ml-2">{isBackOnline ? t(BACK_ONLINE_I18N_KEY) : t(OFFLINE_I18N_KEY)}</span>
     </div>
