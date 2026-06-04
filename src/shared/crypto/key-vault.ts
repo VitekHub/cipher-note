@@ -56,12 +56,11 @@ class KeyVault {
   }
 
   /**
-   * Unlock the vault by deriving the KEK from the password and populating the
-   * KeyVault with non-extractable CryptoKey objects.
+   * Unlock the vault by populating the KeyVault with non-extractable CryptoKey objects.
    *
-   * Uses the cached envelope when available to skip network calls. If decryption
-   * fails with the cached envelope (e.g., stale cache from a password change in
-   * another session), clears the cache and fetches fresh key material from the server.
+   * Uses the cached envelope to skip network calls. If decryption fails (e.g., stale
+   * cache from a password change in another session), fetches fresh key material from
+   * the server.
    */
   async unlockVault(userId: string, password: string): Promise<void> {
     let staleCache = false
@@ -91,7 +90,6 @@ class KeyVault {
   /**
    * Derives the KEK from a password and a master key envelope, unwraps field keys,
    * and stores them in the KeyVault as non-extractable CryptoKeys - making the vault operational.
-   *
    */
   private async populateKeyVault(password: string, envelope: CachedVaultEnvelope) {
     // Store KEK and field keys in the vault (non-extractable CryptoKeys)

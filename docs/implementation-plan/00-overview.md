@@ -125,7 +125,6 @@ cipher-note-react/
           multi-device.ts          # Handle key changes from other sessions
           encryption-facade.ts     # Thin public API for other features to call
           use-vault-timeout.ts     # Auto-lock after inactivity (15-min idle timer)
-          vault-unlock.ts          # Vault unlock crypto flow
           crypto-error-messages.ts # Maps crypto errors to i18n keys
           registration-crypto.ts   # Pure crypto: deriveRegistrationKeys
         ui/
@@ -174,8 +173,7 @@ cipher-note-react/
         split-kdf.ts          # Split KDF (auth + key derivation from password)
         mnemonic.ts           # BIP-39 generate/validate/wrap/unwrap (lazy-loaded)
         crypto-utils.ts       # hexEncode, hexDecode, generateIV, generateSalt, generateKey, encodeAAD, zeroFill, copyToUint8Array
-        key-vault.ts          # Module-scoped Map for non-extractable CryptoKey objects
-        key-vault-service.ts  # KeyVault class: storeFieldKeys, getKey, lockVault, clearVault
+        key-vault.ts          # KeyVault class: storeFieldKeys, getKey, unlockVault, lockVault, clearVault
         crypto-store.ts       # Zustand: loadedFieldKeys, isVaultLocked (memory only, no devtools)
         vault-dialog-store.ts # Zustand: vault unlock dialog state (open/close)
       api/
