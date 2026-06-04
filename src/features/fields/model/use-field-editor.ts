@@ -12,6 +12,7 @@ export interface UseFieldEditorResult {
   saveFieldValue: (value: string) => void
   fieldSyncStatus: SyncStatus
   retrySave: () => void
+  isOfflineAwaitingData: boolean
 }
 
 /**
@@ -58,17 +59,15 @@ function useFieldEditor(fieldName: FieldName): UseFieldEditorResult {
 
   const { debounceSave, retrySave } = useSaveScheduler(fieldName, setSyncStatus, saveMutation.mutate, isVaultLocked)
 
-  // Auto-retry when the browser regains connectivity - listener is always
-  // registered; the handler checks status imperatively to avoid add/remove churn.
-  useEffect(() => {
-    const handleOnline = () => {
-      if (useSyncStatusStore.getState().status[fieldName] === 'error') {
-        retrySave()
-      }
-    }
-    window.addEventListener('online', handleOnline)
-    return () => window.removeEventListener('online', handleOnline)
-  }, [fieldName, retrySave])
+  // Derive effective sync status from mutation pause state:
+  // When offline, TanStack Query pauses the mutation - reflect this in the UI
+  // by deriving 'paused' during render rather than syncing via effect.
+  const effectiveSyncStatus: SyncStatus =
+    saveMutation.isPaused && syncStatus === 'saving'
+      ? 'paused'
+      : !saveMutation.isPaused && syncStatus === 'paused'
+        ? 'saving'
+        : syncStatus
 
   const saveFieldValue = useCallback(
     (value: string) => {
@@ -80,8 +79,9 @@ function useFieldEditor(fieldName: FieldName): UseFieldEditorResult {
 
   // FieldValue resolution: draft takes priority while editing, otherwise query data.
   const fieldValue = isVaultLocked ? '' : (draft ?? fieldQuery.data ?? '')
+  const isOfflineAwaitingData = fieldQuery.isPaused && !fieldQuery.data
 
-  return { fieldValue, saveFieldValue, fieldSyncStatus: syncStatus, retrySave }
+  return { fieldValue, saveFieldValue, fieldSyncStatus: effectiveSyncStatus, retrySave, isOfflineAwaitingData }
 }
 
 export { useFieldEditor }

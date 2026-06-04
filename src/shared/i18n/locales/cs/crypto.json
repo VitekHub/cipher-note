@@ -21,6 +21,7 @@
     "loginSaltsNotFound": "Účet nenalezen. Zkontrolujte prosím uživatelské jméno.",
     "keysNotFound": "Šifrovací klíče nenalezeny. Kontaktujte prosím podporu.",
     "unwrapFailed": "Selhalo dešifrování trezoru. Vaše data mohou být poškozena.",
-    "networkError": "Chyba sítě. Zkuste to prosím znovu."
+    "networkError": "Chyba sítě. Zkuste to prosím znovu.",
+    "unexpectedError": "Došlo k neočekávané chybě. Zkuste to prosím znovu."
   }
 }

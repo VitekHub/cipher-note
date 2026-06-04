@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
 import type { FieldName } from '@/shared/types/entities/field.types'
 
-export type SyncStatus = 'idle' | 'saving' | 'saved' | 'error'
+export type SyncStatus = 'idle' | 'saving' | 'paused' | 'saved' | 'error'
 
 interface SyncStatusState {
   status: Record<FieldName, SyncStatus>

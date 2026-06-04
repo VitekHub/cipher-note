@@ -36,13 +36,24 @@ describe('getCryptoErrorMessage', () => {
     expect(result).toBe('errors.networkError')
   })
 
-  it('maps unknown error to errors.decryptFailed', () => {
-    const result = getCryptoErrorMessage(new Error('something unexpected'), t)
-    expect(result).toBe('errors.decryptFailed')
+  it('maps network Error to errors.networkError', () => {
+    const result = getCryptoErrorMessage(new Error('A Network failure occurred'), t)
+    expect(result).toBe('errors.networkError')
   })
 
-  it('maps non-Error thrown value to errors.decryptFailed', () => {
+  it('maps Supabase plain-object with network message to errors.networkError', () => {
+    const supabaseError = { message: 'Failed to fetch', code: '', details: '', hint: '' }
+    const result = getCryptoErrorMessage(supabaseError, t)
+    expect(result).toBe('errors.networkError')
+  })
+
+  it('maps unknown error to errors.unexpectedError', () => {
+    const result = getCryptoErrorMessage(new Error('something unexpected'), t)
+    expect(result).toBe('errors.unexpectedError')
+  })
+
+  it('maps non-Error thrown value to errors.unexpectedError', () => {
     const result = getCryptoErrorMessage('string error', t)
-    expect(result).toBe('errors.decryptFailed')
+    expect(result).toBe('errors.unexpectedError')
   })
 })

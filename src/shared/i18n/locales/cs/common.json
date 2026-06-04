@@ -14,7 +14,9 @@
   },
   "status": {
     "loading": "Načítání...",
-    "error": "Něco se pokazilo"
+    "error": "Něco se pokazilo",
+    "offline": "Jste offline",
+    "backOnline": "Zpět online"
   },
   "errors": {
     "networkError": "Chyba sítě. Zkuste to prosím znovu.",

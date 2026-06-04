@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Lock } from 'lucide-react'
+import { CloudOff, Lock } from 'lucide-react'
 
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from '@/shared/ui/card'
@@ -17,13 +17,22 @@ const FIELD_I18N_KEYS: Record<FieldName, { label: string; locked: string; unlock
 interface FieldCardProps {
   fieldName: FieldName
   isLocked: boolean
+  isOfflineAwaitingData: boolean
   children: () => ReactNode
   onUnlock?: () => void
   statusIndicator?: ReactNode
   entranceIndex?: number
 }
 
-function FieldCard({ fieldName, isLocked, children, onUnlock, statusIndicator, entranceIndex }: FieldCardProps) {
+function FieldCard({
+  fieldName,
+  isLocked,
+  children,
+  onUnlock,
+  statusIndicator,
+  entranceIndex,
+  isOfflineAwaitingData,
+}: FieldCardProps) {
   const { t } = useTranslation('fields')
   const keys = FIELD_I18N_KEYS[fieldName]
 
@@ -40,7 +49,7 @@ function FieldCard({ fieldName, isLocked, children, onUnlock, statusIndicator, e
       <CardContent>
         {isLocked ? (
           <div className="relative flex flex-col items-center gap-3 overflow-hidden rounded-lg py-4">
-            <div className="bg-primary/5 absolute inset-0 [mask-image:radial-gradient(circle_at_center,black_60%,transparent_100%)]" />
+            <div className="bg-primary/5 absolute inset-0 [mask:radial-gradient(circle_at_center,black_60%,transparent_100%)]" />
             <Lock className="text-muted-foreground/60 relative size-8" />
             <p className="text-muted-foreground relative text-sm">{t(keys.locked)}</p>
             {onUnlock && (
@@ -48,6 +57,12 @@ function FieldCard({ fieldName, isLocked, children, onUnlock, statusIndicator, e
                 {t(keys.unlock)}
               </Button>
             )}
+          </div>
+        ) : isOfflineAwaitingData ? (
+          <div className="relative flex flex-col items-center gap-3 overflow-hidden rounded-lg py-4">
+            <div className="bg-primary/5 absolute inset-0 [mask:radial-gradient(circle_at_center,black_60%,transparent_100%)]" />
+            <CloudOff className="text-muted-foreground/60 relative size-8" />
+            <p className="text-muted-foreground relative text-sm">{t('offlineAwaitingData')}</p>
           </div>
         ) : (
           children()

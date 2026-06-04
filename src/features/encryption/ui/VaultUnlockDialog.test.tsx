@@ -129,7 +129,7 @@ describe('VaultUnlockDialog', () => {
     await user.click(screen.getByRole('button', { name: /unlock/i }))
 
     await waitFor(() => {
-      expect(screen.getByText('Decryption failed. Your data may be corrupted.')).toBeInTheDocument()
+      expect(screen.getByText('An unexpected error occurred. Please try again.')).toBeInTheDocument()
     })
   })
 

@@ -21,6 +21,7 @@
     "loginSaltsNotFound": "Account not found. Please check your username.",
     "keysNotFound": "Encryption keys not found. Please contact support.",
     "unwrapFailed": "Failed to decrypt your vault. Your data may be corrupted.",
-    "networkError": "Network error. Please try again."
+    "networkError": "Network error. Please try again.",
+    "unexpectedError": "An unexpected error occurred. Please try again."
   }
 }

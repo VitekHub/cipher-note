@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 
+import { GithubIcon } from '@/shared/ui/brand/GithubIcon'
 import { CipherNoteIcon } from '@/shared/ui/brand/CipherNoteIcon'
 import { LanguageSwitcher } from '@/shared/ui/nav/LanguageSwitcher'
 import { ThemeSwitcher } from '@/shared/ui/nav/ThemeSwitcher'
@@ -16,6 +17,14 @@ function PublicHeader() {
           <span className="text-foreground text-lg font-semibold">Cipher Note</span>
         </Link>
         <div className="flex items-center gap-2">
+          <a
+            href="https://github.com/VitekHub/cipher-note/"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="GitHub"
+          >
+            <GithubIcon className="text-muted-foreground hover:text-foreground transition-colors" />
+          </a>
           <LanguageSwitcher />
           <ThemeSwitcher />
         </div>

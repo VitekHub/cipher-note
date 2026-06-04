@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query'
 import { createElement, type ReactNode } from 'react'
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
 import { useSyncStatusStore } from '@/features/fields/model/sync-status-store'
@@ -62,6 +62,7 @@ describe('useFieldEditor', () => {
   })
 
   afterEach(() => {
+    onlineManager.setOnline(true)
     queryClient.clear()
     vi.useRealTimers()
   })
@@ -190,8 +191,7 @@ describe('useFieldEditor', () => {
     expect(mockSaveField).not.toHaveBeenCalled()
   })
 
-  it('auto-retries save when browser comes back online', async () => {
-    mockSaveField.mockRejectedValueOnce(new Error('Network error'))
+  it('transitions to paused when offline, then saved when back online', async () => {
     const { result } = renderHook(() => useFieldEditor('note'), {
       wrapper: createWrapper(queryClient),
     })
@@ -200,27 +200,32 @@ describe('useFieldEditor', () => {
       expect(result.current.fieldValue).toBe('initial content')
     })
 
+    // Go offline — mutations with networkMode: 'online' will pause
+    act(() => {
+      onlineManager.setOnline(false)
+    })
+
     act(() => {
       result.current.saveFieldValue('offline content')
     })
 
-    // Wait for the debounce + failed mutation
+    // Wait for debounce + mutation pause → status 'paused'
     await waitFor(
       () => {
-        expect(result.current.fieldSyncStatus).toBe('error')
+        expect(result.current.fieldSyncStatus).toBe('paused')
       },
       { timeout: 5000 },
     )
 
-    // Reset mock so next call succeeds
-    mockSaveField.mockResolvedValue(undefined)
+    // saveField was NOT called while offline (mutation paused before calling mutationFn)
+    expect(mockSaveField).not.toHaveBeenCalled()
 
-    // Simulate browser coming back online
+    // Go back online — TanStack Query auto-resumes the paused mutation
     act(() => {
-      window.dispatchEvent(new Event('online'))
+      onlineManager.setOnline(true)
     })
 
-    // Wait for retry to succeed
+    // Wait for auto-resume to succeed
     await waitFor(
       () => {
         expect(result.current.fieldSyncStatus).toBe('saved')
@@ -228,9 +233,8 @@ describe('useFieldEditor', () => {
       { timeout: 5000 },
     )
 
-    // First call failed, second call succeeded with latest fieldValue
-    expect(mockSaveField).toHaveBeenCalledTimes(2)
-    expect(mockSaveField).toHaveBeenLastCalledWith('user-123', 'note', 'offline content')
+    expect(mockSaveField).toHaveBeenCalledTimes(1)
+    expect(mockSaveField).toHaveBeenCalledWith('user-123', 'note', 'offline content')
   })
 
   it('does not auto-retry on online event when status is not error', async () => {
@@ -254,8 +258,7 @@ describe('useFieldEditor', () => {
     expect(mockSaveField).not.toHaveBeenCalled()
   })
 
-  it('does not retry on online event after error is resolved', async () => {
-    mockSaveField.mockRejectedValueOnce(new Error('Network error')).mockResolvedValue(undefined)
+  it('does not trigger extra save after paused mutation resumes', async () => {
     const { result } = renderHook(() => useFieldEditor('note'), {
       wrapper: createWrapper(queryClient),
     })
@@ -264,24 +267,26 @@ describe('useFieldEditor', () => {
       expect(result.current.fieldValue).toBe('initial content')
     })
 
+    // Go offline, save → mutation pauses
+    act(() => {
+      onlineManager.setOnline(false)
+    })
     act(() => {
       result.current.saveFieldValue('offline content')
     })
 
-    // Wait for debounce + failed mutation
     await waitFor(
       () => {
-        expect(result.current.fieldSyncStatus).toBe('error')
+        expect(result.current.fieldSyncStatus).toBe('paused')
       },
       { timeout: 5000 },
     )
 
-    // Simulate browser coming back online → retry succeeds
+    // Go back online — auto-resume succeeds
     act(() => {
-      window.dispatchEvent(new Event('online'))
+      onlineManager.setOnline(true)
     })
 
-    // Wait for retry to succeed
     await waitFor(
       () => {
         expect(result.current.fieldSyncStatus).toBe('saved')
@@ -290,14 +295,13 @@ describe('useFieldEditor', () => {
     )
 
     // Fire another online event — should NOT trigger another save
-    // (handler checks status imperatively; status is now 'saved', not 'error')
     act(() => {
       window.dispatchEvent(new Event('online'))
     })
 
     await new Promise((resolve) => setTimeout(resolve, 100))
-    // Only 2 calls: one failed, one succeeded via retry
-    expect(mockSaveField).toHaveBeenCalledTimes(2)
+    // Only one save call (the auto-resumed one)
+    expect(mockSaveField).toHaveBeenCalledTimes(1)
   })
 })
 
