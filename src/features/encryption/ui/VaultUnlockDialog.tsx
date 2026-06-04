@@ -7,7 +7,8 @@ import { z } from 'zod'
 
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
 import { useVaultDialogStore } from '@/shared/crypto/vault-dialog-store'
-import { unlockVault } from '@/app/flows/auth-flow'
+import { useAuth } from '@/shared/auth/auth-context'
+import { keyVault } from '@/shared/crypto/key-vault'
 import { getCryptoErrorMessage } from '@/features/encryption/model/crypto-error-messages'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/shared/ui/dialog'
 import { Button } from '@/shared/ui/button'
@@ -22,6 +23,7 @@ type UnlockFormData = z.infer<typeof unlockSchema>
 
 function VaultUnlockDialog() {
   const { t } = useTranslation('crypto')
+  const { user } = useAuth()
   const isVaultLocked = useCryptoStore((s) => s.isVaultLocked)
   const isUnlockDialogOpen = useVaultDialogStore((s) => s.isUnlockDialogOpen)
   const closeUnlockDialog = useVaultDialogStore((s) => s.closeUnlockDialog)
@@ -56,8 +58,12 @@ function VaultUnlockDialog() {
 
   async function onSubmit(data: UnlockFormData) {
     setError(null)
+    if (!user) {
+      setError('No authenticated user')
+      return
+    }
     try {
-      await unlockVault(data.password)
+      await keyVault.unlockVault(user.id, data.password)
     } catch (err) {
       setError(getCryptoErrorMessage(err, t))
     }

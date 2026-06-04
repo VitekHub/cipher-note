@@ -37,7 +37,7 @@ vi.mock('@/shared/crypto/crypto-utils', async () => ({
 
 import { deriveAuthHash, derivePasswordKey, deriveKey } from '@/shared/crypto/argon2id'
 import { generateSalt } from '@/shared/crypto/crypto-utils'
-import { deriveRegistrationKeys } from '@/features/encryption/model/registration'
+import { deriveRegistrationKeys } from '@/features/auth/model/registration-crypto'
 
 function mockBytes(length: number, fill: number): Uint8Array<ArrayBuffer> {
   return new Uint8Array(length).fill(fill) as Uint8Array<ArrayBuffer>

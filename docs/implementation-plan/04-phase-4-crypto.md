@@ -167,7 +167,7 @@
     - Re-wrap master key with new password key using AES-256-GCM (AAD = "master-key-password'")
     - Return `{ newAuthHash, newAuthSalt, newKeySalt, newWrappedMasterKey, newMasterKeyIV }`
 - `AuthCredentials`, `LoginCredentials`, `PasswordChangeResult` types already exist in crypto.types.ts — no changes needed
-- `derive-placeholder.ts` remains in place until Step 21 replaces its consumer in `auth-flow.ts` `loginUser`
+- `derive-placeholder.ts` remains in place until Step 21 replaces its consumer in `src/features/auth/model/auth-service.ts` `loginUser`
 
 **Tests:**
 - `deriveAuthCredentials`: generates two salts, calls Argon2id with correct args, returns correct types

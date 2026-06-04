@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@/test/utils'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
 
-vi.mock('@/app/flows/auth-flow', () => ({
+vi.mock('@/features/auth/model/auth-service', () => ({
   loginUser: vi.fn().mockResolvedValue(undefined),
 }))
 
@@ -18,7 +18,7 @@ vi.mock('@tanstack/react-router', () => ({
 }))
 
 import { LoginPage } from '@/features/auth/ui/LoginPage'
-import { loginUser } from '@/app/flows/auth-flow'
+import { loginUser } from '@/features/auth/model/auth-service'
 import { AuthError, AuthErrorCode } from '@/shared/auth/auth-errors'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { toast } from 'sonner'

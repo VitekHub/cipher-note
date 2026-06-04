@@ -4,7 +4,7 @@ import { AuthProvider } from '@/features/auth/ui/auth-provider'
 import { useAuth } from '@/shared/auth/auth-context'
 import { RouterProvider } from '@tanstack/react-router'
 import { createAppRouter } from './router'
-import { restoreSession, subscribeToAuthChanges } from '@/app/flows/auth-flow'
+import { restoreSession, subscribeToAuthChanges } from '@/features/auth/model/auth-service'
 import { setQueryClient } from '@/shared/crypto/crypto-store'
 import { PageSkeleton } from '@/app/Pending'
 
