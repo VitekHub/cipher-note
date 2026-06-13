@@ -16,7 +16,13 @@ export async function uploadRegistrationData(data: RegistrationResult, userId: s
   })
   if (keysError) throw wrapApiError(keysError)
 
-  // 2. Insert field_keys rows (3 wrapped field keys, version 1)
+  // 2. Insert entries row (user's first entry)
+  const { error: entriesError } = await supabase.from('entries').insert({
+    user_id: userId,
+  })
+  if (entriesError) throw wrapApiError(entriesError)
+
+  // 3. Insert field_keys rows (4 wrapped field keys, version 1)
   const fieldKeysRows = data.wrappedFieldKeys.map((fk) => ({
     user_id: userId,
     field_name: fk.fieldName,
@@ -27,7 +33,7 @@ export async function uploadRegistrationData(data: RegistrationResult, userId: s
   const { error: fieldKeysError } = await supabase.from('field_keys').insert(fieldKeysRows)
   if (fieldKeysError) throw wrapApiError(fieldKeysError)
 
-  // 3. Insert recovery row (mnemonic-wrapped master key)
+  // 4. Insert recovery row (mnemonic-wrapped master key)
   const { error: recoveryError } = await supabase.from('recovery').insert({
     user_id: userId,
     recovery_salt: hexEncode(data.recoveryData.recoverySalt),

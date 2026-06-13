@@ -1,5 +1,12 @@
 import type { FieldName } from '@/shared/types/entities/field.types'
 
+export interface ServerEntry {
+  id: string
+  userId: string
+  createdAt: string
+  updatedAt: string
+}
+
 export interface ServerMasterKeyEnvelope {
   authSalt: string
   keySalt: string
@@ -19,6 +26,7 @@ export interface ServerFieldKey {
 }
 
 export interface ServerEncryptedField {
+  entryId: string
   fieldName: FieldName
   encryptedBlob: string
   iv: string
@@ -39,6 +47,8 @@ export interface SaveWrappedKeyData {
 }
 
 export interface SaveFieldData {
+  entryId: string
+  fieldName: FieldName
   encryptedBlob: string
   iv: string
 }
