@@ -1,28 +1,37 @@
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Plus } from 'lucide-react'
 
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
-import { useVaultDialogStore } from '@/shared/crypto/vault-dialog-store'
 import { useSyncStatusStore } from '@/features/fields/model/sync-status-store'
 import { useFieldEditor } from '@/features/fields/model/use-field-editor'
 import { FieldCard } from '@/features/fields/ui/FieldCard'
 import { NoteField } from '@/features/fields/ui/NoteField'
-import { WebsiteField } from '@/features/fields/ui/WebsiteField'
-import { EmailField } from '@/features/fields/ui/EmailField'
+import { InputField } from '@/features/fields/ui/InputField'
+import { LockedVaultCard } from '@/features/fields/ui/LockedVaultCard'
 import { SaveIndicator } from '@/features/fields/ui/SaveIndicator'
-import { FIELD_NAMES } from '@/shared/types/entities/field.types'
+import { DeleteEntryDialog } from '@/features/fields/ui/DeleteEntryDialog'
+import { Button } from '@/shared/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 import type { FieldName } from '@/shared/types/entities/field.types'
 
-function FieldEditorWrapper({ fieldName, entranceIndex }: { fieldName: FieldName; entranceIndex: number }) {
-  const isVaultLocked = useCryptoStore((s) => s.isVaultLocked)
-  const openUnlockDialog = useVaultDialogStore((s) => s.openUnlockDialog)
-  const { fieldValue, saveFieldValue, fieldSyncStatus, retrySave, isOfflineAwaitingData } = useFieldEditor(fieldName)
+function FieldEditorWrapper({
+  entryId,
+  fieldName,
+  entranceIndex,
+}: {
+  entryId: string
+  fieldName: FieldName
+  entranceIndex: number
+}) {
+  const { fieldValue, saveFieldValue, fieldSyncStatus, retrySave, isOfflineAwaitingData } = useFieldEditor(
+    entryId,
+    fieldName,
+  )
 
   return (
     <FieldCard
       fieldName={fieldName}
-      isLocked={isVaultLocked}
-      onUnlock={isVaultLocked ? openUnlockDialog : undefined}
       isOfflineAwaitingData={isOfflineAwaitingData}
       entranceIndex={entranceIndex}
       statusIndicator={
@@ -31,40 +40,75 @@ function FieldEditorWrapper({ fieldName, entranceIndex }: { fieldName: FieldName
     >
       {() => {
         switch (fieldName) {
+          case 'title':
+            return <InputField fieldName="title" value={fieldValue} onChange={saveFieldValue} />
           case 'note':
             return <NoteField value={fieldValue} onChange={saveFieldValue} />
           case 'website':
-            return <WebsiteField value={fieldValue} onChange={saveFieldValue} />
+            return <InputField fieldName="website" value={fieldValue} onChange={saveFieldValue} />
           case 'email':
-            return <EmailField value={fieldValue} onChange={saveFieldValue} />
+            return <InputField fieldName="email" value={fieldValue} onChange={saveFieldValue} />
         }
       }}
     </FieldCard>
   )
 }
 
-function DashboardPage() {
-  const { t } = useTranslation('common')
+function EntryDetailPage({ entryId }: { entryId: string }) {
   const isVaultLocked = useCryptoStore((s) => s.isVaultLocked)
   const resetAllSyncStatus = useSyncStatusStore((s) => s.resetAll)
 
-  // Reset sync status when vault locks
+  // Reset sync status when switching entries
   useEffect(() => {
-    if (isVaultLocked) {
-      resetAllSyncStatus()
-    }
-  }, [isVaultLocked, resetAllSyncStatus])
+    resetAllSyncStatus()
+  }, [entryId, resetAllSyncStatus])
+
+  if (isVaultLocked) {
+    return <LockedVaultCard />
+  }
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-balance">{t('nav.dashboard')}</h1>
-      <div className="grid gap-4 *:min-w-0 sm:grid-cols-2 lg:grid-cols-3">
-        {FIELD_NAMES.map((fieldName, index) => (
-          <FieldEditorWrapper key={fieldName} fieldName={fieldName} entranceIndex={index} />
-        ))}
+    <div>
+      {/* Delete entry */}
+      <div className="mb-2 flex justify-end">
+        <DeleteEntryDialog entryId={entryId} />
+      </div>
+      <div className="space-y-6">
+        <FieldEditorWrapper entryId={entryId} fieldName="title" entranceIndex={0} />
+        <div className="grid gap-4 *:min-w-0 sm:grid-cols-2">
+          <FieldEditorWrapper entryId={entryId} fieldName="website" entranceIndex={1} />
+          <FieldEditorWrapper entryId={entryId} fieldName="email" entranceIndex={2} />
+        </div>
+        <FieldEditorWrapper entryId={entryId} fieldName="note" entranceIndex={3} />
       </div>
     </div>
   )
 }
 
-export { DashboardPage }
+/** Empty state shown when user has no entries. */
+function EmptyState({ onCreateEntry }: { onCreateEntry: () => void }) {
+  const { t } = useTranslation('common')
+  const isVaultLocked = useCryptoStore((s) => s.isVaultLocked)
+
+  if (isVaultLocked) {
+    return <LockedVaultCard />
+  }
+
+  return (
+    <div className="flex min-h-full flex-1 items-center justify-center">
+      <Card size="sm" className="max-w-sm">
+        <CardHeader>
+          <CardTitle>{t('entries.empty')}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Button onClick={onCreateEntry} className="my-4 w-full">
+            <Plus className="mr-2 size-4" />
+            {t('entries.emptyAction')}
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+export { EntryDetailPage, EmptyState }

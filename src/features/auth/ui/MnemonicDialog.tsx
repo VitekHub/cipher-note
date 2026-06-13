@@ -98,9 +98,9 @@ function MnemonicDialog({ open, mnemonic, onContinue }: MnemonicDialogProps) {
           </Button>
         </div>
 
-        <div className="flex items-start gap-2">
+        <div className="flex cursor-pointer items-start gap-2">
           <Checkbox id="mnemonic-acknowledge" checked={acknowledged} onCheckedChange={handleAcknowledge} />
-          <Label htmlFor="mnemonic-acknowledge" className="text-sm font-normal">
+          <Label htmlFor="mnemonic-acknowledge" className="cursor-pointer text-sm font-normal">
             {t('mnemonic.acknowledge')}
           </Label>
         </div>

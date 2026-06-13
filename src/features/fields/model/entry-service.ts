@@ -1,5 +1,5 @@
 import { fetchEntries, createEntry, deleteEntry } from '@/shared/api/supabase-entries'
-import type { ServerEntry } from '@/shared/types/api.types'
+import type { ServerEntry } from '@/shared/types/entities/entry.types'
 
 class EntryService {
   /** Fetch all entries for a user, ordered by creation time. */

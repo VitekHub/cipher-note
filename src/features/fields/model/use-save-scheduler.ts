@@ -11,7 +11,6 @@ type SetSyncStatus = (name: FieldName, status: SyncStatus) => void
 type SaveMutate = (value: string, options?: { onSuccess?: () => void; onError?: () => void }) => void
 
 interface UseSaveSchedulerOptions {
-  entryId: string
   fieldName: FieldName
   setSyncStatus: SetSyncStatus
   saveMutate: SaveMutate
@@ -54,7 +53,7 @@ export interface UseSaveSchedulerResult {
  * Manages save scheduling, timer cleanup, and retry logic.
  */
 function useSaveScheduler(options: UseSaveSchedulerOptions): UseSaveSchedulerResult {
-  const { entryId, fieldName, setSyncStatus, saveMutate, isVaultLocked } = options
+  const { fieldName, setSyncStatus, saveMutate, isVaultLocked } = options
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const latestValueRef = useRef('')

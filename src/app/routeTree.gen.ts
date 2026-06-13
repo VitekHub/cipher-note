@@ -17,6 +17,7 @@ import { Route as PublicRecoverRouteImport } from './routes/_public.recover'
 import { Route as PublicLoginRouteImport } from './routes/_public.login'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated.settings'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated.dashboard'
+import { Route as AuthenticatedDashboardEntryIdRouteImport } from './routes/_authenticated.dashboard_.$entryId'
 
 const PublicRoute = PublicRouteImport.update({
   id: '/_public',
@@ -56,6 +57,12 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedDashboardEntryIdRoute =
+  AuthenticatedDashboardEntryIdRouteImport.update({
+    id: '/dashboard_/$entryId',
+    path: '/dashboard/$entryId',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -64,6 +71,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof PublicLoginRoute
   '/recover': typeof PublicRecoverRoute
   '/register': typeof PublicRegisterRoute
+  '/dashboard/$entryId': typeof AuthenticatedDashboardEntryIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -72,6 +80,7 @@ export interface FileRoutesByTo {
   '/login': typeof PublicLoginRoute
   '/recover': typeof PublicRecoverRoute
   '/register': typeof PublicRegisterRoute
+  '/dashboard/$entryId': typeof AuthenticatedDashboardEntryIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -83,6 +92,7 @@ export interface FileRoutesById {
   '/_public/login': typeof PublicLoginRoute
   '/_public/recover': typeof PublicRecoverRoute
   '/_public/register': typeof PublicRegisterRoute
+  '/_authenticated/dashboard_/$entryId': typeof AuthenticatedDashboardEntryIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -93,8 +103,16 @@ export interface FileRouteTypes {
     | '/login'
     | '/recover'
     | '/register'
+    | '/dashboard/$entryId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/settings' | '/login' | '/recover' | '/register'
+  to:
+    | '/'
+    | '/dashboard'
+    | '/settings'
+    | '/login'
+    | '/recover'
+    | '/register'
+    | '/dashboard/$entryId'
   id:
     | '__root__'
     | '/'
@@ -105,6 +123,7 @@ export interface FileRouteTypes {
     | '/_public/login'
     | '/_public/recover'
     | '/_public/register'
+    | '/_authenticated/dashboard_/$entryId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -171,17 +190,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/dashboard_/$entryId': {
+      id: '/_authenticated/dashboard_/$entryId'
+      path: '/dashboard/$entryId'
+      fullPath: '/dashboard/$entryId'
+      preLoaderRoute: typeof AuthenticatedDashboardEntryIdRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
 interface AuthenticatedRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
+  AuthenticatedDashboardEntryIdRoute: typeof AuthenticatedDashboardEntryIdRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
+  AuthenticatedDashboardEntryIdRoute: AuthenticatedDashboardEntryIdRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

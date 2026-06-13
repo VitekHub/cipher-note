@@ -1,6 +1,6 @@
 import { getSupabase } from '@/shared/api/supabase-client'
 import { wrapApiError } from '@/shared/api/api-errors'
-import type { ServerEntry } from '@/shared/types/api.types'
+import type { ServerEntry } from '@/shared/types/entities/entry.types'
 
 /** Fetch all entries for a user, ordered by creation time. */
 export async function fetchEntries(userId: string): Promise<ServerEntry[]> {

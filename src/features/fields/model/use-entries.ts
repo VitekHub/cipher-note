@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/shared/auth/auth-context'
 import { entryService } from '@/features/fields/model/entry-service'
+import type { ServerEntry } from '@/shared/types/entities/entry.types'
 
 /** Fetch all entries for the current user. Enabled when authenticated. */
 export function useEntries() {
@@ -28,14 +29,18 @@ export function useCreateEntry() {
   })
 }
 
-/** Delete an entry. Invalidates the entry list and removes cached field data on success. */
+/** Delete an entry. Removes the entry from cache and clears cached field data on success. */
 export function useDeleteEntry() {
   const queryClient = useQueryClient()
+  const userId = useAuth().user?.id ?? ''
 
   return useMutation({
     mutationFn: (entryId: string) => entryService.deleteEntry(entryId),
     onSuccess: (_data, entryId) => {
-      queryClient.invalidateQueries({ queryKey: ['entries'] })
+      queryClient.setQueryData(
+        ['entries', userId],
+        (old: ServerEntry[] | undefined) => old?.filter((e) => e.id !== entryId) ?? [],
+      )
       queryClient.removeQueries({ queryKey: ['field', entryId] })
     },
   })

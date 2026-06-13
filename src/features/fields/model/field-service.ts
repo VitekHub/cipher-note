@@ -1,5 +1,5 @@
 import { keyVault } from '@/shared/crypto/key-vault'
-import { fetchFieldByEntry, fetchFieldsByEntry, saveField as saveFieldToServer } from '@/shared/api/supabase-fields'
+import { fetchFieldByEntry, saveField as saveFieldToServer } from '@/shared/api/supabase-fields'
 import { FIELD_NAMES } from '@/shared/types/entities/field.types'
 import type { FieldName } from '@/shared/types/entities/field.types'
 import { encryptField, decryptField, toEncryptedFieldData, toSaveFieldData } from '@/features/fields/model/field-crypto'

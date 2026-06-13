@@ -58,7 +58,6 @@ function useFieldEditor(entryId: string, fieldName: FieldName): UseFieldEditorRe
   }, [fieldName, setSyncStatus])
 
   const { debounceSave, retrySave } = useSaveScheduler({
-    entryId,
     fieldName,
     setSyncStatus,
     saveMutate: saveMutation.mutate,
