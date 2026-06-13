@@ -108,36 +108,49 @@ VALUES (
 );
 
 -- ============================================
--- Field keys for testuser (all three fields, version 1)
+-- Entries for testuser and alice
+-- Each user starts with one entry containing four encrypted fields.
+-- ============================================
+INSERT INTO public.entries (id, user_id, created_at, updated_at)
+VALUES
+  ('c0eebc99-9c0b-4ef8-bb6d-6bb6513e5e0c', 'a0eebc99-9c0b-4ef8-bb6d-6bb6513e5e0a', now(), now()),
+  ('d0eebc99-9c0b-4ef8-bb6d-6bb6513e5e0d', 'b1eebc99-9c0b-4ef8-bb6d-6bb6513e5e0b', now(), now());
+
+-- ============================================
+-- Field keys for testuser (all four fields, version 1)
 -- ============================================
 INSERT INTO public.field_keys (user_id, field_name, version, wrapped_key, key_iv)
 VALUES
+  ('a0eebc99-9c0b-4ef8-bb6d-6bb6513e5e0a', 'title', 1, '5bc91a6d01dce69a9740f9a1ada69f16266ebc13d2bad3ad50207a775d82b0e78fcdf10dd92baa0924a1d47ed694128e', 'b123456789abcdef01234567'),
   ('a0eebc99-9c0b-4ef8-bb6d-6bb6513e5e0a', 'note', 1, '3da22b5d01dce69a9740f9a1ada69f16266ebc13d2bad3ad50207a775d82b0e78fcdf10dd92baa0924a1d47ed694128e', 'a845853034f3b32a2428afa6'),
   ('a0eebc99-9c0b-4ef8-bb6d-6bb6513e5e0a', 'website', 1, '77282c8d454f8559561731e7c372e80a7f1ae4128bb58f83caa2486c6aaaeff34d10b48349fee1523fdf3ddb2f39a7bf', '273a8b69f004027ac7a92d13'),
   ('a0eebc99-9c0b-4ef8-bb6d-6bb6513e5e0a', 'email', 1, 'f6b5e69cc123b95e3685204bf3ac4d4afc069731f7b08a4604e2c0146b7011d2eec7ce11f47ccfff45bee47ff1fb3a76', '45920fa1838ceeef5e916659');
 
--- Field keys for alice (all three fields, version 1)
+-- Field keys for alice (all four fields, version 1)
 INSERT INTO public.field_keys (user_id, field_name, version, wrapped_key, key_iv)
 VALUES
+  ('b1eebc99-9c0b-4ef8-bb6d-6bb6513e5e0b', 'title', 1, 'd2e4f6a89b67bcababd1c8dc16ea07118a71aeb94aa9d1771d1e1a5b7c052fd99ac5b2ed7fd0d6450cdbb1fd5f11e35d', 'c987654321fedcba01234567'),
   ('b1eebc99-9c0b-4ef8-bb6d-6bb6513e5e0b', 'note', 1, '46555c869b67bcababd1c8dc16ea07118a71aeb94aa9d1771d1e1a5b7c052fd99ac5b2ed7fd0d6450cdbb1fd5f11e35d', 'c5ce0f0a8a2604fbf2613f46'),
   ('b1eebc99-9c0b-4ef8-bb6d-6bb6513e5e0b', 'website', 1, '6588d70ce0ebc957328edfc0aa2c6e04fcea189ea1a59aa7f44c6241c9a6f8e6ca169b3e424ec60d88b0a9c7ffc01b85', 'a345cfe5ed9e1ac48c4e26b6'),
   ('b1eebc99-9c0b-4ef8-bb6d-6bb6513e5e0b', 'email', 1, 'f0ae4bcd96eb1f8e5639d5d1f2cd55fc049997b01ac191325004a5f375e46f17b4b65a4008e0b54cc15b789ada0e8663', '0c63b642568b4ff8f4ff854e');
 
 -- ============================================
--- Encrypted fields for testuser (placeholder ciphertext)
+-- Encrypted fields for testuser (one entry with all four fields)
 -- ============================================
-INSERT INTO public.encrypted_fields (user_id, field_name, encrypted_blob, iv)
+INSERT INTO public.encrypted_fields (entry_id, user_id, field_name, encrypted_blob, iv)
 VALUES
-  ('a0eebc99-9c0b-4ef8-bb6d-6bb6513e5e0a', 'note', '92bedd6cc3bbbd3f7a22938529fb6cfe5ef65493b647585ddb21f2bcf8257259569a4a200167e1a8dc3c14b7c573c342', '48404b45542d3a24d7ad385f'),
-  ('a0eebc99-9c0b-4ef8-bb6d-6bb6513e5e0a', 'website', 'eb2f444709b53132a7ed17bc22e822f46a20a96325e40745dc074d4a46f95569', '37d6708020fc11da275336d0'),
-  ('a0eebc99-9c0b-4ef8-bb6d-6bb6513e5e0a', 'email', '6d691e7460cdb5580a55b9c271b5be3f7578d173a1ae55a849645ab3c5c1b929', '700d6a6c3f4ab2863b94e88b');
+  ('c0eebc99-9c0b-4ef8-bb6d-6bb6513e5e0c', 'a0eebc99-9c0b-4ef8-bb6d-6bb6513e5e0a', 'title', 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2', 'f1e2d3c4b5a6968776059486'),
+  ('c0eebc99-9c0b-4ef8-bb6d-6bb6513e5e0c', 'a0eebc99-9c0b-4ef8-bb6d-6bb6513e5e0a', 'note', '92bedd6cc3bbbd3f7a22938529fb6cfe5ef65493b647585ddb21f2bcf8257259569a4a200167e1a8dc3c14b7c573c342', '48404b45542d3a24d7ad385f'),
+  ('c0eebc99-9c0b-4ef8-bb6d-6bb6513e5e0c', 'a0eebc99-9c0b-4ef8-bb6d-6bb6513e5e0a', 'website', 'eb2f444709b53132a7ed17bc22e822f46a20a96325e40745dc074d4a46f95569', '37d6708020fc11da275336d0'),
+  ('c0eebc99-9c0b-4ef8-bb6d-6bb6513e5e0c', 'a0eebc99-9c0b-4ef8-bb6d-6bb6513e5e0a', 'email', '6d691e7460cdb5580a55b9c271b5be3f7578d173a1ae55a849645ab3c5c1b929', '700d6a6c3f4ab2863b94e88b');
 
--- Encrypted fields for alice
-INSERT INTO public.encrypted_fields (user_id, field_name, encrypted_blob, iv)
+-- Encrypted fields for alice (one entry with all four fields)
+INSERT INTO public.encrypted_fields (entry_id, user_id, field_name, encrypted_blob, iv)
 VALUES
-  ('b1eebc99-9c0b-4ef8-bb6d-6bb6513e5e0b', 'note', '482e510787a5ac9819388ee194bc78b61a0c772b4fde3c542adf64ee36696523d6b4d396367eba6282af78931cf959fa617bb60555714f73662493a45850e514', 'e59b40c4528acd97e2ccc5af'),
-  ('b1eebc99-9c0b-4ef8-bb6d-6bb6513e5e0b', 'website', 'dad4ebf602fcf753b4402ebe1a30013da9ea9ad80c247aeee50da561e9786e1d0c13e809406c7379', '653343ab676c2ee3932f3662'),
-  ('b1eebc99-9c0b-4ef8-bb6d-6bb6513e5e0b', 'email', '08fdfd868e01f88bfd523da8cfa756c68ef3a3d99fa8843d3acd471f1a75663d', '2ee4c775a3f20911504f05bb');
+  ('d0eebc99-9c0b-4ef8-bb6d-6bb6513e5e0d', 'b1eebc99-9c0b-4ef8-bb6d-6bb6513e5e0b', 'title', 'd4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5', 'a1b2c3d4e5f6a7b809182736'),
+  ('d0eebc99-9c0b-4ef8-bb6d-6bb6513e5e0d', 'b1eebc99-9c0b-4ef8-bb6d-6bb6513e5e0b', 'note', '482e510787a5ac9819388ee194bc78b61a0c772b4fde3c542adf64ee36696523d6b4d396367eba6282af78931cf959fa617bb60555714f73662493a45850e514', 'e59b40c4528acd97e2ccc5af'),
+  ('d0eebc99-9c0b-4ef8-bb6d-6bb6513e5e0d', 'b1eebc99-9c0b-4ef8-bb6d-6bb6513e5e0b', 'website', 'dad4ebf602fcf753b4402ebe1a30013da9ea9ad80c247aeee50da561e9786e1d0c13e809406c7379', '653343ab676c2ee3932f3662'),
+  ('d0eebc99-9c0b-4ef8-bb6d-6bb6513e5e0d', 'b1eebc99-9c0b-4ef8-bb6d-6bb6513e5e0b', 'email', '08fdfd868e01f88bfd523da8cfa756c68ef3a3d99fa8843d3acd471f1a75663d', '2ee4c775a3f20911504f05bb');
 
 -- ============================================
 -- Recovery data for testuser

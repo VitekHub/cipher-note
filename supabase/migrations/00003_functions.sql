@@ -74,6 +74,11 @@ CREATE TRIGGER update_field_keys_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION public.update_updated_at_column();
 
+CREATE TRIGGER update_entries_updated_at
+  BEFORE UPDATE ON public.entries
+  FOR EACH ROW
+  EXECUTE FUNCTION public.update_updated_at_column();
+
 CREATE TRIGGER update_encrypted_fields_updated_at
   BEFORE UPDATE ON public.encrypted_fields
   FOR EACH ROW
