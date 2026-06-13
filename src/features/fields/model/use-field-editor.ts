@@ -21,9 +21,9 @@ export interface UseFieldEditorResult {
  * Manages a local draft that takes priority over query data while editing,
  * debounces saves (1s after last keystroke), and tracks sync status.
  */
-function useFieldEditor(fieldName: FieldName): UseFieldEditorResult {
-  const fieldQuery = useFieldQuery(fieldName)
-  const saveMutation = useFieldMutation(fieldName)
+function useFieldEditor(entryId: string, fieldName: FieldName): UseFieldEditorResult {
+  const fieldQuery = useFieldQuery(entryId, fieldName)
+  const saveMutation = useFieldMutation(entryId, fieldName)
   const setSyncStatus = useSyncStatusStore((s) => s.setStatus)
   const syncStatus = useSyncStatusStore((s) => s.status[fieldName])
   const isVaultLocked = useCryptoStore((s) => s.isVaultLocked)
@@ -57,7 +57,13 @@ function useFieldEditor(fieldName: FieldName): UseFieldEditorResult {
     }
   }, [fieldName, setSyncStatus])
 
-  const { debounceSave, retrySave } = useSaveScheduler(fieldName, setSyncStatus, saveMutation.mutate, isVaultLocked)
+  const { debounceSave, retrySave } = useSaveScheduler({
+    entryId,
+    fieldName,
+    setSyncStatus,
+    saveMutate: saveMutation.mutate,
+    isVaultLocked,
+  })
 
   // Derive effective sync status from mutation pause state:
   // When offline, TanStack Query pauses the mutation - reflect this in the UI

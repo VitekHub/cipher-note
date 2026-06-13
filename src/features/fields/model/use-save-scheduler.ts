@@ -8,6 +8,15 @@ const SAVED_DISPLAY_MS = 3000
 
 type TimerRef = React.RefObject<ReturnType<typeof setTimeout> | null>
 type SetSyncStatus = (name: FieldName, status: SyncStatus) => void
+type SaveMutate = (value: string, options?: { onSuccess?: () => void; onError?: () => void }) => void
+
+interface UseSaveSchedulerOptions {
+  entryId: string
+  fieldName: FieldName
+  setSyncStatus: SetSyncStatus
+  saveMutate: SaveMutate
+  isVaultLocked: boolean
+}
 
 /**
  * Schedule a 'saved' status to expire back to 'idle' after a delay.
@@ -44,12 +53,8 @@ export interface UseSaveSchedulerResult {
 /**
  * Manages save scheduling, timer cleanup, and retry logic.
  */
-function useSaveScheduler(
-  fieldName: FieldName,
-  setSyncStatus: SetSyncStatus,
-  saveMutate: (value: string, options?: { onSuccess?: () => void; onError?: () => void }) => void,
-  isVaultLocked: boolean,
-): UseSaveSchedulerResult {
+function useSaveScheduler(options: UseSaveSchedulerOptions): UseSaveSchedulerResult {
+  const { entryId, fieldName, setSyncStatus, saveMutate, isVaultLocked } = options
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const latestValueRef = useRef('')

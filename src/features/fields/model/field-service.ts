@@ -1,9 +1,10 @@
 import { keyVault } from '@/shared/crypto/key-vault'
-import { fetchField, saveField as saveFieldToServer } from '@/shared/api/supabase-fields'
+import { fetchFieldByEntry, fetchFieldsByEntry, saveField as saveFieldToServer } from '@/shared/api/supabase-fields'
 import { FIELD_NAMES } from '@/shared/types/entities/field.types'
 import type { FieldName } from '@/shared/types/entities/field.types'
 import { encryptField, decryptField, toEncryptedFieldData, toSaveFieldData } from '@/features/fields/model/field-crypto'
 
+const ENTRY_ID_REQUIRED = 'entryId is required'
 const USER_ID_REQUIRED = 'userId is required'
 
 class FieldService {
@@ -17,11 +18,11 @@ class FieldService {
    * Load and decrypt a single field's content from the server.
    * Returns null if the field has never been saved.
    */
-  async loadField(userId: string, fieldName: FieldName): Promise<string | null> {
-    if (!userId) throw new Error(USER_ID_REQUIRED)
+  async loadField(entryId: string, fieldName: FieldName): Promise<string | null> {
+    if (!entryId) throw new Error(ENTRY_ID_REQUIRED)
     const fieldKey = this.getFieldKey(fieldName)
 
-    const serverField = await fetchField(userId, fieldName)
+    const serverField = await fetchFieldByEntry(entryId, fieldName)
     if (!serverField) return null
 
     const encryptedData = toEncryptedFieldData(serverField)
@@ -32,24 +33,25 @@ class FieldService {
    * Encrypt and save a field's content to the server.
    * Uses upsert — will create or update the field.
    */
-  async saveField(userId: string, fieldName: FieldName, plaintext: string): Promise<void> {
+  async saveField(userId: string, entryId: string, fieldName: FieldName, plaintext: string): Promise<void> {
     if (!userId) throw new Error(USER_ID_REQUIRED)
+    if (!entryId) throw new Error(ENTRY_ID_REQUIRED)
     const fieldKey = this.getFieldKey(fieldName)
 
     const encryptedData = await encryptField(plaintext, fieldKey, fieldName)
-    const saveData = toSaveFieldData(encryptedData)
-    await saveFieldToServer(userId, fieldName, saveData)
+    const saveData = { ...toSaveFieldData(encryptedData), entryId, fieldName }
+    await saveFieldToServer(userId, saveData)
   }
 
   /**
-   * Load and decrypt all three fields (note, website, email) in parallel.
+   * Load and decrypt all four fields (title, note, website, email) in parallel.
    * If a single field fails (e.g. network error), the others still succeed.
    * Returns null for fields that failed or were never saved.
    */
-  async loadAllFields(userId: string): Promise<Record<FieldName, string | null>> {
-    if (!userId) throw new Error(USER_ID_REQUIRED)
+  async loadAllFields(entryId: string): Promise<Record<FieldName, string | null>> {
+    if (!entryId) throw new Error(ENTRY_ID_REQUIRED)
     const results = await Promise.allSettled(
-      FIELD_NAMES.map(async (name) => [name, await this.loadField(userId, name)] as const),
+      FIELD_NAMES.map(async (name) => [name, await this.loadField(entryId, name)] as const),
     )
     return Object.fromEntries(
       results.map((result, i) => {
