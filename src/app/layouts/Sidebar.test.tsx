@@ -15,6 +15,7 @@ vi.mock('@tanstack/react-router', () => ({
   Link: ({ children, ...props }: Record<string, unknown> & { children?: React.ReactNode }) =>
     React.createElement('a', props, children),
   useNavigate: () => mockNavigate,
+  useParams: () => ({}),
 }))
 
 vi.mock('@/shared/crypto/key-vault', () => ({
@@ -23,17 +24,20 @@ vi.mock('@/shared/crypto/key-vault', () => ({
   },
 }))
 
+vi.mock('@/features/fields/model/use-entries', () => ({
+  useEntries: () => ({ data: [] }),
+  useCreateEntry: () => vi.fn(),
+}))
+
+vi.mock('@/features/fields/model/use-field-query', () => ({
+  useFieldQuery: () => ({ data: null }),
+}))
+
 import { Sidebar } from './Sidebar'
 
 describe('Sidebar', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-  })
-
-  it('renders nav items', () => {
-    render(<Sidebar />)
-    expect(screen.getByText('Dashboard')).toBeInTheDocument()
-    expect(screen.getByText('Settings')).toBeInTheDocument()
   })
 
   it('renders app logo', () => {
@@ -58,12 +62,14 @@ describe('Sidebar', () => {
     expect(screen.getByRole('button', { name: /unlock vault/i })).toBeInTheDocument()
   })
 
-  it('calls lockVault when lock button is clicked while unlocked', async () => {
+  it('calls lockVault and onClose when lock button is clicked while unlocked', async () => {
+    const onClose = vi.fn()
     useCryptoStore.setState({ isVaultLocked: false })
     const user = userEvent.setup()
-    render(<Sidebar />)
+    render(<Sidebar onClose={onClose} />)
     await user.click(screen.getByRole('button', { name: /lock vault/i }))
     expect(mockLockVault).toHaveBeenCalledOnce()
+    expect(onClose).toHaveBeenCalledOnce()
   })
 
   it('opens unlock dialog when unlock button is clicked while locked', async () => {
@@ -74,6 +80,16 @@ describe('Sidebar', () => {
     await user.click(screen.getByRole('button', { name: /unlock vault/i }))
     expect(useVaultDialogStore.getState().isUnlockDialogOpen).toBe(true)
     expect(mockLockVault).not.toHaveBeenCalled()
+  })
+
+  it('calls onClose when unlock button is clicked while locked', async () => {
+    const onClose = vi.fn()
+    useCryptoStore.setState({ isVaultLocked: true })
+    useVaultDialogStore.setState({ isUnlockDialogOpen: false })
+    const user = userEvent.setup()
+    render(<Sidebar onClose={onClose} />)
+    await user.click(screen.getByRole('button', { name: /unlock vault/i }))
+    expect(onClose).toHaveBeenCalledOnce()
   })
 
   it('renders user info when user is set', () => {

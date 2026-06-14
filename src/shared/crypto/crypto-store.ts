@@ -33,6 +33,13 @@ function setQueryClient(client: QueryClient) {
   queryClientRef = client
 }
 
+/** Remove all vault-related queries (field, entries, entry). */
+function clearVaultQueries() {
+  queryClientRef?.removeQueries({ queryKey: ['field'] })
+  queryClientRef?.removeQueries({ queryKey: ['entries'] })
+  queryClientRef?.removeQueries({ queryKey: ['entry'] })
+}
+
 const useCryptoStore = create<CryptoState & CryptoActions>()((set) => ({
   ...initialState,
   setKeys: (fieldKeyNames) =>
@@ -48,11 +55,11 @@ const useCryptoStore = create<CryptoState & CryptoActions>()((set) => ({
       isVaultLocked: true,
       lastActivity: 0,
     })
-    queryClientRef?.removeQueries({ queryKey: ['field'] })
+    clearVaultQueries()
   },
   clearVault: () => {
     set(initialState)
-    queryClientRef?.removeQueries({ queryKey: ['field'] })
+    clearVaultQueries()
   },
   updateActivity: () => set({ lastActivity: Date.now() }),
 }))

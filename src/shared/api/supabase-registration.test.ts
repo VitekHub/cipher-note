@@ -68,7 +68,7 @@ describe('uploadRegistrationData', () => {
     expect(from).toHaveBeenCalledWith('keys')
 
     const insert = getMockInsert()
-    expect(insert).toHaveBeenCalledTimes(3)
+    expect(insert).toHaveBeenCalledTimes(4)
 
     const keysRow = insert.mock.calls[0][0]
     expect(keysRow.user_id).toBe(USER_ID)
@@ -76,6 +76,9 @@ describe('uploadRegistrationData', () => {
     expect(keysRow.key_salt).toHaveLength(32)
     expect(keysRow.wrapped_master_key).toHaveLength(96)
     expect(keysRow.master_key_iv).toHaveLength(24)
+
+    const entriesRow = insert.mock.calls[1][0]
+    expect(entriesRow.user_id).toBe(USER_ID)
   })
 
   it('inserts 3 field_keys rows with correct field names', async () => {
@@ -86,7 +89,7 @@ describe('uploadRegistrationData', () => {
     expect(from).toHaveBeenCalledWith('field_keys')
 
     const insert = getMockInsert()
-    const fieldKeysRows = insert.mock.calls[1][0]
+    const fieldKeysRows = insert.mock.calls[2][0]
     expect(fieldKeysRows).toHaveLength(3)
 
     const fieldNames = fieldKeysRows.map((row: { field_name: string }) => row.field_name)
@@ -108,7 +111,7 @@ describe('uploadRegistrationData', () => {
     expect(from).toHaveBeenCalledWith('recovery')
 
     const insert = getMockInsert()
-    const recoveryRow = insert.mock.calls[2][0]
+    const recoveryRow = insert.mock.calls[3][0]
     expect(recoveryRow.user_id).toBe(USER_ID)
     expect(recoveryRow.recovery_salt).toHaveLength(32)
     expect(recoveryRow.wrapped_master_key).toHaveLength(96)
@@ -133,6 +136,7 @@ describe('uploadRegistrationData', () => {
     const insert = getMockInsert()
     insert
       .mockResolvedValueOnce({ error: null })
+      .mockResolvedValueOnce({ error: null })
       .mockResolvedValueOnce({ error: new Error('field_keys insert failed') })
     const data = makeRegistrationResult()
 
@@ -148,6 +152,7 @@ describe('uploadRegistrationData', () => {
   it('throws ApiError on recovery insert error', async () => {
     const insert = getMockInsert()
     insert
+      .mockResolvedValueOnce({ error: null })
       .mockResolvedValueOnce({ error: null })
       .mockResolvedValueOnce({ error: null })
       .mockResolvedValueOnce({ error: new Error('recovery insert failed') })

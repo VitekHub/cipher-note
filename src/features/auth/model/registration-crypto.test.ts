@@ -43,6 +43,7 @@ function mockBytes(length: number, fill: number): Uint8Array<ArrayBuffer> {
   return new Uint8Array(length).fill(fill) as Uint8Array<ArrayBuffer>
 }
 
+const NUMBER_OF_FIELD_KEYS = 4
 const PASSWORD = 'test-password-123'
 const PASSWORD_KEY_FILL = 0x11
 const RECOVERY_KEK_FILL = 0x33
@@ -84,14 +85,14 @@ describe('deriveRegistrationKeys', () => {
   })
 
   it('returns fieldKeys map with 3 CryptoKey entries', () => {
-    expect(result.fieldKeys.size).toBe(3)
+    expect(result.fieldKeys.size).toBe(NUMBER_OF_FIELD_KEYS)
     expect(result.fieldKeys.get('note')).toBeInstanceOf(CryptoKey)
     expect(result.fieldKeys.get('website')).toBeInstanceOf(CryptoKey)
     expect(result.fieldKeys.get('email')).toBeInstanceOf(CryptoKey)
   })
 
   it('returns 3 wrapped field keys, all version 1', () => {
-    expect(result.wrappedFieldKeys).toHaveLength(3)
+    expect(result.wrappedFieldKeys).toHaveLength(NUMBER_OF_FIELD_KEYS)
     for (const wfk of result.wrappedFieldKeys) {
       expect(wfk.version).toBe(FIELD_KEY_VERSION)
       expect(wfk.wrappedKey).toHaveLength(48)
@@ -133,7 +134,7 @@ describe('deriveRegistrationKeys', () => {
     const unwrapped = await unwrapFieldKeys(serverFieldKeys, result.kek)
 
     // Verify unwrapped keys are CryptoKeys and can encrypt/decrypt correctly
-    expect(unwrapped.size).toBe(3)
+    expect(unwrapped.size).toBe(NUMBER_OF_FIELD_KEYS)
     for (const [, cryptoKey] of unwrapped) {
       expect(cryptoKey).toBeInstanceOf(CryptoKey)
 

@@ -25,13 +25,15 @@ describe('key-hierarchy', () => {
   })
 
   describe('generateFieldKeys', () => {
-    it('returns rawFieldKeys and cryptoFieldKeys with note, website, and email', async () => {
+    it('returns rawFieldKeys and cryptoFieldKeys with title, note, website, and email', async () => {
       const { rawFieldKeys, cryptoFieldKeys } = await generateFieldKeys()
-      expect(rawFieldKeys.size).toBe(3)
-      expect(cryptoFieldKeys.size).toBe(3)
+      expect(rawFieldKeys.size).toBe(4)
+      expect(cryptoFieldKeys.size).toBe(4)
+      expect(rawFieldKeys.has('title')).toBe(true)
       expect(rawFieldKeys.has('note')).toBe(true)
       expect(rawFieldKeys.has('website')).toBe(true)
       expect(rawFieldKeys.has('email')).toBe(true)
+      expect(cryptoFieldKeys.has('title')).toBe(true)
       expect(cryptoFieldKeys.has('note')).toBe(true)
       expect(cryptoFieldKeys.has('website')).toBe(true)
       expect(cryptoFieldKeys.has('email')).toBe(true)
@@ -116,6 +118,7 @@ describe('key-hierarchy', () => {
       const { rawFieldKeys, cryptoFieldKeys } = await generateFieldKeys()
 
       const versions = new Map<string, number>([
+        ['title', 1],
         ['note', 1],
         ['website', 1],
         ['email', 1],
@@ -170,7 +173,7 @@ describe('key-hierarchy', () => {
       const wrapped = await wrapFieldKeys(rawFieldKeys, hierarchy.kek, versions)
 
       const fieldNames = wrapped.map((w) => w.fieldName).sort()
-      expect(fieldNames).toEqual(['email', 'note', 'website'])
+      expect(fieldNames).toEqual(['email', 'note', 'title', 'website'])
 
       for (const w of wrapped) {
         expect(w.version).toBe(versions.get(w.fieldName))
@@ -202,6 +205,7 @@ describe('key-hierarchy', () => {
     it('throws DecryptionError when unwrapping with wrong version (rollback protection)', async () => {
       const { hierarchy, rawFieldKeys } = await setupHierarchy()
       const versions = new Map<string, number>([
+        ['title', 1],
         ['note', 1],
         ['website', 1],
         ['email', 1],
@@ -224,6 +228,7 @@ describe('key-hierarchy', () => {
       const incompleteVersions = new Map<string, number>([
         ['note', 1],
         ['website', 1],
+        ['title', 1],
       ])
 
       await expect(wrapFieldKeys(rawFieldKeys, hierarchy.kek, incompleteVersions)).rejects.toThrow(
@@ -283,6 +288,7 @@ describe('key-hierarchy', () => {
       // 3. Generate field keys
       const { rawFieldKeys } = await generateFieldKeys()
       const versions = new Map<string, number>([
+        ['title', 1],
         ['note', 1],
         ['website', 1],
         ['email', 1],

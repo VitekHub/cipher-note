@@ -31,7 +31,12 @@ describe('useSaveScheduler', () => {
 
   it('debounces saves — rapid scheduleSave calls trigger only one save', () => {
     const { result } = renderHook(() =>
-      useSaveScheduler('note', useSyncStatusStore.getState().setStatus, mockSaveMutate, false),
+      useSaveScheduler({
+        fieldName: 'note',
+        setSyncStatus: useSyncStatusStore.getState().setStatus,
+        saveMutate: mockSaveMutate,
+        isVaultLocked: false,
+      }),
     )
 
     // Rapid keystrokes
@@ -68,7 +73,14 @@ describe('useSaveScheduler', () => {
 
   it('sets sync status to saving then saved on success', () => {
     const setStatus = useSyncStatusStore.getState().setStatus
-    const { result } = renderHook(() => useSaveScheduler('note', setStatus, mockSaveMutate, false))
+    const { result } = renderHook(() =>
+      useSaveScheduler({
+        fieldName: 'note',
+        setSyncStatus: setStatus,
+        saveMutate: mockSaveMutate,
+        isVaultLocked: false,
+      }),
+    )
 
     const status = () => useSyncStatusStore.getState().status['note']
 
@@ -101,7 +113,9 @@ describe('useSaveScheduler', () => {
     })
 
     const setStatus = useSyncStatusStore.getState().setStatus
-    const { result } = renderHook(() => useSaveScheduler('note', setStatus, errorMock, false))
+    const { result } = renderHook(() =>
+      useSaveScheduler({ fieldName: 'note', setSyncStatus: setStatus, saveMutate: errorMock, isVaultLocked: false }),
+    )
 
     // Schedule a save that will fail
     act(() => {
@@ -122,7 +136,9 @@ describe('useSaveScheduler', () => {
     })
 
     const setStatus = useSyncStatusStore.getState().setStatus
-    const { result } = renderHook(() => useSaveScheduler('note', setStatus, errorMock, false))
+    const { result } = renderHook(() =>
+      useSaveScheduler({ fieldName: 'note', setSyncStatus: setStatus, saveMutate: errorMock, isVaultLocked: false }),
+    )
 
     // Schedule initial save
     act(() => {
@@ -154,7 +170,8 @@ describe('useSaveScheduler', () => {
   it('clears timers when vault locks', () => {
     const setStatus = useSyncStatusStore.getState().setStatus
     const { rerender } = renderHook(
-      ({ isVaultLocked }) => useSaveScheduler('note', setStatus, mockSaveMutate, isVaultLocked),
+      ({ isVaultLocked }) =>
+        useSaveScheduler({ fieldName: 'note', setSyncStatus: setStatus, saveMutate: mockSaveMutate, isVaultLocked }),
       { initialProps: { isVaultLocked: false } },
     )
 
@@ -171,7 +188,14 @@ describe('useSaveScheduler', () => {
 
   it('clears timers on unmount', () => {
     const setStatus = useSyncStatusStore.getState().setStatus
-    const { result, unmount } = renderHook(() => useSaveScheduler('note', setStatus, mockSaveMutate, false))
+    const { result, unmount } = renderHook(() =>
+      useSaveScheduler({
+        fieldName: 'note',
+        setSyncStatus: setStatus,
+        saveMutate: mockSaveMutate,
+        isVaultLocked: false,
+      }),
+    )
 
     // Schedule a debounced save
     act(() => {
@@ -195,7 +219,8 @@ describe('useSaveScheduler', () => {
     const secondMutate = createMockSaveMutate()
 
     const { rerender, result } = renderHook(
-      ({ saveMutate }) => useSaveScheduler('note', setStatus, saveMutate, false),
+      ({ saveMutate }) =>
+        useSaveScheduler({ fieldName: 'note', setSyncStatus: setStatus, saveMutate, isVaultLocked: false }),
       { initialProps: { saveMutate: firstMutate } },
     )
 

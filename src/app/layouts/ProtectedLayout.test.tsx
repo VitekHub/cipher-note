@@ -10,6 +10,7 @@ vi.mock('@tanstack/react-router', () => ({
     React.createElement('a', props, children),
   Outlet: () => React.createElement('div', { 'data-testid': 'outlet' }),
   useNavigate: () => vi.fn(),
+  useParams: vi.fn(() => ({})),
 }))
 
 vi.mock('@/features/encryption/ui/VaultUnlockDialog', () => ({
@@ -18,6 +19,15 @@ vi.mock('@/features/encryption/ui/VaultUnlockDialog', () => ({
 
 vi.mock('@/features/encryption/model/vault-timeout', () => ({
   useVaultTimeout: () => {},
+}))
+
+vi.mock('@/features/fields/model/use-entries', () => ({
+  useEntries: vi.fn(() => ({ data: [] })),
+  useCreateEntry: vi.fn(() => vi.fn()),
+}))
+
+vi.mock('@/features/fields/model/use-field-query', () => ({
+  useFieldQuery: vi.fn(() => ({ data: undefined })),
 }))
 
 import { ProtectedLayout } from './ProtectedLayout'

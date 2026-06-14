@@ -15,6 +15,7 @@ interface SyncStatusActions {
 }
 
 const initialStatus: Record<FieldName, SyncStatus> = {
+  title: 'idle',
   note: 'idle',
   website: 'idle',
   email: 'idle',

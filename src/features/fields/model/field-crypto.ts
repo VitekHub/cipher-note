@@ -40,10 +40,16 @@ export async function decryptField(
 }
 
 /** Convert internal binary EncryptedFieldData to hex-string SaveFieldData for the API. */
-export function toSaveFieldData(encryptedData: EncryptedFieldData): SaveFieldData {
+export function toSaveFieldData(
+  encryptedData: EncryptedFieldData,
+  entryId: string,
+  fieldName: FieldName,
+): SaveFieldData {
   return {
     encryptedBlob: hexEncode(encryptedData.ciphertext),
     iv: hexEncode(encryptedData.iv),
+    entryId,
+    fieldName,
   }
 }
 

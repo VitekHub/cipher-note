@@ -19,6 +19,7 @@ export interface ServerFieldKey {
 }
 
 export interface ServerEncryptedField {
+  entryId: string
   fieldName: FieldName
   encryptedBlob: string
   iv: string
@@ -39,6 +40,8 @@ export interface SaveWrappedKeyData {
 }
 
 export interface SaveFieldData {
+  entryId: string
+  fieldName: FieldName
   encryptedBlob: string
   iv: string
 }

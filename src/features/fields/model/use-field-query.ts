@@ -11,13 +11,14 @@ import type { FieldName } from '@/shared/types/entities/field.types'
  * The query is disabled while vault is locked or field key missing. On lock,
  * crypto-store purges field queries so unlock triggers a fresh fetch.
  */
-export function useFieldQuery(fieldName: FieldName) {
+export function useFieldQuery(entryId: string, fieldName: FieldName) {
   const userId = useAuth().user?.id ?? ''
-  const enabled = useCryptoStore((s) => !s.isVaultLocked && s.loadedFieldKeys[fieldName] === true) && !!userId
+  const enabled =
+    useCryptoStore((s) => !s.isVaultLocked && s.loadedFieldKeys[fieldName] === true) && !!userId && !!entryId
 
   return useQuery({
-    queryKey: ['field', fieldName],
-    queryFn: () => fieldService.loadField(userId, fieldName),
+    queryKey: ['field', entryId, fieldName],
+    queryFn: () => fieldService.loadField(entryId, fieldName),
     enabled,
     retry: (failureCount, error) => {
       if (error instanceof DecryptionError) return false

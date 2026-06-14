@@ -7,7 +7,7 @@
  *     ├── KEK (HKDF info="wrap")  → wraps/unwraps field keys
  *     └── Signing Key Seed (HKDF info="sign")  → integrity verification of wrapped keys
  *
- *   Field Keys (random 256 bits each, per field: note, website, email)
+ *   Field Keys (random 256 bits each, per field: title, note, website, email)
  *     → wrapped with KEK + AAD(fieldName, version) for server storage
  *
  * Flow at registration:
@@ -23,11 +23,10 @@ import { encrypt, decrypt } from '@/shared/crypto/aes-gcm'
 import { deriveKEK, deriveSigningKeySeed } from '@/shared/crypto/hkdf'
 import type { KeyHierarchy, WrappedFieldKey } from '@/shared/types/crypto.types'
 import type { ServerFieldKey } from '../types/api.types'
-
-const FIELD_NAMES = ['note', 'website', 'email'] as const
+import { FIELD_NAMES } from '@/shared/types/entities/field.types'
 
 /**
- * Generate all three field keys (note, website, email) at once.
+ * Generate all four field keys (title, note, website, email) at once.
  * Each is a 256-bit random key. Returns both the raw key bytes (for wrapping)
  * and imported CryptoKeys (for encryption).
  */

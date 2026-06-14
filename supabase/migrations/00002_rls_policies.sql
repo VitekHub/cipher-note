@@ -2,10 +2,25 @@
 -- Cipher Note: Row Level Security Policies
 -- ============================================
 
+-- Revoke default Supabase privileges from anon on all tables.
+-- anon never needs direct table access — it only uses SECURITY DEFINER
+-- RPC functions with explicit GRANT EXECUTE (check_username_availability,
+-- get_login_salts). Revoking prevents table schemas from appearing in the
+-- public GraphQL/REST API.
+-- authenticated retains table access (needed for supabase.from() queries,
+-- with RLS restricting rows to user_id = auth.uid()).
+REVOKE ALL ON public.users FROM anon;
+REVOKE ALL ON public.keys FROM anon;
+REVOKE ALL ON public.field_keys FROM anon;
+REVOKE ALL ON public.entries FROM anon;
+REVOKE ALL ON public.encrypted_fields FROM anon;
+REVOKE ALL ON public.recovery FROM anon;
+
 -- Enable RLS on all tables
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.keys ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.field_keys ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.entries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.encrypted_fields ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.recovery ENABLE ROW LEVEL SECURITY;
 
@@ -62,8 +77,31 @@ CREATE POLICY "Users can delete own field keys"
   USING (user_id = auth.uid());
 
 -- ============================================
--- Encrypted fields policies (one per field per user)
+-- Entries policies (one-to-many with user)
+-- Entries are first-class entities — create and delete operations
+-- target entries, and ON DELETE CASCADE propagates to encrypted_fields.
+-- ============================================
+CREATE POLICY "Users can view own entries"
+  ON public.entries FOR SELECT
+  USING (user_id = auth.uid());
+
+CREATE POLICY "Users can insert own entries"
+  ON public.entries FOR INSERT
+  WITH CHECK (user_id = auth.uid());
+
+CREATE POLICY "Users can update own entries"
+  ON public.entries FOR UPDATE
+  USING (user_id = auth.uid())
+  WITH CHECK (user_id = auth.uid());
+
+CREATE POLICY "Users can delete own entries"
+  ON public.entries FOR DELETE
+  USING (user_id = auth.uid());
+
+-- ============================================
+-- Encrypted fields policies (one per field per entry)
 -- Upsert logic uses INSERT + UPDATE; DELETE for field removal
+-- user_id is denormalized from entries for simple RLS policies
 -- ============================================
 CREATE POLICY "Users can view own encrypted fields"
   ON public.encrypted_fields FOR SELECT

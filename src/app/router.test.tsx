@@ -97,7 +97,7 @@ describe('Router page rendering', () => {
   })
 
   it('renders dashboard with field cards when authenticated', async () => {
-    renderWithRouter({ isAuthenticated: true, user: { id: '1', username: 'test' } }, '/dashboard')
+    renderWithRouter({ isAuthenticated: true, user: { id: '1', username: 'test' } }, '/dashboard/test-entry')
     await waitFor(() => {
       expect(screen.getByText('Note')).toBeInTheDocument()
       expect(screen.getByText('Website')).toBeInTheDocument()

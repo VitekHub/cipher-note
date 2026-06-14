@@ -25,7 +25,7 @@ describe('fetchField', () => {
   it('returns null when field does not exist', async () => {
     mockMaybeSingle.mockResolvedValueOnce({ data: null, error: null })
 
-    const result = await fetchField('user-1', 'note')
+    const result = await fetchField('entry-1', 'note')
 
     expect(result).toBeNull()
   })
@@ -33,6 +33,7 @@ describe('fetchField', () => {
   it('maps snake_case row to camelCase ServerEncryptedField', async () => {
     mockMaybeSingle.mockResolvedValueOnce({
       data: {
+        entry_id: 'entry-1',
         field_name: 'note',
         encrypted_blob: 'aa'.repeat(16),
         iv: 'bb'.repeat(12),
@@ -41,9 +42,10 @@ describe('fetchField', () => {
       error: null,
     })
 
-    const result = await fetchField('user-1', 'note')
+    const result = await fetchField('entry-1', 'note')
 
     expect(result).toEqual({
+      entryId: 'entry-1',
       fieldName: 'note',
       encryptedBlob: 'aa'.repeat(16),
       iv: 'bb'.repeat(12),
@@ -54,11 +56,11 @@ describe('fetchField', () => {
   it('queries with userId and fieldName filters', async () => {
     mockMaybeSingle.mockResolvedValueOnce({ data: null, error: null })
 
-    await fetchField('user-1', 'website')
+    await fetchField('entry-1', 'website')
 
     expect(mockFrom).toHaveBeenCalledWith('encrypted_fields')
-    expect(qb.select).toHaveBeenCalledWith('field_name, encrypted_blob, iv, updated_at')
-    expect(qb.eq).toHaveBeenCalledWith('user_id', 'user-1')
+    expect(qb.select).toHaveBeenCalledWith('entry_id, field_name, encrypted_blob, iv, updated_at')
+    expect(qb.eq).toHaveBeenCalledWith('entry_id', 'entry-1')
     expect(qb.eq).toHaveBeenCalledWith('field_name', 'website')
   })
 
@@ -90,7 +92,9 @@ describe('saveField', () => {
   it('calls upsert with correct data and onConflict', async () => {
     mockUpsert.mockResolvedValueOnce({ data: null, error: null })
 
-    await saveField('user-1', 'note', {
+    await saveField('user-1', {
+      entryId: 'entry-1',
+      fieldName: 'note',
       encryptedBlob: 'aa'.repeat(16),
       iv: 'bb'.repeat(12),
     })
@@ -99,11 +103,12 @@ describe('saveField', () => {
     expect(mockUpsert).toHaveBeenCalledWith(
       {
         user_id: 'user-1',
+        entry_id: 'entry-1',
         field_name: 'note',
         encrypted_blob: 'aa'.repeat(16),
         iv: 'bb'.repeat(12),
       },
-      { onConflict: 'user_id,field_name' },
+      { onConflict: 'entry_id,field_name' },
     )
   })
 
@@ -114,7 +119,9 @@ describe('saveField', () => {
     })
 
     try {
-      await saveField('user-1', 'note', {
+      await saveField('user-1', {
+        entryId: 'entry-1',
+        fieldName: 'note',
         encryptedBlob: 'aa'.repeat(16),
         iv: 'bb'.repeat(12),
       })

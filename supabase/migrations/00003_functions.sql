@@ -8,6 +8,7 @@ CREATE OR REPLACE FUNCTION public.get_current_user_id()
 RETURNS UUID
 LANGUAGE sql
 STABLE
+SET search_path = ''
 AS $$
   SELECT auth.uid();
 $$;
@@ -30,6 +31,7 @@ CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = ''
 AS $$
 BEGIN
   INSERT INTO public.users (id, username, created_at)
@@ -39,7 +41,7 @@ BEGIN
       NEW.raw_user_meta_data->>'username',
       split_part(NEW.email, '@', 1)
     ),
-    COALESCE(NEW.created_at, now())
+    COALESCE(NEW.created_at, pg_catalog.now())
   );
   RETURN NEW;
 END;
@@ -57,9 +59,10 @@ CREATE TRIGGER on_auth_user_created
 CREATE OR REPLACE FUNCTION public.update_updated_at_column()
 RETURNS TRIGGER
 LANGUAGE plpgsql
+SET search_path = ''
 AS $$
 BEGIN
-  NEW.updated_at = now();
+  NEW.updated_at = pg_catalog.now();
   RETURN NEW;
 END;
 $$;
@@ -74,6 +77,11 @@ CREATE TRIGGER update_field_keys_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION public.update_updated_at_column();
 
+CREATE TRIGGER update_entries_updated_at
+  BEFORE UPDATE ON public.entries
+  FOR EACH ROW
+  EXECUTE FUNCTION public.update_updated_at_column();
+
 CREATE TRIGGER update_encrypted_fields_updated_at
   BEFORE UPDATE ON public.encrypted_fields
   FOR EACH ROW
@@ -83,3 +91,11 @@ CREATE TRIGGER update_recovery_updated_at
   BEFORE UPDATE ON public.recovery
   FOR EACH ROW
   EXECUTE FUNCTION public.update_updated_at_column();
+
+-- ============================================
+-- Revoke default EXECUTE grants on internal functions.
+-- Trigger and utility functions should not be callable via REST/RPC.
+-- ============================================
+REVOKE ALL ON FUNCTION public.handle_new_user() FROM anon, authenticated;
+REVOKE ALL ON FUNCTION public.get_current_user_id() FROM anon, authenticated;
+REVOKE ALL ON FUNCTION public.update_updated_at_column() FROM anon, authenticated;

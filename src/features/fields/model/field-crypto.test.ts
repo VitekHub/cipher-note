@@ -73,12 +73,13 @@ describe('toSaveFieldData + toEncryptedFieldData', () => {
     const encrypted = await encryptField(plaintext, key, 'note')
 
     // Internal binary → hex for API
-    const saveData = toSaveFieldData(encrypted)
+    const saveData = toSaveFieldData(encrypted, 'entry-1', 'note')
     expect(typeof saveData.encryptedBlob).toBe('string')
     expect(typeof saveData.iv).toBe('string')
 
     // Hex from API → internal binary
     const serverField = {
+      entryId: 'entry-1',
       fieldName: 'note' as FieldName,
       encryptedBlob: saveData.encryptedBlob,
       iv: saveData.iv,

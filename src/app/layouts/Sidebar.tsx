@@ -1,16 +1,19 @@
 import { useTranslation } from 'react-i18next'
-import { LayoutDashboard, Settings, Lock, Unlock, LogOut, User, X } from 'lucide-react'
-import { useNavigate } from '@tanstack/react-router'
+import { Settings, Lock, Unlock, LogOut, User, X, FileText } from 'lucide-react'
+import { useNavigate, useParams } from '@tanstack/react-router'
 
 import { cn } from '@/shared/lib/utils'
 import { Button } from '@/shared/ui/button'
-import { NavLink } from '@/shared/ui/nav/NavLink'
 import { Separator } from '@/shared/ui/separator'
 import { AppLogo } from '@/shared/ui/brand/AppLogo'
+import { NavLink } from '@/shared/ui/nav/NavLink'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
 import { useVaultDialogStore } from '@/shared/crypto/vault-dialog-store'
 import { keyVault } from '@/shared/crypto/key-vault'
+import { useEntries } from '@/features/fields/model/use-entries'
+import { useFieldQuery } from '@/features/fields/model/use-field-query'
+import { CreateEntryButton } from '@/features/fields/ui/CreateEntryButton'
 
 interface SidebarProps {
   onClose?: () => void
@@ -18,12 +21,50 @@ interface SidebarProps {
   className?: string
 }
 
+function EntryItem({
+  entryId,
+  index,
+  isVaultLocked,
+  isActive,
+  onClick,
+}: {
+  entryId: string
+  index: number
+  isVaultLocked: boolean
+  isActive: boolean
+  onClick: () => void
+}) {
+  const { t } = useTranslation('common')
+  const { data: title } = useFieldQuery(entryId, 'title')
+
+  const label = isVaultLocked
+    ? t('entries.entryLabel', { number: index + 1 })
+    : title || t('entries.entryLabel', { number: index + 1 })
+
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'focus-visible:ring-ring/50 flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-left text-sm outline-none focus-visible:ring-2',
+        isActive ? 'bg-muted font-medium' : 'hover:bg-muted/50 text-muted-foreground',
+      )}
+    >
+      <FileText className="size-4 shrink-0" />
+      <span className="min-w-0 truncate">{label}</span>
+    </button>
+  )
+}
+
 function Sidebar({ onClose, onLogout, className }: SidebarProps) {
   const { t } = useTranslation(['common', 'crypto'])
   const navigate = useNavigate()
+  const params = useParams({ strict: false })
+  const activeEntryId = 'entryId' in params ? params.entryId : undefined
+
   const user = useAuthStore((s) => s.user)
   const isVaultLocked = useCryptoStore((s) => s.isVaultLocked)
   const openUnlockDialog = useVaultDialogStore((s) => s.openUnlockDialog)
+  const { data: entries } = useEntries()
 
   function handleNavClick() {
     onClose?.()
@@ -36,6 +77,7 @@ function Sidebar({ onClose, onLogout, className }: SidebarProps) {
   }
 
   function handleVaultLock() {
+    onClose?.()
     if (isVaultLocked) {
       openUnlockDialog()
     } else {
@@ -57,41 +99,66 @@ function Sidebar({ onClose, onLogout, className }: SidebarProps) {
 
       <Separator />
 
-      {/* Navigation */}
-      <nav aria-label={t('common:nav.mainNav')} className="flex-1 space-y-1 p-2">
-        <NavLink to="/dashboard" onClick={handleNavClick} className="flex items-center gap-3">
-          <LayoutDashboard className="size-4" />
-          <span>{t('common:nav.dashboard')}</span>
-        </NavLink>
-        <NavLink to="/settings" onClick={handleNavClick} className="flex items-center gap-3">
-          <Settings className="size-4" />
-          <span>{t('common:nav.settings')}</span>
-        </NavLink>
+      {/* Entry list */}
+      <nav aria-label={t('common:nav.mainNav')} className="flex-1 overflow-y-auto p-2">
+        <div className="flex items-center justify-between px-1 pb-1">
+          <span className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
+            {t('common:entries.entriesLabel')}
+          </span>
+          <CreateEntryButton onCreated={onClose} />
+        </div>
+
+        {entries && entries.length > 0 ? (
+          <div className="space-y-0.5">
+            {entries.map((entry, index) => (
+              <EntryItem
+                key={entry.id}
+                entryId={entry.id}
+                index={index}
+                isVaultLocked={isVaultLocked}
+                isActive={activeEntryId === entry.id}
+                onClick={() => {
+                  navigate({ to: '/dashboard/$entryId', params: { entryId: entry.id } })
+                  handleNavClick()
+                }}
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted-foreground px-3 py-2 text-sm">{t('common:entries.empty')}</p>
+        )}
       </nav>
 
       <Separator />
 
       {/* Footer */}
       <div className="space-y-2 p-4">
-        {/* User info */}
-        {user && (
-          <div className="text-muted-foreground flex items-center gap-2 text-sm">
-            <User className="size-4" />
-            <span className="min-w-0 truncate">{user.username}</span>
-          </div>
-        )}
+        <div className="flex items-center justify-between">
+          {/* User info */}
+          {user && (
+            <div className="text-muted-foreground flex items-center gap-2 text-sm">
+              <User className="size-4" />
+              <span className="min-w-0 truncate">{user.username}</span>
+            </div>
+          )}
+
+          {/* Logout button */}
+          <Button variant="ghost" size="sm" className="px-4" onClick={handleLogout}>
+            <LogOut className="size-4" />
+            <span>{t('common:nav.logout')}</span>
+          </Button>
+        </div>
 
         {/* Vault lock button */}
         <Button variant="outline" size="sm" className="w-full" onClick={handleVaultLock}>
           {isVaultLocked ? <Unlock className="size-4" /> : <Lock className="size-4" />}
           <span>{isVaultLocked ? t('crypto:vault.unlock') : t('crypto:vault.lock')}</span>
         </Button>
-
-        {/* Logout button */}
-        <Button variant="ghost" size="sm" className="w-full" onClick={handleLogout}>
-          <LogOut className="size-4" />
-          <span>{t('common:nav.logout')}</span>
-        </Button>
+        {/* Settings */}
+        <NavLink to="/settings" onClick={handleNavClick} className="flex items-center justify-center gap-3">
+          <Settings className="size-4" />
+          <span>{t('common:nav.settings')}</span>
+        </NavLink>
       </div>
     </div>
   )

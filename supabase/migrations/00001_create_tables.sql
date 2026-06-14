@@ -2,8 +2,8 @@
 -- Cipher Note: Table Creation
 -- ============================================
 
--- Custom enum type for the three encrypted field names
-CREATE TYPE public.field_name AS ENUM ('note', 'website', 'email');
+-- Custom enum type for the encrypted field names
+CREATE TYPE public.field_name AS ENUM ('title', 'note', 'website', 'email');
 
 -- ============================================
 -- Users profile table
@@ -53,21 +53,38 @@ CREATE INDEX idx_field_keys_user_field ON public.field_keys (user_id, field_name
 -- for lookups but keeps the index naming consistent with encrypted_fields.
 
 -- ============================================
--- Encrypted fields table (one per field per user)
--- Stores the encrypted content blob for each field
+-- Entries table (one-to-many with user)
+-- Each entry is a group of encrypted fields (title, note, website, email).
+-- No encrypted data lives here — only metadata and timestamps.
+-- ============================================
+CREATE TABLE public.entries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_entries_user ON public.entries (user_id);
+
+-- ============================================
+-- Encrypted fields table (one per field per entry)
+-- Stores the encrypted content blob for each field.
+-- user_id is denormalized from entries for simple RLS policies:
+-- USING (user_id = auth.uid()) avoids a JOIN on every policy check.
 -- ============================================
 CREATE TABLE public.encrypted_fields (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  entry_id UUID NOT NULL REFERENCES public.entries(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
   field_name public.field_name NOT NULL,
   encrypted_blob TEXT NOT NULL CHECK (length(encrypted_blob) >= 32),
   iv TEXT NOT NULL CHECK (length(iv) = 24),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (user_id, field_name)
+  UNIQUE (entry_id, field_name)
 );
 
-CREATE INDEX idx_encrypted_fields_user ON public.encrypted_fields (user_id);
+CREATE INDEX idx_encrypted_fields_entry ON public.encrypted_fields (entry_id);
 
 -- ============================================
 -- Recovery table (one-to-one with user)

@@ -1,22 +1,22 @@
 {
+  "title": {
+    "label": "Název",
+    "placeholder": "Zadejte název"
+  },
   "note": {
     "label": "Poznámka",
-    "placeholder": "Napište svou poznámku...",
-    "locked": "Odemkněte trezor pro zobrazení",
-    "unlock": "Odemknout"
+    "placeholder": "Napište svou poznámku..."
   },
   "website": {
     "label": "Webová stránka",
-    "placeholder": "Zadejte URL webové stránky",
-    "locked": "Odemkněte trezor pro zobrazení",
-    "unlock": "Odemknout"
+    "placeholder": "Zadejte URL webové stránky"
   },
   "email": {
     "label": "E-mail",
-    "placeholder": "Zadejte e-mailovou adresu",
-    "locked": "Odemkněte trezor pro zobrazení",
-    "unlock": "Odemknout"
+    "placeholder": "Zadejte e-mailovou adresu"
   },
+  "vaultLocked": "Trezor je uzamčen",
+  "vaultUnlock": "Odemknout trezor",
   "offlineAwaitingData": "Připojte se k internetu pro načtení dat",
   "lastUpdated": "Poslední aktualizace: {{date}}",
   "status": {

@@ -13,7 +13,7 @@ import { DecryptionError } from './errors'
  * Module-scoped crypto key vault.
  *
  * Stores CryptoKey objects with extractable: false, so exportKey() fails.
- * Keys are identified by well-known IDs: 'kek', 'note', 'website', 'email'.
+ * Keys are identified by well-known IDs: 'kek', 'note', 'website', 'email', 'title'.
  */
 class KeyVault {
   private vault = new Map<string, CryptoKey>()

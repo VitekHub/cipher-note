@@ -38,10 +38,11 @@ describe('crypto-store', () => {
   })
 
   it('setKeys loads field keys and unlocks vault', () => {
-    useCryptoStore.getState().setKeys(['note', 'website', 'email'])
+    useCryptoStore.getState().setKeys(['title', 'note', 'website', 'email'])
 
     const state = useCryptoStore.getState()
     expect(state.loadedFieldKeys).toEqual({
+      title: true,
       note: true,
       website: true,
       email: true,
@@ -90,14 +91,18 @@ describe('crypto-store', () => {
     expect(time1).toBeGreaterThan(0)
   })
 
-  it('lockVault purges field query cache', () => {
+  it('lockVault purges vault query cache', () => {
     useCryptoStore.getState().lockVault()
     expect(mockRemoveQueries).toHaveBeenCalledWith({ queryKey: ['field'] })
+    expect(mockRemoveQueries).toHaveBeenCalledWith({ queryKey: ['entries'] })
+    expect(mockRemoveQueries).toHaveBeenCalledWith({ queryKey: ['entry'] })
   })
 
-  it('clearVault purges field query cache', () => {
+  it('clearVault purges vault query cache', () => {
     useCryptoStore.getState().clearVault()
     expect(mockRemoveQueries).toHaveBeenCalledWith({ queryKey: ['field'] })
+    expect(mockRemoveQueries).toHaveBeenCalledWith({ queryKey: ['entries'] })
+    expect(mockRemoveQueries).toHaveBeenCalledWith({ queryKey: ['entry'] })
   })
 
   describe('hasCachedEnvelope', () => {
@@ -136,6 +141,8 @@ describe('crypto-store', () => {
     expect(useCryptoStore.getState().isVaultLocked).toBe(true)
     expect(useCryptoStore.getState().cachedEnvelope).toBeNull()
     expect(mockRemoveQueries).toHaveBeenCalledWith({ queryKey: ['field'] })
+    expect(mockRemoveQueries).toHaveBeenCalledWith({ queryKey: ['entries'] })
+    expect(mockRemoveQueries).toHaveBeenCalledWith({ queryKey: ['entry'] })
   })
 
   it('never persists keys to localStorage or sessionStorage', () => {

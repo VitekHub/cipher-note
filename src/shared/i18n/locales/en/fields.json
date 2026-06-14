@@ -1,22 +1,22 @@
 {
+  "title": {
+    "label": "Title",
+    "placeholder": "Enter title"
+  },
   "note": {
     "label": "Note",
-    "placeholder": "Write your note...",
-    "locked": "Unlock vault to view",
-    "unlock": "Unlock"
+    "placeholder": "Write your note..."
   },
   "website": {
     "label": "Website",
-    "placeholder": "Enter website URL",
-    "locked": "Unlock vault to view",
-    "unlock": "Unlock"
+    "placeholder": "Enter website URL"
   },
   "email": {
     "label": "Email",
-    "placeholder": "Enter email address",
-    "locked": "Unlock vault to view",
-    "unlock": "Unlock"
+    "placeholder": "Enter email address"
   },
+  "vaultLocked": "Your vault is locked",
+  "vaultUnlock": "Unlock vault",
   "offlineAwaitingData": "Connect to the internet to load your data",
   "lastUpdated": "Last updated: {{date}}",
   "status": {
