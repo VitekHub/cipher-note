@@ -57,11 +57,17 @@ class FieldService {
   async loadAllFields(entryId: string): Promise<Record<FieldName, string | null>> {
     if (!entryId) throw new Error(ENTRY_ID_REQUIRED)
     const serverFields = await fetchAllFields(entryId)
+    const decryptionResults = await Promise.all(
+      serverFields.map(async (serverField) => {
+        const fieldKey = this.getFieldKey(serverField.fieldName)
+        const encryptedData = toEncryptedFieldData(serverField)
+        const plaintext = await decryptField(encryptedData, fieldKey, serverField.fieldName)
+        return [serverField.fieldName, plaintext] as const
+      }),
+    )
     const result = Object.fromEntries(FIELD_NAMES.map((name) => [name, null])) as Record<FieldName, string | null>
-    for (const serverField of serverFields) {
-      const fieldKey = this.getFieldKey(serverField.fieldName)
-      const encryptedData = toEncryptedFieldData(serverField)
-      result[serverField.fieldName] = await decryptField(encryptedData, fieldKey, serverField.fieldName)
+    for (const [name, plaintext] of decryptionResults) {
+      result[name] = plaintext
     }
     return result
   }

@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 import { useEntries, useCreateEntry } from '@/features/fields/model/use-entries'
 import { EmptyState } from '@/features/fields/ui/DashboardPage'
@@ -8,10 +8,12 @@ function DashboardIndex() {
   const { data: entries, isLoading } = useEntries()
   const createEntry = useCreateEntry()
   const navigate = useNavigate()
+  const hasRedirected = useRef(false)
 
-  // When entries load and we have at least one, redirect to the first entry
+  // Redirect to the first entry only on the initial load, not on subsequent refetches
   useEffect(() => {
-    if (entries && entries.length > 0) {
+    if (!hasRedirected.current && entries && entries.length > 0) {
+      hasRedirected.current = true
       navigate({ to: '/dashboard/$entryId', params: { entryId: entries[0].id }, replace: true })
     }
   }, [entries, navigate])

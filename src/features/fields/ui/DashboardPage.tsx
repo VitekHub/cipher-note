@@ -74,14 +74,11 @@ function EntryDetailPage({ entryId }: { entryId: string }) {
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
-      {/* Centered locked-vault overlay */}
-      {isVaultLocked && (
+      {isVaultLocked ? (
         <div className="flex flex-1 items-center justify-center">
           <LockedVaultCard />
         </div>
-      )}
-      {/* Delete entry. Not available when vault is locked */}
-      {!isVaultLocked && (
+      ) : (
         <div className="mb-2 flex justify-end">
           <DeleteEntryDialog entryId={entryId} />
         </div>

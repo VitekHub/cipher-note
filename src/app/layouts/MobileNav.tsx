@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { Lock, Unlock, Settings, FileText } from 'lucide-react'
 import { useNavigate, useParams } from '@tanstack/react-router'
 
+import { cn } from '@/shared/lib/utils'
 import { Button } from '@/shared/ui/button'
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
 import { useVaultDialogStore } from '@/shared/crypto/vault-dialog-store'
@@ -14,6 +15,7 @@ function MobileEntryItem({
   entryId,
   index,
   isVaultLocked,
+  isActive,
   onClick,
 }: {
   entryId: string
@@ -29,7 +31,13 @@ function MobileEntryItem({
     : title || t('entries.entryLabel', { number: index + 1 })
 
   return (
-    <button onClick={onClick} className="flex flex-col items-center gap-0.5 px-2 py-1 text-xs">
+    <button
+      onClick={onClick}
+      className={cn(
+        'flex flex-col items-center gap-0.5 px-2 py-1 text-xs',
+        isActive ? 'bg-muted' : 'hover:bg-muted/50 text-muted-foreground',
+      )}
+    >
       <FileText className="size-5" />
       <span className="max-w-16 min-w-0 truncate text-[10px] leading-tight">{label}</span>
     </button>
