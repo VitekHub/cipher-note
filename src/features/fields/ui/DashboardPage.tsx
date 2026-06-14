@@ -63,23 +63,27 @@ function EntryDetailPage({ entryId }: { entryId: string }) {
     resetAllSyncStatus()
   }, [entryId, resetAllSyncStatus])
 
-  if (isVaultLocked) {
-    return <LockedVaultCard />
-  }
-
   return (
     <div>
-      {/* Delete entry */}
-      <div className="mb-2 flex justify-end">
-        <DeleteEntryDialog entryId={entryId} />
-      </div>
-      <div className="space-y-6">
-        <FieldEditorWrapper entryId={entryId} fieldName="title" entranceIndex={0} />
-        <div className="grid gap-4 *:min-w-0 sm:grid-cols-2">
-          <FieldEditorWrapper entryId={entryId} fieldName="website" entranceIndex={1} />
-          <FieldEditorWrapper entryId={entryId} fieldName="email" entranceIndex={2} />
+      {isVaultLocked && <LockedVaultCard />}
+      {/* Delete entry. Not available when vault is locked */}
+      {!isVaultLocked && (
+        <div className="mb-2 flex justify-end">
+          <DeleteEntryDialog entryId={entryId} />
         </div>
-        <FieldEditorWrapper entryId={entryId} fieldName="note" entranceIndex={3} />
+      )}
+      {/* Field editors stay mounted (hidden) when vault is locked so that
+          paused mutation observers survive and their callbacks fire on resume.
+          FieldCard handles the locked UI internally via its render-function. */}
+      <div className={isVaultLocked ? 'hidden' : ''} aria-hidden={isVaultLocked}>
+        <div className="space-y-6">
+          <FieldEditorWrapper entryId={entryId} fieldName="title" entranceIndex={0} />
+          <div className="grid gap-4 *:min-w-0 sm:grid-cols-2">
+            <FieldEditorWrapper entryId={entryId} fieldName="website" entranceIndex={1} />
+            <FieldEditorWrapper entryId={entryId} fieldName="email" entranceIndex={2} />
+          </div>
+          <FieldEditorWrapper entryId={entryId} fieldName="note" entranceIndex={3} />
+        </div>
       </div>
     </div>
   )
