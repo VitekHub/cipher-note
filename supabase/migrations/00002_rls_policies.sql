@@ -2,6 +2,20 @@
 -- Cipher Note: Row Level Security Policies
 -- ============================================
 
+-- Revoke default Supabase privileges from anon on all tables.
+-- anon never needs direct table access — it only uses SECURITY DEFINER
+-- RPC functions with explicit GRANT EXECUTE (check_username_availability,
+-- get_login_salts). Revoking prevents table schemas from appearing in the
+-- public GraphQL/REST API.
+-- authenticated retains table access (needed for supabase.from() queries,
+-- with RLS restricting rows to user_id = auth.uid()).
+REVOKE ALL ON public.users FROM anon;
+REVOKE ALL ON public.keys FROM anon;
+REVOKE ALL ON public.field_keys FROM anon;
+REVOKE ALL ON public.entries FROM anon;
+REVOKE ALL ON public.encrypted_fields FROM anon;
+REVOKE ALL ON public.recovery FROM anon;
+
 -- Enable RLS on all tables
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.keys ENABLE ROW LEVEL SECURITY;
