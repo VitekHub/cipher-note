@@ -26,7 +26,7 @@ import type { ServerFieldKey } from '../types/api.types'
 import { FIELD_NAMES } from '@/shared/types/entities/field.types'
 
 /**
- * Generate all three field keys (note, website, email) at once.
+ * Generate all four field keys (title, note, website, email) at once.
  * Each is a 256-bit random key. Returns both the raw key bytes (for wrapping)
  * and imported CryptoKeys (for encryption).
  */

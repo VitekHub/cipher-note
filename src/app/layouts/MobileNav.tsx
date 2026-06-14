@@ -48,7 +48,7 @@ function MobileNav() {
   const { t } = useTranslation(['common', 'crypto'])
   const navigate = useNavigate()
   const params = useParams({ strict: false })
-  const activeEntryId = (params as { entryId?: string }).entryId
+  const activeEntryId = 'entryId' in params ? params.entryId : undefined
 
   const isVaultLocked = useCryptoStore((s) => s.isVaultLocked)
   const openUnlockDialog = useVaultDialogStore((s) => s.openUnlockDialog)

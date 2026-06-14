@@ -29,12 +29,14 @@ function DeleteEntryDialog({ entryId }: { entryId: string }) {
   const [open, setOpen] = useState(false)
 
   function handleDelete() {
+    const entriesBeforeDelete = queryClient.getQueryData<ServerEntry[]>(['entries', userId])
+    const remainingCount = (entriesBeforeDelete?.length ?? 1) - 1
+
     deleteEntry.mutate(entryId, {
       onSuccess: () => {
         setOpen(false)
-        const entries = queryClient.getQueryData<ServerEntry[]>(['entries', userId])
-        if (entries && entries.length > 1) {
-          const remaining = entries.filter((e) => e.id !== entryId)
+        if (remainingCount > 0) {
+          const remaining = entriesBeforeDelete!.filter((e) => e.id !== entryId)
           navigate({ to: '/dashboard/$entryId', params: { entryId: remaining[0].id } })
         } else {
           navigate({ to: '/dashboard' })

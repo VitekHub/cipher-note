@@ -59,7 +59,7 @@ function Sidebar({ onClose, onLogout, className }: SidebarProps) {
   const { t } = useTranslation(['common', 'crypto'])
   const navigate = useNavigate()
   const params = useParams({ strict: false })
-  const activeEntryId = (params as { entryId?: string }).entryId
+  const activeEntryId = 'entryId' in params ? params.entryId : undefined
 
   const user = useAuthStore((s) => s.user)
   const isVaultLocked = useCryptoStore((s) => s.isVaultLocked)

@@ -66,7 +66,7 @@ pnpm dev:reset         # Reset database then start Vite
 ```
 src/
   app/          # Application shell (providers, router, layouts, styles)
-  features/     # Feature modules (auth, fields, encryption, settings)
+  features/     # Feature modules (auth, fields/entries, encryption, settings)
   shared/       # Shared code (ui, crypto, api, auth, i18n, types)
 ```
 
@@ -106,9 +106,9 @@ Dependency direction: `routes -> features -> shared`. No cross-feature imports.
   (guest)   (logged in)
       │       │
       ▼       ▼
-  /login    /dashboard
-  /register /settings
-  /recover
+  /login    /dashboard (redirects to first entry)
+  /register /dashboard/$entryId (entry detail)
+  /recover  /settings
 ```
 
 ## Project Conventions
@@ -120,7 +120,7 @@ Dependency direction: `routes -> features -> shared`. No cross-feature imports.
 - **Each shadcn component in its own file**. No index.ts in shared/ui. Custom components are organized into subdirectories: `brand/`, `nav/`, `form/`.
 - **Types in separate `.types.ts` files**. Keep type definitions separate from implementation.
 - **Tests are colocated with code**. `button.tsx` -> `button.test.tsx` in the same directory.
-- **File naming**. React components use PascalCase (`LoginPage.tsx`, `FormField.tsx`). Utilities, hooks, schemas, and types use kebab-case (`auth-store.ts`, `login-schema.ts`). shadcn/ui primitives stay kebab-case as generated (`button.tsx`, `card.tsx`, `skeleton.tsx`).
+- **File naming**. React components use PascalCase (`LoginPage.tsx`, `InputField.tsx`). Utilities, hooks, schemas, and types use kebab-case (`auth-store.ts`, `login-schema.ts`). shadcn/ui primitives stay kebab-case as generated (`button.tsx`, `card.tsx`, `skeleton.tsx`).
 
 ## Environment Variables
 
