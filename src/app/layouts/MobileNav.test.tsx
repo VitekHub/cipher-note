@@ -1,18 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import userEvent from '@testing-library/user-event'
-import React from 'react'
 import { render, screen } from '@/test/utils'
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
 import { useVaultDialogStore } from '@/shared/crypto/vault-dialog-store'
 
-const { mockLockVault } = vi.hoisted(() => ({
+const { mockLockVault, mockNavigate } = vi.hoisted(() => ({
   mockLockVault: vi.fn(),
+  mockNavigate: vi.fn(),
 }))
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ children, ...props }: Record<string, unknown> & { children?: React.ReactNode }) =>
-    React.createElement('a', props, children),
-  useNavigate: () => vi.fn(),
+  useNavigate: () => mockNavigate,
+  useParams: vi.fn(() => ({})),
 }))
 
 vi.mock('@/shared/crypto/key-vault', () => ({
@@ -21,21 +20,88 @@ vi.mock('@/shared/crypto/key-vault', () => ({
   },
 }))
 
+vi.mock('@/features/fields/model/use-entries', () => ({
+  useEntries: vi.fn(() => ({ data: [] })),
+  useCreateEntry: vi.fn(() => vi.fn()),
+}))
+
+vi.mock('@/features/fields/model/use-field-query', () => ({
+  useFieldQuery: vi.fn(() => ({ data: undefined })),
+}))
+
+import { useEntries } from '@/features/fields/model/use-entries'
+import { useFieldQuery } from '@/features/fields/model/use-field-query'
 import { MobileNav } from './MobileNav'
+
+type EntriesResult = ReturnType<typeof useEntries>
+type FieldResult = ReturnType<typeof useFieldQuery>
+
+function asEntries(data: { id: string; title?: string }[]): EntriesResult {
+  return { data } as unknown as EntriesResult
+}
+
+function asField(data: string | null | undefined): FieldResult {
+  return { data } as unknown as FieldResult
+}
 
 describe('MobileNav', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(useEntries).mockReturnValue(asEntries([]))
+    vi.mocked(useFieldQuery).mockReturnValue(asField(undefined))
   })
 
-  it('renders dashboard nav item', () => {
+  it('renders the create entry button', () => {
     render(<MobileNav />)
-    expect(screen.getByText('Dashboard')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /new note/i })).toBeInTheDocument()
   })
 
   it('renders settings nav item', () => {
     render(<MobileNav />)
-    expect(screen.getByText('Settings')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /settings/i })).toBeInTheDocument()
+  })
+
+  it('navigates to settings when settings button is clicked', async () => {
+    const user = userEvent.setup()
+    render(<MobileNav />)
+    await user.click(screen.getByRole('button', { name: /settings/i }))
+    expect(mockNavigate).toHaveBeenCalledWith({ to: '/settings' })
+  })
+
+  it('renders entry items when entries are present', () => {
+    vi.mocked(useEntries).mockReturnValue(
+      asEntries([
+        { id: 'entry-1', title: 'Secret title for frist entry' },
+        { id: 'entry-2', title: 'Secret title for second entry' },
+      ]),
+    )
+    useCryptoStore.setState({ isVaultLocked: true })
+    render(<MobileNav />)
+    // When locked, it should show "Note 1", "Note 2"
+    expect(screen.getByText('Note 1')).toBeInTheDocument()
+    expect(screen.getByText('Note 2')).toBeInTheDocument()
+  })
+
+  it('renders entry titles when vault is unlocked', () => {
+    vi.mocked(useEntries).mockReturnValue(asEntries([{ id: 'entry-1' }]))
+    vi.mocked(useFieldQuery).mockImplementation((_entryId, fieldName) => {
+      const data = fieldName === 'title' ? 'My Secret Note' : null
+      return asField(data)
+    })
+    useCryptoStore.setState({ isVaultLocked: false })
+    render(<MobileNav />)
+    expect(screen.getByText('My Secret Note')).toBeInTheDocument()
+  })
+
+  it('navigates to entry when entry item is clicked', async () => {
+    vi.mocked(useEntries).mockReturnValue(asEntries([{ id: 'entry-1' }]))
+    const user = userEvent.setup()
+    render(<MobileNav />)
+    await user.click(screen.getByText('Note 1'))
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: '/dashboard/$entryId',
+      params: { entryId: 'entry-1' },
+    })
   })
 
   it('renders vault unlock button when vault is locked', () => {

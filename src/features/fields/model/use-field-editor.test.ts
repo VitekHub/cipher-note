@@ -8,8 +8,9 @@ import { useSyncStatusStore } from '@/features/fields/model/sync-status-store'
 // --- Hoisted mocks ---
 
 const { mockLoadField, mockSaveField, mockUseAuth } = vi.hoisted(() => ({
-  mockLoadField: vi.fn<(userId: string, fieldName: string) => Promise<string | null>>(),
-  mockSaveField: vi.fn<(userId: string, fieldName: string, plaintext: string) => Promise<void>>(),
+  mockLoadField: vi.fn<(args: { userId: string; entryId: string; fieldName: string }) => Promise<string | null>>(),
+  mockSaveField:
+    vi.fn<(args: { userId: string; entryId: string; fieldName: string; plaintext: string }) => Promise<void>>(),
   mockUseAuth: vi.fn<() => { user: { id: string; username: string } | null }>(),
 }))
 
@@ -68,7 +69,7 @@ describe('useFieldEditor', () => {
   })
 
   it('loads initial fieldValue from query data', async () => {
-    const { result } = renderHook(() => useFieldEditor('note'), {
+    const { result } = renderHook(() => useFieldEditor('entry-123', 'note'), {
       wrapper: createWrapper(queryClient),
     })
 
@@ -79,7 +80,7 @@ describe('useFieldEditor', () => {
 
   it('returns empty string when query returns null', async () => {
     mockLoadField.mockResolvedValue(null)
-    const { result } = renderHook(() => useFieldEditor('note'), {
+    const { result } = renderHook(() => useFieldEditor('entry-123', 'note'), {
       wrapper: createWrapper(queryClient),
     })
 
@@ -89,7 +90,7 @@ describe('useFieldEditor', () => {
   })
 
   it('updates fieldValue immediately on setFieldValue (optimistic)', async () => {
-    const { result } = renderHook(() => useFieldEditor('note'), {
+    const { result } = renderHook(() => useFieldEditor('entry-123', 'note'), {
       wrapper: createWrapper(queryClient),
     })
 
@@ -105,7 +106,7 @@ describe('useFieldEditor', () => {
   })
 
   it('keeps status idle immediately after setFieldValue', async () => {
-    const { result } = renderHook(() => useFieldEditor('note'), {
+    const { result } = renderHook(() => useFieldEditor('entry-123', 'note'), {
       wrapper: createWrapper(queryClient),
     })
 
@@ -124,7 +125,7 @@ describe('useFieldEditor', () => {
 
   it('sets sync status to error when save fails', async () => {
     mockSaveField.mockRejectedValueOnce(new Error('Network error'))
-    const { result } = renderHook(() => useFieldEditor('note'), {
+    const { result } = renderHook(() => useFieldEditor('entry-123', 'note'), {
       wrapper: createWrapper(queryClient),
     })
 
@@ -149,7 +150,7 @@ describe('useFieldEditor', () => {
   })
 
   it('resets draft when vault locks', async () => {
-    const { result } = renderHook(() => useFieldEditor('note'), {
+    const { result } = renderHook(() => useFieldEditor('entry-123', 'note'), {
       wrapper: createWrapper(queryClient),
     })
 
@@ -175,7 +176,7 @@ describe('useFieldEditor', () => {
 
   it('does not call saveField when userId is empty', async () => {
     mockUseAuth.mockReturnValue({ user: null })
-    const { result } = renderHook(() => useFieldEditor('note'), {
+    const { result } = renderHook(() => useFieldEditor('entry-123', 'note'), {
       wrapper: createWrapper(queryClient),
     })
 
@@ -192,7 +193,7 @@ describe('useFieldEditor', () => {
   })
 
   it('transitions to paused when offline, then saved when back online', async () => {
-    const { result } = renderHook(() => useFieldEditor('note'), {
+    const { result } = renderHook(() => useFieldEditor('entry-123', 'note'), {
       wrapper: createWrapper(queryClient),
     })
 
@@ -234,11 +235,16 @@ describe('useFieldEditor', () => {
     )
 
     expect(mockSaveField).toHaveBeenCalledTimes(1)
-    expect(mockSaveField).toHaveBeenCalledWith('user-123', 'note', 'offline content')
+    expect(mockSaveField).toHaveBeenCalledWith({
+      userId: 'user-123',
+      entryId: 'entry-123',
+      fieldName: 'note',
+      plaintext: 'offline content',
+    })
   })
 
   it('does not auto-retry on online event when status is not error', async () => {
-    const { result } = renderHook(() => useFieldEditor('note'), {
+    const { result } = renderHook(() => useFieldEditor('entry-123', 'note'), {
       wrapper: createWrapper(queryClient),
     })
 
@@ -259,7 +265,7 @@ describe('useFieldEditor', () => {
   })
 
   it('does not trigger extra save after paused mutation resumes', async () => {
-    const { result } = renderHook(() => useFieldEditor('note'), {
+    const { result } = renderHook(() => useFieldEditor('entry-123', 'note'), {
       wrapper: createWrapper(queryClient),
     })
 
@@ -330,7 +336,7 @@ describe('useFieldEditor (debounce)', () => {
   })
 
   it('debounces saves — rapid setFieldValue calls trigger only one save', async () => {
-    const { result } = renderHook(() => useFieldEditor('note'), {
+    const { result } = renderHook(() => useFieldEditor('entry-123', 'note'), {
       wrapper: createWrapper(queryClient),
     })
 
@@ -366,11 +372,16 @@ describe('useFieldEditor (debounce)', () => {
     })
 
     expect(mockSaveField).toHaveBeenCalledTimes(1)
-    expect(mockSaveField).toHaveBeenCalledWith('user-123', 'note', 'abc')
+    expect(mockSaveField).toHaveBeenCalledWith({
+      userId: 'user-123',
+      entryId: 'entry-123',
+      fieldName: 'note',
+      plaintext: 'abc',
+    })
   })
 
   it('sets sync status to saving then saved on success', async () => {
-    const { result } = renderHook(() => useFieldEditor('note'), {
+    const { result } = renderHook(() => useFieldEditor('entry-123', 'note'), {
       wrapper: createWrapper(queryClient),
     })
 
@@ -412,7 +423,7 @@ describe('useFieldEditor (debounce)', () => {
 
   it('retry calls save immediately without debounce', async () => {
     mockSaveField.mockRejectedValueOnce(new Error('Network error'))
-    const { result } = renderHook(() => useFieldEditor('note'), {
+    const { result } = renderHook(() => useFieldEditor('entry-123', 'note'), {
       wrapper: createWrapper(queryClient),
     })
 
@@ -452,6 +463,11 @@ describe('useFieldEditor (debounce)', () => {
 
     // Second call (first was the failed one)
     expect(mockSaveField).toHaveBeenCalledTimes(2)
-    expect(mockSaveField).toHaveBeenLastCalledWith('user-123', 'note', 'new content')
+    expect(mockSaveField).toHaveBeenLastCalledWith({
+      userId: 'user-123',
+      entryId: 'entry-123',
+      fieldName: 'note',
+      plaintext: 'new content',
+    })
   })
 })

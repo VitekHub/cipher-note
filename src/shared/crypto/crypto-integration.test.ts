@@ -53,6 +53,7 @@ const PASSWORD = 'test-password-123'
 const PASSWORD_KEY_FILL = 0x11
 const NEW_PASSWORD_KEY_FILL = 0x22
 const RECOVERY_KEK_FILL = 0x33
+const NUMBER_OF_FIELD_KEYS = 4
 
 async function setupRegistration() {
   const authSalt = mockBytes(16, 0x01)
@@ -69,6 +70,7 @@ async function setupRegistration() {
     ['note', 1],
     ['website', 1],
     ['email', 1],
+    ['title', 1],
   ])
   const wrappedFieldKeys = await wrapFieldKeys(rawFieldKeys, hierarchy.kek, versions)
   const serverFieldKeys: ServerFieldKey[] = wrappedFieldKeys.map((w) => ({
@@ -131,9 +133,9 @@ describe('crypto integration', () => {
       expect(masterKey.byteLength).toBe(32)
       expect(hierarchy.kek.type).toBe('secret')
       expect(hierarchy.signingKeySeed.byteLength).toBe(32)
-      expect(rawFieldKeys.size).toBe(3)
-      expect(cryptoFieldKeys.size).toBe(3)
-      expect(serverFieldKeys).toHaveLength(3)
+      expect(rawFieldKeys.size).toBe(NUMBER_OF_FIELD_KEYS)
+      expect(cryptoFieldKeys.size).toBe(NUMBER_OF_FIELD_KEYS)
+      expect(serverFieldKeys).toHaveLength(NUMBER_OF_FIELD_KEYS)
 
       // Unwrap field keys - returns Map<string, CryptoKey>, verify via round-trip
       const unwrappedFieldKeys = await unwrapFieldKeys(serverFieldKeys, hierarchy.kek)
@@ -339,6 +341,7 @@ describe('crypto integration', () => {
         ['note', 2],
         ['website', 1],
         ['email', 1],
+        ['title', 1],
       ])
       const rotatedWrapped = await wrapFieldKeys(rotatedFieldKeys, hierarchy.kek, newVersions)
       const rotatedServerFieldKeys: ServerFieldKey[] = rotatedWrapped.map((w) => ({

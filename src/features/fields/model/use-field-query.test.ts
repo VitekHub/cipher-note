@@ -1,13 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { createElement, type ReactNode } from 'react'
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
+import { createElement, type ReactNode } from 'react'
+import type { FieldName } from '@/shared/types/entities/field.types'
 
 // --- Hoisted mocks ---
 
 const { mockLoadField, mockUseAuth } = vi.hoisted(() => ({
-  mockLoadField: vi.fn<(userId: string, fieldName: string) => Promise<string | null>>(),
+  mockLoadField: vi.fn<(...args: [string, string]) => Promise<string | null>>(),
   mockUseAuth: vi.fn<() => { user: { id: string; username: string } | null }>(),
 }))
 
@@ -40,6 +41,9 @@ afterEach(() => {
   testQueryClient.clear()
 })
 
+const TEST_ENTRY_ID = 'entry-123'
+const TEST_FIELD_NAME = 'note' as FieldName
+
 describe('useFieldQuery', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -57,19 +61,19 @@ describe('useFieldQuery', () => {
   it('fetches and returns decrypted field content when vault is unlocked', async () => {
     mockLoadField.mockResolvedValue('My note content')
 
-    const { result } = renderHook(() => useFieldQuery('note'), { wrapper })
+    const { result } = renderHook(() => useFieldQuery(TEST_ENTRY_ID, TEST_FIELD_NAME), { wrapper })
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true)
     })
     expect(result.current.data).toBe('My note content')
-    expect(mockLoadField).toHaveBeenCalledWith('user-123', 'note')
+    expect(mockLoadField).toHaveBeenCalledWith(TEST_ENTRY_ID, TEST_FIELD_NAME)
   })
 
   it('returns null when field has never been saved', async () => {
     mockLoadField.mockResolvedValue(null)
 
-    const { result } = renderHook(() => useFieldQuery('note'), { wrapper })
+    const { result } = renderHook(() => useFieldQuery(TEST_ENTRY_ID, TEST_FIELD_NAME), { wrapper })
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true)
@@ -80,7 +84,7 @@ describe('useFieldQuery', () => {
   it('is disabled when userId is empty (no authenticated user)', () => {
     mockUseAuth.mockReturnValue({ user: null })
 
-    const { result } = renderHook(() => useFieldQuery('note'), { wrapper })
+    const { result } = renderHook(() => useFieldQuery(TEST_ENTRY_ID, TEST_FIELD_NAME), { wrapper })
     expect(result.current.fetchStatus).toBe('idle')
     expect(mockLoadField).not.toHaveBeenCalled()
   })
@@ -88,7 +92,7 @@ describe('useFieldQuery', () => {
   it('is disabled when vault is locked', () => {
     useCryptoStore.setState({ isVaultLocked: true, loadedFieldKeys: {} })
 
-    const { result } = renderHook(() => useFieldQuery('note'), { wrapper })
+    const { result } = renderHook(() => useFieldQuery(TEST_ENTRY_ID, TEST_FIELD_NAME), { wrapper })
     expect(result.current.fetchStatus).toBe('idle')
     expect(mockLoadField).not.toHaveBeenCalled()
   })
@@ -96,7 +100,7 @@ describe('useFieldQuery', () => {
   it('is disabled when field key is not loaded', () => {
     useCryptoStore.setState({ loadedFieldKeys: {} })
 
-    const { result } = renderHook(() => useFieldQuery('note'), { wrapper })
+    const { result } = renderHook(() => useFieldQuery(TEST_ENTRY_ID, TEST_FIELD_NAME), { wrapper })
     expect(result.current.fetchStatus).toBe('idle')
     expect(mockLoadField).not.toHaveBeenCalled()
   })
@@ -104,7 +108,7 @@ describe('useFieldQuery', () => {
   it('is enabled when vault is unlocked and field key is loaded', async () => {
     mockLoadField.mockResolvedValue('hello')
 
-    const { result } = renderHook(() => useFieldQuery('note'), { wrapper })
+    const { result } = renderHook(() => useFieldQuery(TEST_ENTRY_ID, TEST_FIELD_NAME), { wrapper })
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true)
@@ -116,7 +120,7 @@ describe('useFieldQuery', () => {
     const { DecryptionError } = await import('@/shared/crypto/errors')
     mockLoadField.mockRejectedValue(new DecryptionError('Decryption failed'))
 
-    const { result } = renderHook(() => useFieldQuery('note'), { wrapper })
+    const { result } = renderHook(() => useFieldQuery(TEST_ENTRY_ID, TEST_FIELD_NAME), { wrapper })
 
     await waitFor(() => {
       expect(result.current.isError).toBe(true)
@@ -128,7 +132,7 @@ describe('useFieldQuery', () => {
   it('retries on non-crypto errors before failing', async () => {
     mockLoadField.mockRejectedValue(new Error('Network error'))
 
-    const { result } = renderHook(() => useFieldQuery('note'), { wrapper })
+    const { result } = renderHook(() => useFieldQuery(TEST_ENTRY_ID, TEST_FIELD_NAME), { wrapper })
 
     // Allow time for retries with backoff (1s + 2s = ~3s total)
     await waitFor(

@@ -46,7 +46,7 @@ class FieldService {
     const fieldKey = this.getFieldKey(fieldName)
 
     const encryptedData = await encryptField(plaintext, fieldKey, fieldName)
-    const saveData = { ...toSaveFieldData(encryptedData), entryId, fieldName }
+    const saveData = toSaveFieldData(encryptedData, entryId, fieldName)
     await saveFieldToServer(userId, saveData)
   }
 
