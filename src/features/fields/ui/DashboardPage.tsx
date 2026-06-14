@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus } from 'lucide-react'
 
@@ -24,10 +24,19 @@ function FieldEditorWrapper({
   fieldName: FieldName
   entranceIndex: number
 }) {
+  const isVaultLocked = useCryptoStore((s) => s.isVaultLocked)
+  const titleInputRef = useRef<HTMLInputElement>(null)
   const { fieldValue, saveFieldValue, fieldSyncStatus, retrySave, isOfflineAwaitingData } = useFieldEditor(
     entryId,
     fieldName,
   )
+
+  // Auto-focus title input when switching entries or unlocking the vault
+  useEffect(() => {
+    if (fieldName === 'title' && !isVaultLocked) {
+      titleInputRef.current?.focus()
+    }
+  }, [entryId, isVaultLocked, fieldName])
 
   return (
     <FieldCard
@@ -41,7 +50,7 @@ function FieldEditorWrapper({
       {() => {
         switch (fieldName) {
           case 'title':
-            return <InputField fieldName="title" value={fieldValue} onChange={saveFieldValue} />
+            return <InputField ref={titleInputRef} fieldName="title" value={fieldValue} onChange={saveFieldValue} />
           case 'note':
             return <NoteField value={fieldValue} onChange={saveFieldValue} />
           case 'website':
@@ -64,8 +73,13 @@ function EntryDetailPage({ entryId }: { entryId: string }) {
   }, [entryId, resetAllSyncStatus])
 
   return (
-    <div>
-      {isVaultLocked && <LockedVaultCard />}
+    <div className="flex min-h-full flex-1 flex-col">
+      {/* Centered locked-vault overlay */}
+      {isVaultLocked && (
+        <div className="flex flex-1 items-center justify-center">
+          <LockedVaultCard />
+        </div>
+      )}
       {/* Delete entry. Not available when vault is locked */}
       {!isVaultLocked && (
         <div className="mb-2 flex justify-end">

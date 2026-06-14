@@ -28,14 +28,16 @@ interface InputFieldProps {
   fieldName: Extract<FieldName, 'title' | 'website' | 'email'>
   value: string
   onChange: (value: string) => void
+  ref?: React.Ref<HTMLInputElement>
 }
 
-function InputField({ fieldName, value, onChange }: InputFieldProps) {
+function InputField({ fieldName, value, onChange, ref }: InputFieldProps) {
   const { t } = useTranslation('fields')
   const config = INPUT_FIELD_CONFIG[fieldName]
 
   return (
     <Input
+      ref={ref}
       type={config.type}
       autoComplete={config.autoComplete}
       aria-label={t(config.labelKey)}
