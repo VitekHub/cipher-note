@@ -7,7 +7,7 @@ import type { FieldName } from '@/shared/types/entities/field.types'
  * Fetch all encrypted fields for a single entry.
  * Returns an array of 0–4 fields (title, note, website, email).
  */
-export async function fetchFieldsByEntry(entryId: string): Promise<ServerEncryptedField[]> {
+export async function fetchAllFields(entryId: string): Promise<ServerEncryptedField[]> {
   const supabase = getSupabase()
   const { data, error } = await supabase
     .from('encrypted_fields')
@@ -22,7 +22,7 @@ export async function fetchFieldsByEntry(entryId: string): Promise<ServerEncrypt
  * Fetch a single encrypted field by entry and field name.
  * Returns null if the field has never been saved.
  */
-export async function fetchFieldByEntry(entryId: string, fieldName: FieldName): Promise<ServerEncryptedField | null> {
+export async function fetchField(entryId: string, fieldName: FieldName): Promise<ServerEncryptedField | null> {
   const supabase = getSupabase()
   const { data, error } = await supabase
     .from('encrypted_fields')

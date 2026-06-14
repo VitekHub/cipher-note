@@ -1,11 +1,18 @@
 import { keyVault } from '@/shared/crypto/key-vault'
-import { fetchFieldByEntry, saveField as saveFieldToServer } from '@/shared/api/supabase-fields'
+import { fetchField, fetchAllFields, saveField as saveFieldToServer } from '@/shared/api/supabase-fields'
 import { FIELD_NAMES } from '@/shared/types/entities/field.types'
 import type { FieldName } from '@/shared/types/entities/field.types'
 import { encryptField, decryptField, toEncryptedFieldData, toSaveFieldData } from '@/features/fields/model/field-crypto'
 
 const ENTRY_ID_REQUIRED = 'entryId is required'
 const USER_ID_REQUIRED = 'userId is required'
+
+interface SaveFieldParams {
+  userId: string
+  entryId: string
+  fieldName: FieldName
+  plaintext: string
+}
 
 class FieldService {
   private getFieldKey(fieldName: FieldName): CryptoKey {
@@ -22,7 +29,7 @@ class FieldService {
     if (!entryId) throw new Error(ENTRY_ID_REQUIRED)
     const fieldKey = this.getFieldKey(fieldName)
 
-    const serverField = await fetchFieldByEntry(entryId, fieldName)
+    const serverField = await fetchField(entryId, fieldName)
     if (!serverField) return null
 
     const encryptedData = toEncryptedFieldData(serverField)
@@ -33,7 +40,7 @@ class FieldService {
    * Encrypt and save a field's content to the server.
    * Uses upsert — will create or update the field.
    */
-  async saveField(userId: string, entryId: string, fieldName: FieldName, plaintext: string): Promise<void> {
+  async saveField({ userId, entryId, fieldName, plaintext }: SaveFieldParams): Promise<void> {
     if (!userId) throw new Error(USER_ID_REQUIRED)
     if (!entryId) throw new Error(ENTRY_ID_REQUIRED)
     const fieldKey = this.getFieldKey(fieldName)
@@ -44,22 +51,19 @@ class FieldService {
   }
 
   /**
-   * Load and decrypt all four fields (title, note, website, email) in parallel.
-   * If a single field fails (e.g. network error), the others still succeed.
-   * Returns null for fields that failed or were never saved.
+   * Load and decrypt all four fields (title, note, website, email).
+   * Returns null for fields that were never saved.
    */
   async loadAllFields(entryId: string): Promise<Record<FieldName, string | null>> {
     if (!entryId) throw new Error(ENTRY_ID_REQUIRED)
-    const results = await Promise.allSettled(
-      FIELD_NAMES.map(async (name) => [name, await this.loadField(entryId, name)] as const),
-    )
-    return Object.fromEntries(
-      results.map((result, i) => {
-        const name = FIELD_NAMES[i]
-        if (result.status === 'fulfilled') return [name, result.value[1]] as const
-        return [name, null] as const
-      }),
-    ) as Record<FieldName, string | null>
+    const serverFields = await fetchAllFields(entryId)
+    const result = Object.fromEntries(FIELD_NAMES.map((name) => [name, null])) as Record<FieldName, string | null>
+    for (const serverField of serverFields) {
+      const fieldKey = this.getFieldKey(serverField.fieldName)
+      const encryptedData = toEncryptedFieldData(serverField)
+      result[serverField.fieldName] = await decryptField(encryptedData, fieldKey, serverField.fieldName)
+    }
+    return result
   }
 }
 

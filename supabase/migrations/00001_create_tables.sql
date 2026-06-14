@@ -3,7 +3,6 @@
 -- ============================================
 
 -- Custom enum type for the encrypted field names
--- Includes 'title' for the entry-based multi-fields model
 CREATE TYPE public.field_name AS ENUM ('title', 'note', 'website', 'email');
 
 -- ============================================

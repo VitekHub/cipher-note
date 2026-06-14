@@ -18,7 +18,7 @@ export function useFieldMutation(entryId: string, fieldName: FieldName) {
     networkMode: 'online', // pause mutations when offline; auto-resume when back online
     mutationFn: (plaintext: string) => {
       if (!userId) throw new Error('useFieldMutation requires an authenticated user')
-      return fieldService.saveField(userId, entryId, fieldName, plaintext)
+      return fieldService.saveField({ userId, entryId, fieldName, plaintext })
     },
     onMutate: async (plaintext) => {
       await queryClient.cancelQueries({ queryKey })
