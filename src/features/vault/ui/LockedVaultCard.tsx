@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { Lock } from 'lucide-react'
 
-import { useVaultDialogStore } from '@/shared/crypto/vault-dialog-store'
+import { useVaultDialogStore } from '@/features/vault/model/vault-dialog-store'
 import { Button } from '@/shared/ui/button'
 
 function LockedVaultCard() {

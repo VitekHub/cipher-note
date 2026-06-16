@@ -4,7 +4,7 @@ import React from 'react'
 import { render, screen } from '@/test/utils'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
-import { useVaultDialogStore } from '@/shared/crypto/vault-dialog-store'
+import { useVaultDialogStore } from '@/features/vault/model/vault-dialog-store'
 
 const { mockNavigate, mockLockVault } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),

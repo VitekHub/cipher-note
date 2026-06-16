@@ -4,7 +4,7 @@ import { useNavigate, useParams } from '@tanstack/react-router'
 
 import { Button } from '@/shared/ui/button'
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
-import { useVaultDialogStore } from '@/shared/crypto/vault-dialog-store'
+import { useVaultDialogStore } from '@/features/vault/model/vault-dialog-store'
 import { keyVault } from '@/shared/crypto/key-vault'
 import { useEntries } from '@/features/fields/model/use-entry'
 import { EntryNavItem } from '@/app/layouts/EntryNavItem'

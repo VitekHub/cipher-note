@@ -17,7 +17,7 @@ import entriesCs from '@/shared/i18n/locales/cs/entries.json'
 import vaultCs from '@/shared/i18n/locales/cs/vault.json'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
-import { useUiStore } from '@/features/settings/model/ui-store'
+import { useLayoutStore } from '@/app/layouts/layout-store'
 import { useSyncStatusStore } from '@/features/fields/model/sync-status-store'
 
 afterEach(() => {
@@ -33,7 +33,7 @@ afterEach(() => {
     isVaultLocked: true,
     lastActivity: 0,
   })
-  useUiStore.setState({
+  useLayoutStore.setState({
     sidebarOpen: false,
     activeField: null,
     sidebarWidth: 240,

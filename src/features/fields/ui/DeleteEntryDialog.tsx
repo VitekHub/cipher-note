@@ -21,7 +21,7 @@ import {
 import type { ServerEntry } from '@/shared/types/entities/entry.types'
 
 function DeleteEntryDialog({ entryId }: { entryId: string }) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation('entries')
   const navigate = useNavigate()
   const deleteEntry = useDeleteEntry()
   const queryClient = useQueryClient()
@@ -51,20 +51,20 @@ function DeleteEntryDialog({ entryId }: { entryId: string }) {
         render={<Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" />}
       >
         <Trash2 className="mr-2 size-4" />
-        {t('entries.delete')}
+        {t('delete')}
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>{t('entries.delete')}</AlertDialogTitle>
-          <AlertDialogDescription>{t('entries.deleteConfirm')}</AlertDialogDescription>
+          <AlertDialogTitle>{t('delete')}</AlertDialogTitle>
+          <AlertDialogDescription>{t('deleteConfirm')}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>{t('actions.cancel')}</AlertDialogCancel>
+          <AlertDialogCancel>{t('common:actions.cancel')}</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleDelete}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {t('actions.delete')}
+            {t('common:actions.delete')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

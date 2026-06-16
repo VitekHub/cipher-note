@@ -3,6 +3,7 @@ import { render, screen } from '@/test/utils'
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
 import { useSyncStatusStore } from '@/features/fields/model/sync-status-store'
 import { useAuthStore } from '@/features/auth/model/auth-store'
+import { LockedVaultCard } from '@/features/vault/ui/LockedVaultCard'
 
 import { EntryDetailPage, EmptyState } from './DashboardPage'
 
@@ -30,7 +31,7 @@ describe('EntryDetailPage', () => {
   })
 
   it('renders all field cards when unlocked', () => {
-    render(<EntryDetailPage entryId="test-entry" />)
+    render(<EntryDetailPage entryId="test-entry" lockedFallback={<LockedVaultCard />} />)
     expect(screen.getByText('Title')).toBeInTheDocument()
     expect(screen.getByText('Note')).toBeInTheDocument()
     expect(screen.getByText('Website')).toBeInTheDocument()
@@ -39,7 +40,7 @@ describe('EntryDetailPage', () => {
 
   it('shows locked vault card and hides editors when vault is locked', () => {
     useCryptoStore.setState({ isVaultLocked: true, loadedFieldKeys: {} })
-    render(<EntryDetailPage entryId="test-entry" />)
+    render(<EntryDetailPage entryId="test-entry" lockedFallback={<LockedVaultCard />} />)
 
     // LockedVaultCard is rendered
     expect(screen.getByText(/Unlock vault/i)).toBeInTheDocument()
@@ -52,7 +53,7 @@ describe('EntryDetailPage', () => {
   })
 
   it('shows field editors when vault is unlocked', () => {
-    render(<EntryDetailPage entryId="test-entry" />)
+    render(<EntryDetailPage entryId="test-entry" lockedFallback={<LockedVaultCard />} />)
     expect(screen.getByPlaceholderText(/Enter title/i)).toBeInTheDocument()
     expect(screen.getByPlaceholderText(/Write your note.../i)).toBeInTheDocument()
     expect(screen.getByPlaceholderText(/Enter website URL/i)).toBeInTheDocument()
@@ -60,13 +61,13 @@ describe('EntryDetailPage', () => {
   })
 
   it('resets sync status when entryId changes', () => {
-    const { rerender } = render(<EntryDetailPage entryId="entry-1" />)
+    const { rerender } = render(<EntryDetailPage entryId="entry-1" lockedFallback={<LockedVaultCard />} />)
 
     useSyncStatusStore.getState().setStatus('note', 'saving')
     useSyncStatusStore.getState().setStatus('website', 'saved')
 
     // Change entryId — this triggers the useEffect
-    rerender(<EntryDetailPage entryId="entry-2" />)
+    rerender(<EntryDetailPage entryId="entry-2" lockedFallback={<LockedVaultCard />} />)
 
     const { status } = useSyncStatusStore.getState()
     expect(status.note).toBe('idle')
@@ -80,7 +81,7 @@ describe('EmptyState', () => {
 
   it('renders empty state content when unlocked', () => {
     useCryptoStore.setState({ isVaultLocked: false })
-    render(<EmptyState onCreateEntry={onCreateEntry} />)
+    render(<EmptyState onCreateEntry={onCreateEntry} lockedFallback={<LockedVaultCard />} />)
 
     expect(screen.getByText(/No notes yet/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Create your first note/i })).toBeInTheDocument()
@@ -88,7 +89,7 @@ describe('EmptyState', () => {
 
   it('renders locked vault card when vault is locked', () => {
     useCryptoStore.setState({ isVaultLocked: true })
-    render(<EmptyState onCreateEntry={onCreateEntry} />)
+    render(<EmptyState onCreateEntry={onCreateEntry} lockedFallback={<LockedVaultCard />} />)
 
     expect(screen.getByText(/Unlock vault/i)).toBeInTheDocument()
     expect(screen.queryByText(/No entries/i)).not.toBeInTheDocument()

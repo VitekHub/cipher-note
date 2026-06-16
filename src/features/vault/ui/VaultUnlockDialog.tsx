@@ -6,7 +6,7 @@ import { standardSchemaResolver } from '@hookform/resolvers/standard-schema'
 import { z } from 'zod'
 
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
-import { useVaultDialogStore } from '@/shared/crypto/vault-dialog-store'
+import { useVaultDialogStore } from '@/features/vault/model/vault-dialog-store'
 import { useAuth } from '@/shared/auth/auth-context'
 import { keyVault } from '@/shared/crypto/key-vault'
 import { getVaultErrorMessage } from '@/features/vault/model/vault-error-messages'

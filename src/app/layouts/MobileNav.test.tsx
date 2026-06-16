@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import userEvent from '@testing-library/user-event'
 import { render, screen } from '@/test/utils'
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
-import { useVaultDialogStore } from '@/shared/crypto/vault-dialog-store'
+import { useVaultDialogStore } from '@/features/vault/model/vault-dialog-store'
 
 const { mockLockVault, mockNavigate } = vi.hoisted(() => ({
   mockLockVault: vi.fn(),

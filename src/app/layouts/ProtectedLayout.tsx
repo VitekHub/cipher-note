@@ -10,17 +10,17 @@ import { ResizeHandle } from '@/shared/ui/nav/ResizeHandle'
 import { VaultIndicator } from '@/features/vault/ui/VaultIndicator'
 import { VaultUnlockDialog } from '@/features/vault/ui/VaultUnlockDialog'
 import { OfflineBanner } from '@/shared/ui/OfflineBanner'
-import { useUiStore } from '@/features/settings/model/ui-store'
+import { useLayoutStore } from './layout-store'
 import { useResizable } from '@/shared/lib/use-resizable'
 import { useVaultTimeout } from '@/features/vault/model/use-vault-timeout'
 import { logoutUser } from '@/features/auth/model/auth-service'
 
 function ProtectedLayout() {
   const { t } = useTranslation('common')
-  const sidebarOpen = useUiStore((s) => s.sidebarOpen)
-  const setSidebarOpen = useUiStore((s) => s.setSidebarOpen)
-  const sidebarWidth = useUiStore((s) => s.sidebarWidth)
-  const setSidebarWidth = useUiStore((s) => s.setSidebarWidth)
+  const sidebarOpen = useLayoutStore((s) => s.sidebarOpen)
+  const setSidebarOpen = useLayoutStore((s) => s.setSidebarOpen)
+  const sidebarWidth = useLayoutStore((s) => s.sidebarWidth)
+  const setSidebarWidth = useLayoutStore((s) => s.setSidebarWidth)
   const {
     width: currentSidebarWidth,
     isDragging,
