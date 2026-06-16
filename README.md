@@ -111,6 +111,70 @@ Dependency direction: `routes -> features -> shared`. No cross-feature imports.
   /recover  /settings
 ```
 
+## Key Hierarchy
+
+Cipher Note uses a layered key hierarchy where each layer protects the one below. The server never sees plaintext keys — only wrapped (encrypted) key material.
+
+```
+                          User Password
+                               │
+                     (never sent to server)
+                               │
+                   ┌───────────┴───────────┐
+                   │  Split KDF (Argon2id) │
+                   └─────┬──────────┬──────┘
+                         │          │
+                    authSalt    keySalt
+                         │          │
+                         ▼          ▼
+                    authHash    passwordKey
+                         │          │
+        sent to Supabase │          │ kept client-side only
+           as "password" │          │ (never sent to server)
+                         │          │
+                         ▼          │ unwraps
+                   ┌──────────┐     │
+                   │ Supabase │     ▼
+                   │   Auth   │  ┌────────────┐
+                   └──────────┘  │ Master Key │ (random 256 bits)
+                                 └──┬─────┬───┘
+                                    │     │
+                               HKDF │     │ HKDF
+                                    │     │
+                                    ▼     ▼
+                                ┌─────┐ ┌──────────────────┐
+        (never sent to server)  │ KEK │ │ Signing Key Seed │ (never sent to server)
+                                └──┬──┘ └──────────────────┘
+                                   │
+                      AES-GCM wrap │
+                                   ▼
+                         ┌─────────────────┐
+                         │   Field Keys    │
+                         │ (one per field) │
+                         └────────┬────────┘
+                                  │
+                   AES-256-GCM encrypt/decrypt
+                   user field data per entry
+
+
+  ┌───────────────────────────────────────────────┐
+  │           Recovery Path (BIP-39)              │
+  │                                               │
+  │  12-word mnemonic (never sent to server)      │
+  │       │                                       │
+  │       │ Argon2id                              │
+  │       ▼                                       │
+  │  recovery KEK (never sent to server)          │
+  │       │                                       │
+  │       │ AES-256-GCM                           │
+  │       ▼                                       │
+  │  wrapped master key                           │
+  │  (independent from password wrapping —        │
+  │   allows password change without              │
+  │   re-encrypting field keys)                   │
+  └───────────────────────────────────────────────┘
+```
+
 ## Project Conventions
 
 - **No barrel files (index.ts)**. Import directly by path: `import { Button } from '@/shared/ui/button'`
