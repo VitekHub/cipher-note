@@ -66,7 +66,7 @@ pnpm dev:reset         # Reset database then start Vite
 ```
 src/
   app/          # Application shell (providers, router, layouts, styles)
-  features/     # Feature modules (auth, fields/entries, encryption, settings)
+  features/     # Feature modules (auth, fields/entries, vault, settings)
   shared/       # Shared code (ui, crypto, api, auth, i18n, types)
 ```
 
