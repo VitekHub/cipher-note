@@ -15,7 +15,7 @@ function LockedVaultCard() {
         <Lock className="text-muted-foreground/60 relative size-10" />
         <p className="text-muted-foreground relative text-sm">{t('vaultLocked')}</p>
         <Button variant="outline" onClick={openUnlockDialog} className="relative">
-          {t('vaultUnlock')}
+          {t('unlockVault')}
         </Button>
       </div>
     </div>

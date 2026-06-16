@@ -14,7 +14,7 @@ interface CreateEntryButtonProps {
 }
 
 function CreateEntryButton({ onCreated, size = 'icon-sm', className }: CreateEntryButtonProps) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation('entries')
   const navigate = useNavigate()
   const isVaultLocked = useCryptoStore((s) => s.isVaultLocked)
   const createEntry = useCreateEntry()
@@ -34,7 +34,7 @@ function CreateEntryButton({ onCreated, size = 'icon-sm', className }: CreateEnt
       size={size}
       className={cn(className)}
       onClick={handleCreateEntry}
-      aria-label={t('entries.create')}
+      aria-label={t('create')}
       disabled={isVaultLocked || createEntry.isPending}
     >
       <Plus />

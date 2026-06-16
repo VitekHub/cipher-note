@@ -13,7 +13,7 @@ function createTestI18n() {
 const initOptions = {
   fallbackLng: 'en',
   supportedLngs: ['en', 'cs'],
-  ns: ['common', 'auth', 'fields', 'settings', 'crypto'],
+  ns: ['common', 'auth', 'fields', 'settings', 'entries', 'vault'],
   defaultNS: 'common',
   interpolation: { escapeValue: false },
 } as const
@@ -45,8 +45,8 @@ describe('i18n configuration', () => {
   it('loads crypto namespace in Czech', async () => {
     const csI18n = createTestI18n()
     await csI18n.init({ ...initOptions, lng: 'cs' })
-    await csI18n.loadNamespaces(['crypto'])
-    expect(csI18n.t('vault.locked', { ns: 'crypto' })).toBe('Trezor uzamčen')
+    await csI18n.loadNamespaces(['vault'])
+    expect(csI18n.t('locked', { ns: 'vault' })).toBe('Trezor uzamčen')
   })
 
   it('loads auth namespace on demand', async () => {

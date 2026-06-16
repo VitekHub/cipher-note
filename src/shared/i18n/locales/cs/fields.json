@@ -16,7 +16,7 @@
     "placeholder": "Zadejte e-mailovou adresu"
   },
   "vaultLocked": "Trezor je uzamčen",
-  "vaultUnlock": "Odemknout trezor",
+  "unlockVault": "Odemknout trezor",
   "offlineAwaitingData": "Připojte se k internetu pro načtení dat",
   "lastUpdated": "Poslední aktualizace: {{date}}",
   "status": {

@@ -16,7 +16,7 @@
     "placeholder": "Enter email address"
   },
   "vaultLocked": "Your vault is locked",
-  "vaultUnlock": "Unlock vault",
+  "unlockVault": "Unlock vault",
   "offlineAwaitingData": "Connect to the internet to load your data",
   "lastUpdated": "Last updated: {{date}}",
   "status": {

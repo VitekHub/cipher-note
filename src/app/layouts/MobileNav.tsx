@@ -24,11 +24,9 @@ function MobileEntryItem({
   isActive: boolean
   onClick: () => void
 }) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation('entries')
   const { data: title } = useField(entryId, 'title')
-  const label = isVaultLocked
-    ? t('entries.entryLabel', { number: index + 1 })
-    : title || t('entries.entryLabel', { number: index + 1 })
+  const label = isVaultLocked ? t('entryLabel', { number: index + 1 }) : title || t('entryLabel', { number: index + 1 })
 
   return (
     <button
@@ -45,7 +43,7 @@ function MobileEntryItem({
 }
 
 function MobileNav() {
-  const { t } = useTranslation(['common', 'crypto'])
+  const { t } = useTranslation(['common', 'vault'])
   const navigate = useNavigate()
   const params = useParams({ strict: false })
   const activeEntryId = 'entryId' in params ? params.entryId : undefined
@@ -95,7 +93,7 @@ function MobileNav() {
           size="icon"
           className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           onClick={handleVaultLock}
-          aria-label={isVaultLocked ? t('crypto:vault.unlock') : t('crypto:vault.lock')}
+          aria-label={isVaultLocked ? t('vault:unlock') : t('vault:lock')}
         >
           {isVaultLocked ? <Unlock className="size-5" /> : <Lock className="size-5" />}
         </Button>

@@ -102,7 +102,7 @@ function EntryDetailPage({ entryId }: { entryId: string }) {
 
 /** Empty state shown when user has no entries. */
 function EmptyState({ onCreateEntry }: { onCreateEntry: () => void }) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation('entries')
   const isVaultLocked = useCryptoStore((s) => s.isVaultLocked)
 
   if (isVaultLocked) {
@@ -113,12 +113,12 @@ function EmptyState({ onCreateEntry }: { onCreateEntry: () => void }) {
     <div className="flex min-h-full flex-1 items-center justify-center">
       <Card size="sm" className="max-w-sm">
         <CardHeader>
-          <CardTitle>{t('entries.empty')}</CardTitle>
+          <CardTitle>{t('empty')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Button onClick={onCreateEntry} className="my-4 w-full">
             <Plus className="mr-2 size-4" />
-            {t('entries.emptyAction')}
+            {t('emptyAction')}
           </Button>
         </CardContent>
       </Card>

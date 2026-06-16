@@ -22,7 +22,7 @@ const unlockSchema = z.object({
 type UnlockFormData = z.infer<typeof unlockSchema>
 
 function VaultUnlockDialog() {
-  const { t } = useTranslation('crypto')
+  const { t } = useTranslation('vault')
   const { user } = useAuth()
   const isVaultLocked = useCryptoStore((s) => s.isVaultLocked)
   const isUnlockDialogOpen = useVaultDialogStore((s) => s.isUnlockDialogOpen)
@@ -73,12 +73,12 @@ function VaultUnlockDialog() {
     <Dialog open={isUnlockDialogOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>{t('vaultUnlock.title')}</DialogTitle>
-          <DialogDescription>{t('vaultUnlock.description')}</DialogDescription>
+          <DialogTitle>{t('vaultUnlockDialog.title')}</DialogTitle>
+          <DialogDescription>{t('vaultUnlockDialog.description')}</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <FormField id="vault-password" label={t('vaultUnlock.password')} error={error ?? undefined}>
+          <FormField id="vault-password" label={t('vaultUnlockDialog.password')} error={error ?? undefined}>
             <Input
               id="vault-password"
               type="password"
@@ -90,7 +90,7 @@ function VaultUnlockDialog() {
           </FormField>
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting && <Loader2 className="size-4 animate-spin" />}
-            {isSubmitting ? t('vaultUnlock.submitting') : t('vaultUnlock.submit')}
+            {isSubmitting ? t('vaultUnlockDialog.submitting') : t('vaultUnlockDialog.submit')}
           </Button>
         </form>
       </DialogContent>

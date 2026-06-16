@@ -34,12 +34,10 @@ function EntryItem({
   isActive: boolean
   onClick: () => void
 }) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation('entries')
   const { data: title } = useField(entryId, 'title')
 
-  const label = isVaultLocked
-    ? t('entries.entryLabel', { number: index + 1 })
-    : title || t('entries.entryLabel', { number: index + 1 })
+  const label = isVaultLocked ? t('entryLabel', { number: index + 1 }) : title || t('entryLabel', { number: index + 1 })
 
   return (
     <button
@@ -56,7 +54,7 @@ function EntryItem({
 }
 
 function Sidebar({ onClose, onLogout, className }: SidebarProps) {
-  const { t } = useTranslation(['common', 'crypto'])
+  const { t } = useTranslation(['common', 'vault'])
   const navigate = useNavigate()
   const params = useParams({ strict: false })
   const activeEntryId = 'entryId' in params ? params.entryId : undefined
@@ -103,7 +101,7 @@ function Sidebar({ onClose, onLogout, className }: SidebarProps) {
       <nav aria-label={t('common:nav.mainNav')} className="flex-1 overflow-y-auto p-2">
         <div className="flex items-center justify-between px-1 pb-1">
           <span className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
-            {t('common:entries.entriesLabel')}
+            {t('entries:entriesLabel')}
           </span>
           <CreateEntryButton onCreated={onClose} />
         </div>
@@ -125,7 +123,7 @@ function Sidebar({ onClose, onLogout, className }: SidebarProps) {
             ))}
           </div>
         ) : (
-          <p className="text-muted-foreground px-3 py-2 text-sm">{t('common:entries.empty')}</p>
+          <p className="text-muted-foreground px-3 py-2 text-sm">{t('entries:empty')}</p>
         )}
       </nav>
 
@@ -152,7 +150,7 @@ function Sidebar({ onClose, onLogout, className }: SidebarProps) {
         {/* Vault lock button */}
         <Button variant="outline" size="sm" className="w-full" onClick={handleVaultLock}>
           {isVaultLocked ? <Unlock className="size-4" /> : <Lock className="size-4" />}
-          <span>{isVaultLocked ? t('crypto:vault.unlock') : t('crypto:vault.lock')}</span>
+          <span>{isVaultLocked ? t('vault:unlock') : t('vault:lock')}</span>
         </Button>
         {/* Settings */}
         <NavLink to="/settings" onClick={handleNavClick} className="flex items-center justify-center gap-3">

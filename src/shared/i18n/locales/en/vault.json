@@ -1,0 +1,20 @@
+{
+  "locked": "Vault locked",
+  "unlocked": "Vault unlocked",
+  "lock": "Lock vault",
+  "unlock": "Unlock vault",
+  "vaultUnlockDialog": {
+    "title": "Vault Locked",
+    "description": "Enter your password to unlock your vault.",
+    "password": "Password",
+    "submit": "Unlock",
+    "submitting": "Unlocking..."
+  },
+  "errors": {
+    "decryptFailed": "Decryption failed. Your data may be corrupted.",
+    "corruptedData": "Your data appears corrupted. Please contact support.",
+    "wrongPassword": "Wrong password",
+    "argon2Failed": "Key derivation failed. Please try again.",
+    "unwrapFailed": "Failed to decrypt your vault. Your data may be corrupted."
+  }
+}
