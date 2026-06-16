@@ -10,16 +10,16 @@ const { mockSaveField } = vi.hoisted(() => ({
     vi.fn<(args: { userId: string; entryId: string; fieldName: string; plaintext: string }) => Promise<void>>(),
 }))
 
-const { mockUseAuth } = vi.hoisted(() => ({
-  mockUseAuth: vi.fn<() => { user: { id: string; username: string } | null }>(),
+const { mockUseRequiredUserId } = vi.hoisted(() => ({
+  mockUseRequiredUserId: vi.fn<() => string>(),
 }))
 
 vi.mock('@/features/fields/model/field-service', () => ({
   fieldService: { saveField: mockSaveField },
 }))
 
-vi.mock('@/shared/auth/auth-context', () => ({
-  useAuth: mockUseAuth,
+vi.mock('@/shared/auth/use-current-user', () => ({
+  useRequiredUserId: mockUseRequiredUserId,
 }))
 
 // --- Import after mocks ---
@@ -45,7 +45,7 @@ describe('useFieldMutation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockSaveField.mockResolvedValue(undefined)
-    mockUseAuth.mockReturnValue({ user: { id: 'user-123', username: 'testuser' } })
+    mockUseRequiredUserId.mockReturnValue('user-123')
   })
 
   it('calls fieldService.saveField with userId, field name and plaintext on mutate', async () => {
@@ -133,16 +133,13 @@ describe('useFieldMutation', () => {
     expect(result.current.error?.message).toBe('Save failed')
   })
 
-  it('throws when userId is empty (no authenticated user)', async () => {
-    mockUseAuth.mockReturnValue({ user: null })
-
-    const { result } = renderHook(() => useFieldMutation('entry-123', 'note'), { wrapper })
-
-    result.current.mutate('test')
-
-    await waitFor(() => {
-      expect(result.current.isError).toBe(true)
+  it('throws when user is not authenticated', () => {
+    mockUseRequiredUserId.mockImplementation(() => {
+      throw new Error('useUserId requires an authenticated user')
     })
-    expect(result.current.error?.message).toBe('useFieldMutation requires an authenticated user')
+
+    expect(() => renderHook(() => useFieldMutation('entry-123', 'note'), { wrapper })).toThrow(
+      'useUserId requires an authenticated user',
+    )
   })
 })

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@/test/utils'
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
 import { useSyncStatusStore } from '@/features/fields/model/sync-status-store'
+import { useAuthStore } from '@/features/auth/model/auth-store'
 
 import { EntryDetailPage, EmptyState } from './DashboardPage'
 
@@ -25,6 +26,7 @@ describe('EntryDetailPage', () => {
       loadedFieldKeys: { title: true, note: true, website: true, email: true },
     })
     useSyncStatusStore.getState().resetAll()
+    useAuthStore.setState({ user: { id: '1', username: 'testuser', createdAt: '2024-01-01T00:00:00Z' } })
   })
 
   it('renders all field cards when unlocked', () => {

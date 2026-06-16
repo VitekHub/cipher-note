@@ -7,17 +7,12 @@ import type { FieldName } from '@/shared/types/entities/field.types'
 
 // --- Hoisted mocks ---
 
-const { mockLoadField, mockUseAuth } = vi.hoisted(() => ({
+const { mockLoadField } = vi.hoisted(() => ({
   mockLoadField: vi.fn<(...args: [string, string]) => Promise<string | null>>(),
-  mockUseAuth: vi.fn<() => { user: { id: string; username: string } | null }>(),
 }))
 
 vi.mock('@/features/fields/model/field-service', () => ({
   fieldService: { loadField: mockLoadField },
-}))
-
-vi.mock('@/shared/auth/auth-context', () => ({
-  useAuth: mockUseAuth,
 }))
 
 // --- Import after mocks ---
@@ -47,8 +42,6 @@ const TEST_FIELD_NAME = 'note' as FieldName
 describe('useFieldQuery', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    // Default: authenticated user, vault unlocked with keys loaded
-    mockUseAuth.mockReturnValue({ user: { id: 'user-123', username: 'testuser' } })
     useCryptoStore.setState({
       loadedFieldKeys: { note: true, website: true, email: true },
       isVaultLocked: false,
@@ -79,14 +72,6 @@ describe('useFieldQuery', () => {
       expect(result.current.isSuccess).toBe(true)
     })
     expect(result.current.data).toBeNull()
-  })
-
-  it('is disabled when userId is empty (no authenticated user)', () => {
-    mockUseAuth.mockReturnValue({ user: null })
-
-    const { result } = renderHook(() => useFieldQuery(TEST_ENTRY_ID, TEST_FIELD_NAME), { wrapper })
-    expect(result.current.fetchStatus).toBe('idle')
-    expect(mockLoadField).not.toHaveBeenCalled()
   })
 
   it('is disabled when vault is locked', () => {

@@ -1,28 +1,24 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useAuth } from '@/shared/auth/auth-context'
+import { useRequiredUserId } from '@/shared/auth/use-current-user'
 import { entryService } from '@/features/fields/model/entry-service'
 import type { ServerEntry } from '@/shared/types/entities/entry.types'
 
-/** Fetch all entries for the current user. Enabled when authenticated. */
+/** Fetch all entries for the current user. */
 export function useEntries() {
-  const userId = useAuth().user?.id ?? ''
+  const userId = useRequiredUserId()
   return useQuery({
     queryKey: ['entries', userId],
     queryFn: () => entryService.fetchEntries(userId),
-    enabled: !!userId,
   })
 }
 
 /** Create a new entry. Invalidates the entry list on success. */
 export function useCreateEntry() {
   const queryClient = useQueryClient()
-  const userId = useAuth().user?.id ?? ''
+  const userId = useRequiredUserId()
 
   return useMutation({
-    mutationFn: () => {
-      if (!userId) throw new Error('useCreateEntry requires an authenticated user')
-      return entryService.createEntry(userId)
-    },
+    mutationFn: () => entryService.createEntry(userId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['entries', userId] })
     },
@@ -32,7 +28,7 @@ export function useCreateEntry() {
 /** Delete an entry. Removes the entry from cache and clears cached field data on success. */
 export function useDeleteEntry() {
   const queryClient = useQueryClient()
-  const userId = useAuth().user?.id ?? ''
+  const userId = useRequiredUserId()
 
   return useMutation({
     mutationFn: (entryId: string) => entryService.deleteEntry(entryId),

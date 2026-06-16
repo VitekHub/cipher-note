@@ -52,6 +52,8 @@ function useFieldEditor(entryId: string, fieldName: FieldName): UseFieldEditorRe
 
   // Reset stale "saved" status on mount
   useEffect(() => {
+    // Read store directly (not via selector). We only want to reset stale
+    // status on mount, not re-render every time any field's status changes.
     if (useSyncStatusStore.getState().status[fieldName] === 'saved') {
       setSyncStatus(fieldName, 'idle')
     }

@@ -6,7 +6,7 @@ import { useQueryClient } from '@tanstack/react-query'
 
 import { useDeleteEntry } from '@/features/fields/model/use-entries'
 import { Button } from '@/shared/ui/button'
-import { useAuth } from '@/shared/auth/auth-context'
+import { useRequiredUserId } from '@/shared/auth/use-current-user'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,7 +25,7 @@ function DeleteEntryDialog({ entryId }: { entryId: string }) {
   const navigate = useNavigate()
   const deleteEntry = useDeleteEntry()
   const queryClient = useQueryClient()
-  const userId = useAuth().user?.id ?? ''
+  const userId = useRequiredUserId()
   const [open, setOpen] = useState(false)
 
   function handleDelete() {
