@@ -21,13 +21,9 @@ vi.mock('@/features/encryption/model/vault-timeout', () => ({
   useVaultTimeout: () => {},
 }))
 
-vi.mock('@/features/fields/model/use-entries', () => ({
+vi.mock('@/features/fields/model/use-entry', () => ({
   useEntries: vi.fn(() => ({ data: [] })),
   useCreateEntry: vi.fn(() => vi.fn()),
-}))
-
-vi.mock('@/features/fields/model/use-field-query', () => ({
-  useFieldQuery: vi.fn(() => ({ data: undefined })),
 }))
 
 import { ProtectedLayout } from './ProtectedLayout'

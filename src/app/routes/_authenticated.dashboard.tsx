@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef } from 'react'
 
-import { useEntries, useCreateEntry } from '@/features/fields/model/use-entries'
+import { useEntries, useCreateEntry } from '@/features/fields/model/use-entry'
 import { EmptyState } from '@/features/fields/ui/DashboardPage'
 
 function DashboardIndex() {

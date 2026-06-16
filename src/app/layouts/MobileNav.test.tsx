@@ -20,21 +20,21 @@ vi.mock('@/shared/crypto/key-vault', () => ({
   },
 }))
 
-vi.mock('@/features/fields/model/use-entries', () => ({
+vi.mock('@/features/fields/model/use-entry', () => ({
   useEntries: vi.fn(() => ({ data: [] })),
   useCreateEntry: vi.fn(() => vi.fn()),
 }))
 
-vi.mock('@/features/fields/model/use-field-query', () => ({
-  useFieldQuery: vi.fn(() => ({ data: undefined })),
+vi.mock('@/features/fields/model/use-field', () => ({
+  useField: vi.fn(() => ({ data: undefined })),
 }))
 
-import { useEntries } from '@/features/fields/model/use-entries'
-import { useFieldQuery } from '@/features/fields/model/use-field-query'
+import { useEntries } from '@/features/fields/model/use-entry'
+import { useField } from '@/features/fields/model/use-field'
 import { MobileNav } from './MobileNav'
 
 type EntriesResult = ReturnType<typeof useEntries>
-type FieldResult = ReturnType<typeof useFieldQuery>
+type FieldResult = ReturnType<typeof useField>
 
 function asEntries(data: { id: string; title?: string }[]): EntriesResult {
   return { data } as unknown as EntriesResult
@@ -48,7 +48,7 @@ describe('MobileNav', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(useEntries).mockReturnValue(asEntries([]))
-    vi.mocked(useFieldQuery).mockReturnValue(asField(undefined))
+    vi.mocked(useField).mockReturnValue(asField(undefined))
   })
 
   it('renders the create entry button', () => {
@@ -84,7 +84,7 @@ describe('MobileNav', () => {
 
   it('renders entry titles when vault is unlocked', () => {
     vi.mocked(useEntries).mockReturnValue(asEntries([{ id: 'entry-1' }]))
-    vi.mocked(useFieldQuery).mockImplementation((_entryId, fieldName) => {
+    vi.mocked(useField).mockImplementation((_entryId, fieldName) => {
       const data = fieldName === 'title' ? 'My Secret Note' : null
       return asField(data)
     })

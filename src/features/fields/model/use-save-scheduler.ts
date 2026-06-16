@@ -2,7 +2,7 @@ import { useRef, useEffect, useCallback } from 'react'
 import { useSyncStatusStore } from '@/features/fields/model/sync-status-store'
 import type { FieldName } from '@/shared/types/entities/field.types'
 import type { SyncStatus } from '@/features/fields/model/sync-status-store'
-import type { SaveFieldCallbacks } from '@/features/fields/model/use-field-mutation'
+import type { SaveFieldCallbacks } from '@/features/fields/model/use-field'
 
 const DEBOUNCE_MS = 1000
 const SAVED_DISPLAY_MS = 3000

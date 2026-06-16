@@ -4,7 +4,7 @@ import { Trash2 } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 
-import { useDeleteEntry } from '@/features/fields/model/use-entries'
+import { useDeleteEntry } from '@/features/fields/model/use-entry'
 import { Button } from '@/shared/ui/button'
 import { useRequiredUserId } from '@/shared/auth/use-current-user'
 import {

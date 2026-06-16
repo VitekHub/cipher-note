@@ -7,8 +7,8 @@ import { Button } from '@/shared/ui/button'
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
 import { useVaultDialogStore } from '@/shared/crypto/vault-dialog-store'
 import { keyVault } from '@/shared/crypto/key-vault'
-import { useEntries } from '@/features/fields/model/use-entries'
-import { useFieldQuery } from '@/features/fields/model/use-field-query'
+import { useEntries } from '@/features/fields/model/use-entry'
+import { useField } from '@/features/fields/model/use-field'
 import { CreateEntryButton } from '@/features/fields/ui/CreateEntryButton'
 
 function MobileEntryItem({
@@ -25,7 +25,7 @@ function MobileEntryItem({
   onClick: () => void
 }) {
   const { t } = useTranslation('common')
-  const { data: title } = useFieldQuery(entryId, 'title')
+  const { data: title } = useField(entryId, 'title')
   const label = isVaultLocked
     ? t('entries.entryLabel', { number: index + 1 })
     : title || t('entries.entryLabel', { number: index + 1 })

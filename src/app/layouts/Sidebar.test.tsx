@@ -24,13 +24,9 @@ vi.mock('@/shared/crypto/key-vault', () => ({
   },
 }))
 
-vi.mock('@/features/fields/model/use-entries', () => ({
+vi.mock('@/features/fields/model/use-entry', () => ({
   useEntries: () => ({ data: [] }),
   useCreateEntry: () => vi.fn(),
-}))
-
-vi.mock('@/features/fields/model/use-field-query', () => ({
-  useFieldQuery: () => ({ data: null }),
 }))
 
 import { Sidebar } from './Sidebar'
