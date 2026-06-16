@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useFieldQuery } from '@/features/fields/model/use-field-query'
-import { useFieldMutation } from '@/features/fields/model/use-field-mutation'
+import { useField } from '@/features/fields/model/use-field'
+import { useSaveField } from '@/features/fields/model/use-field'
 import { useSyncStatusStore } from '@/features/fields/model/sync-status-store'
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
 import { useSaveScheduler } from '@/features/fields/model/use-save-scheduler'
@@ -22,8 +22,8 @@ export interface UseFieldEditorResult {
  * debounces saves (1s after last keystroke), and tracks sync status.
  */
 function useFieldEditor(entryId: string, fieldName: FieldName): UseFieldEditorResult {
-  const fieldQuery = useFieldQuery(entryId, fieldName)
-  const saveMutation = useFieldMutation(entryId, fieldName)
+  const fieldQuery = useField(entryId, fieldName)
+  const saveMutation = useSaveField(entryId, fieldName)
   const setSyncStatus = useSyncStatusStore((s) => s.setStatus)
   const syncStatus = useSyncStatusStore((s) => s.status[fieldName])
   const isVaultLocked = useCryptoStore((s) => s.isVaultLocked)
@@ -52,6 +52,8 @@ function useFieldEditor(entryId: string, fieldName: FieldName): UseFieldEditorRe
 
   // Reset stale "saved" status on mount
   useEffect(() => {
+    // Read store directly (not via selector). We only want to reset stale
+    // status on mount, not re-render every time any field's status changes.
     if (useSyncStatusStore.getState().status[fieldName] === 'saved') {
       setSyncStatus(fieldName, 'idle')
     }

@@ -7,19 +7,19 @@ import { useSyncStatusStore } from '@/features/fields/model/sync-status-store'
 
 // --- Hoisted mocks ---
 
-const { mockLoadField, mockSaveField, mockUseAuth } = vi.hoisted(() => ({
+const { mockLoadField, mockSaveField, mockUseRequiredUserId } = vi.hoisted(() => ({
   mockLoadField: vi.fn<(args: { userId: string; entryId: string; fieldName: string }) => Promise<string | null>>(),
   mockSaveField:
     vi.fn<(args: { userId: string; entryId: string; fieldName: string; plaintext: string }) => Promise<void>>(),
-  mockUseAuth: vi.fn<() => { user: { id: string; username: string } | null }>(),
+  mockUseRequiredUserId: vi.fn<() => string>(),
 }))
 
 vi.mock('@/features/fields/model/field-service', () => ({
   fieldService: { loadField: mockLoadField, saveField: mockSaveField },
 }))
 
-vi.mock('@/shared/auth/auth-context', () => ({
-  useAuth: mockUseAuth,
+vi.mock('@/shared/auth/use-current-user', () => ({
+  useRequiredUserId: mockUseRequiredUserId,
 }))
 
 // --- Import after mocks ---
@@ -57,7 +57,7 @@ describe('useFieldEditor', () => {
       cachedEnvelope: null,
     })
     useSyncStatusStore.getState().resetAll()
-    mockUseAuth.mockReturnValue({ user: { id: 'user-123', username: 'testuser' } })
+    mockUseRequiredUserId.mockReturnValue('user-123')
     mockLoadField.mockResolvedValue('initial content')
     mockSaveField.mockResolvedValue(undefined)
   })
@@ -172,24 +172,6 @@ describe('useFieldEditor', () => {
     await waitFor(() => {
       expect(result.current.fieldValue).toBe('')
     })
-  })
-
-  it('does not call saveField when userId is empty', async () => {
-    mockUseAuth.mockReturnValue({ user: null })
-    const { result } = renderHook(() => useFieldEditor('entry-123', 'note'), {
-      wrapper: createWrapper(queryClient),
-    })
-
-    // The fieldValue should be empty string since the query is disabled (no user)
-    expect(result.current.fieldValue).toBe('')
-
-    act(() => {
-      result.current.saveFieldValue('content')
-    })
-
-    // Wait a bit to ensure no save is triggered
-    await new Promise((resolve) => setTimeout(resolve, 100))
-    expect(mockSaveField).not.toHaveBeenCalled()
   })
 
   it('transitions to paused when offline, then saved when back online', async () => {
@@ -325,7 +307,7 @@ describe('useFieldEditor (debounce)', () => {
       cachedEnvelope: null,
     })
     useSyncStatusStore.getState().resetAll()
-    mockUseAuth.mockReturnValue({ user: { id: 'user-123', username: 'testuser' } })
+    mockUseRequiredUserId.mockReturnValue('user-123')
     mockLoadField.mockResolvedValue('initial content')
     mockSaveField.mockResolvedValue(undefined)
   })

@@ -5,16 +5,17 @@
 **Goal:** Change password without re-encrypting field data (only re-wrap master key).
 
 **Code:**
+- `src/shared/crypto/change-password.ts`:
+  - Pure crypto function: derive new split KDF, unwrap master key with old password key, re-wrap with new password key
+  - No side effects (same pattern as `registration-crypto.ts`)
 - `src/features/settings/ui/ChangePasswordDialog.tsx`:
   - Current password input + new password input + confirm new password
   - Validation: new password must differ from current, confirm matches
   - On submit:
-    1. Derive new auth credentials with new password
-    2. Unwrap master key with old password key
-    3. Re-wrap master key with new password key
-    4. Upload new wrapped master key + new salts to server
-    5. Update Supabase Auth password (new auth_hash)
-    6. Update crypto store with new keys
+    1. Call change-password crypto function
+    2. Upload new wrapped master key + new salts to server
+    3. Update Supabase Auth password (new auth_hash)
+    4. Update crypto store with new keys
   - Show success/error feedback
 - Add i18n strings to `settings.json` for password change
 
@@ -54,7 +55,7 @@
 **Goal:** Recover account using seed phrase when password is lost.
 
 **Code:**
-- `src/pages/recover/RecoverPage.tsx`:
+- `src/app/routes/_public.recover.tsx`:
   - Username input + mnemonic input (12-word input with word-by-word validation)
   - On submit:
     1. Fetch recovery data (recovery_salt, wrapped_master_key, recovery_iv) from server for this username
@@ -85,7 +86,7 @@
 **Goal:** Rotate individual field keys (re-encrypt one field's data without affecting others).
 
 **Code:**
-- `src/features/encryption/model/key-rotation.ts`:
+- `src/shared/crypto/key-rotation.ts`:
   - `rotateFieldKey(fieldName: string): Promise<void>`
     1. Generate new random 256-bit field key
     2. Increment version for this field (v1 → v2)
@@ -100,7 +101,7 @@
   - "Rotate key" button for each field
   - Confirmation dialog: "This will re-encrypt your [field name] data. This cannot be undone."
   - Success/error feedback
-- Add i18n strings to `settings.json` and `crypto.json`
+- Add i18n strings to `settings.json` and `vault.json`
 
 **Tests:**
 - Integration: rotate note key → verify note v2 in DB → verify note content decrypts correctly

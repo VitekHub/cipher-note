@@ -66,7 +66,7 @@ pnpm dev:reset         # Reset database then start Vite
 ```
 src/
   app/          # Application shell (providers, router, layouts, styles)
-  features/     # Feature modules (auth, fields/entries, encryption, settings)
+  features/     # Feature modules (auth, fields/entries, vault, settings)
   shared/       # Shared code (ui, crypto, api, auth, i18n, types)
 ```
 
@@ -109,6 +109,70 @@ Dependency direction: `routes -> features -> shared`. No cross-feature imports.
   /login    /dashboard (redirects to first entry)
   /register /dashboard/$entryId (entry detail)
   /recover  /settings
+```
+
+## Key Hierarchy
+
+Cipher Note uses a layered key hierarchy where each layer protects the one below. The server never sees plaintext keys — only wrapped (encrypted) key material.
+
+```
+                          User Password
+                               │
+                     (never sent to server)
+                               │
+                   ┌───────────┴───────────┐
+                   │  Split KDF (Argon2id) │
+                   └─────┬──────────┬──────┘
+                         │          │
+                    authSalt    keySalt
+                         │          │
+                         ▼          ▼
+                    authHash    passwordKey
+                         │          │
+        sent to Supabase │          │ kept client-side only
+           as "password" │          │ (never sent to server)
+                         │          │
+                         ▼          │ unwraps
+                   ┌──────────┐     │
+                   │ Supabase │     ▼
+                   │   Auth   │  ┌────────────┐
+                   └──────────┘  │ Master Key │ (random 256 bits)
+                                 └──┬─────┬───┘
+                                    │     │
+                               HKDF │     │ HKDF
+                                    │     │
+                                    ▼     ▼
+                                ┌─────┐ ┌──────────────────┐
+        (never sent to server)  │ KEK │ │ Signing Key Seed │ (never sent to server)
+                                └──┬──┘ └──────────────────┘
+                                   │
+                      AES-GCM wrap │
+                                   ▼
+                         ┌─────────────────┐
+                         │   Field Keys    │
+                         │ (one per field) │
+                         └────────┬────────┘
+                                  │
+                   AES-256-GCM encrypt/decrypt
+                   user field data per entry
+
+
+  ┌───────────────────────────────────────────────┐
+  │           Recovery Path (BIP-39)              │
+  │                                               │
+  │  12-word mnemonic (never sent to server)      │
+  │       │                                       │
+  │       │ Argon2id                              │
+  │       ▼                                       │
+  │  recovery KEK (never sent to server)          │
+  │       │                                       │
+  │       │ AES-256-GCM                           │
+  │       ▼                                       │
+  │  wrapped master key                           │
+  │  (independent from password wrapping —        │
+  │   allows password change without              │
+  │   re-encrypting field keys)                   │
+  └───────────────────────────────────────────────┘
 ```
 
 ## Project Conventions

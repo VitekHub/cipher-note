@@ -1,0 +1,20 @@
+{
+  "locked": "Trezor uzamčen",
+  "unlocked": "Trezor odemčen",
+  "lock": "Uzamknout trezor",
+  "unlock": "Odemknout trezor",
+  "vaultUnlockDialog": {
+    "title": "Trezor uzamčen",
+    "description": "Zadejte heslo pro odemčení trezoru.",
+    "password": "Heslo",
+    "submit": "Odemknout",
+    "submitting": "Odemykání..."
+  },
+  "errors": {
+    "decryptFailed": "Dešifrování selhalo. Vaše data mohou být poškozena.",
+    "corruptedData": "Vaše data se zdají být poškozena. Kontaktujte prosím podporu.",
+    "wrongPassword": "Špatné heslo",
+    "argon2Failed": "Odvození klíče selhalo. Zkuste to prosím znovu.",
+    "unwrapFailed": "Selhalo dešifrování trezoru. Vaše data mohou být poškozena."
+  }
+}

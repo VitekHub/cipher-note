@@ -2,13 +2,14 @@ import { useRef, useEffect, useCallback } from 'react'
 import { useSyncStatusStore } from '@/features/fields/model/sync-status-store'
 import type { FieldName } from '@/shared/types/entities/field.types'
 import type { SyncStatus } from '@/features/fields/model/sync-status-store'
+import type { SaveFieldCallbacks } from '@/features/fields/model/use-field'
 
 const DEBOUNCE_MS = 1000
 const SAVED_DISPLAY_MS = 3000
 
 type TimerRef = React.RefObject<ReturnType<typeof setTimeout> | null>
 type SetSyncStatus = (name: FieldName, status: SyncStatus) => void
-type SaveMutate = (value: string, options?: { onSuccess?: () => void; onError?: () => void }) => void
+type SaveMutate = (value: string, callbacks?: SaveFieldCallbacks) => void
 
 interface UseSaveSchedulerOptions {
   fieldName: FieldName
@@ -26,6 +27,8 @@ function debounceResetStatus(fieldName: FieldName, setSyncStatus: SetSyncStatus,
     clearTimeout(timerRef.current)
   }
   timerRef.current = setTimeout(() => {
+    // Read latest status via getState(). We're in a setTimeout callback,
+    // so we need the current value, not the stale closure value.
     const current = useSyncStatusStore.getState().status[fieldName]
     if (current === 'saved') {
       setSyncStatus(fieldName, 'idle')

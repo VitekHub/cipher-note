@@ -7,15 +7,17 @@ import commonEn from '@/shared/i18n/locales/en/common.json'
 import authEn from '@/shared/i18n/locales/en/auth.json'
 import fieldsEn from '@/shared/i18n/locales/en/fields.json'
 import settingsEn from '@/shared/i18n/locales/en/settings.json'
-import cryptoEn from '@/shared/i18n/locales/en/crypto.json'
+import entriesEn from '@/shared/i18n/locales/en/entries.json'
+import vaultEn from '@/shared/i18n/locales/en/vault.json'
 import commonCs from '@/shared/i18n/locales/cs/common.json'
 import authCs from '@/shared/i18n/locales/cs/auth.json'
 import fieldsCs from '@/shared/i18n/locales/cs/fields.json'
 import settingsCs from '@/shared/i18n/locales/cs/settings.json'
-import cryptoCs from '@/shared/i18n/locales/cs/crypto.json'
+import entriesCs from '@/shared/i18n/locales/cs/entries.json'
+import vaultCs from '@/shared/i18n/locales/cs/vault.json'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
-import { useUiStore } from '@/features/settings/model/ui-store'
+import { useLayoutStore } from '@/app/layouts/layout-store'
 import { useSyncStatusStore } from '@/features/fields/model/sync-status-store'
 
 afterEach(() => {
@@ -31,7 +33,7 @@ afterEach(() => {
     isVaultLocked: true,
     lastActivity: 0,
   })
-  useUiStore.setState({
+  useLayoutStore.setState({
     sidebarOpen: false,
     activeField: null,
     sidebarWidth: 240,
@@ -42,12 +44,26 @@ afterEach(() => {
 beforeAll(async () => {
   await i18n.use(initReactI18next).init({
     resources: {
-      en: { common: commonEn, auth: authEn, fields: fieldsEn, settings: settingsEn, crypto: cryptoEn },
-      cs: { common: commonCs, auth: authCs, fields: fieldsCs, settings: settingsCs, crypto: cryptoCs },
+      en: {
+        common: commonEn,
+        auth: authEn,
+        fields: fieldsEn,
+        settings: settingsEn,
+        entries: entriesEn,
+        vault: vaultEn,
+      },
+      cs: {
+        common: commonCs,
+        auth: authCs,
+        fields: fieldsCs,
+        settings: settingsCs,
+        entries: entriesCs,
+        vault: vaultCs,
+      },
     },
     fallbackLng: 'en',
     supportedLngs: ['en', 'cs'],
-    ns: ['common', 'auth', 'fields', 'settings', 'crypto'],
+    ns: ['common', 'auth', 'fields', 'settings', 'entries', 'vault'],
     defaultNS: 'common',
     interpolation: { escapeValue: false },
     lng: 'en',

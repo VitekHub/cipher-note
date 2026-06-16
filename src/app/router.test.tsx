@@ -4,6 +4,7 @@ import { createMemoryHistory, createRouter, RouterProvider } from '@tanstack/rea
 import { routeTree } from '@/app/routeTree.gen'
 import type { AuthContext } from '@/shared/auth/auth-context'
 import { authAdapter } from '@/shared/auth/supabase-adapter'
+import { useAuthStore } from '@/features/auth/model/auth-store'
 
 function renderWithRouter(authOverrides: Partial<AuthContext> = {}, initialPath = '/') {
   const auth: AuthContext = {
@@ -97,6 +98,7 @@ describe('Router page rendering', () => {
   })
 
   it('renders dashboard with field cards when authenticated', async () => {
+    useAuthStore.setState({ user: { id: '1', username: 'test', createdAt: '2024-01-01T00:00:00Z' } })
     renderWithRouter({ isAuthenticated: true, user: { id: '1', username: 'test' } }, '/dashboard/test-entry')
     await waitFor(() => {
       expect(screen.getByText('Note')).toBeInTheDocument()
@@ -106,6 +108,7 @@ describe('Router page rendering', () => {
   })
 
   it('renders settings page when authenticated', async () => {
+    useAuthStore.setState({ user: { id: '1', username: 'test', createdAt: '2024-01-01T00:00:00Z' } })
     renderWithRouter({ isAuthenticated: true, user: { id: '1', username: 'test' } }, '/settings')
     await waitFor(() => {
       expect(screen.getAllByText(/account/i).length).toBeGreaterThan(0)

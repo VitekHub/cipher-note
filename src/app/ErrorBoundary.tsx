@@ -7,10 +7,10 @@ import { ApiError, ApiErrorCode } from '@/shared/api/api-errors'
 
 /** Crypto errors with fixed descriptions — add new ones here instead of extending the if-chain. */
 const CRYPTO_ERRORS: readonly (readonly [new () => Error, string])[] = [
-  [DecryptionError, 'crypto:errors.decryptFailed'],
-  [CorruptedDataError, 'crypto:errors.corruptedData'],
-  [Argon2Error, 'crypto:errors.argon2Failed'],
-  [MnemonicError, 'crypto:errors.mnemonicFailed'],
+  [DecryptionError, 'vault:errors.decryptFailed'],
+  [CorruptedDataError, 'vault:errors.corruptedData'],
+  [Argon2Error, 'vault:errors.argon2Failed'],
+  [MnemonicError, 'auth:errors.mnemonicFailed'],
 ]
 
 function getErrorMessage(error: Error): { title: string; description: string } {

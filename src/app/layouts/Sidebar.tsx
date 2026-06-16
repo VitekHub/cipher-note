@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Settings, Lock, Unlock, LogOut, User, X, FileText } from 'lucide-react'
+import { Settings, Lock, Unlock, LogOut, User, X } from 'lucide-react'
 import { useNavigate, useParams } from '@tanstack/react-router'
 
 import { cn } from '@/shared/lib/utils'
@@ -9,11 +9,11 @@ import { AppLogo } from '@/shared/ui/brand/AppLogo'
 import { NavLink } from '@/shared/ui/nav/NavLink'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
-import { useVaultDialogStore } from '@/shared/crypto/vault-dialog-store'
+import { useVaultDialogStore } from '@/features/vault/model/vault-dialog-store'
 import { keyVault } from '@/shared/crypto/key-vault'
-import { useEntries } from '@/features/fields/model/use-entries'
-import { useFieldQuery } from '@/features/fields/model/use-field-query'
+import { useEntries } from '@/features/fields/model/use-entry'
 import { CreateEntryButton } from '@/features/fields/ui/CreateEntryButton'
+import { EntryNavItem } from '@/app/layouts/EntryNavItem'
 
 interface SidebarProps {
   onClose?: () => void
@@ -21,42 +21,8 @@ interface SidebarProps {
   className?: string
 }
 
-function EntryItem({
-  entryId,
-  index,
-  isVaultLocked,
-  isActive,
-  onClick,
-}: {
-  entryId: string
-  index: number
-  isVaultLocked: boolean
-  isActive: boolean
-  onClick: () => void
-}) {
-  const { t } = useTranslation('common')
-  const { data: title } = useFieldQuery(entryId, 'title')
-
-  const label = isVaultLocked
-    ? t('entries.entryLabel', { number: index + 1 })
-    : title || t('entries.entryLabel', { number: index + 1 })
-
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'focus-visible:ring-ring/50 flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-left text-sm outline-none focus-visible:ring-2',
-        isActive ? 'bg-muted font-medium' : 'hover:bg-muted/50 text-muted-foreground',
-      )}
-    >
-      <FileText className="size-4 shrink-0" />
-      <span className="min-w-0 truncate">{label}</span>
-    </button>
-  )
-}
-
 function Sidebar({ onClose, onLogout, className }: SidebarProps) {
-  const { t } = useTranslation(['common', 'crypto'])
+  const { t } = useTranslation(['common', 'vault'])
   const navigate = useNavigate()
   const params = useParams({ strict: false })
   const activeEntryId = 'entryId' in params ? params.entryId : undefined
@@ -103,7 +69,7 @@ function Sidebar({ onClose, onLogout, className }: SidebarProps) {
       <nav aria-label={t('common:nav.mainNav')} className="flex-1 overflow-y-auto p-2">
         <div className="flex items-center justify-between px-1 pb-1">
           <span className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
-            {t('common:entries.entriesLabel')}
+            {t('entries:entriesLabel')}
           </span>
           <CreateEntryButton onCreated={onClose} />
         </div>
@@ -111,7 +77,8 @@ function Sidebar({ onClose, onLogout, className }: SidebarProps) {
         {entries && entries.length > 0 ? (
           <div className="space-y-0.5">
             {entries.map((entry, index) => (
-              <EntryItem
+              <EntryNavItem
+                variant="sidebar"
                 key={entry.id}
                 entryId={entry.id}
                 index={index}
@@ -125,7 +92,7 @@ function Sidebar({ onClose, onLogout, className }: SidebarProps) {
             ))}
           </div>
         ) : (
-          <p className="text-muted-foreground px-3 py-2 text-sm">{t('common:entries.empty')}</p>
+          <p className="text-muted-foreground px-3 py-2 text-sm">{t('entries:empty')}</p>
         )}
       </nav>
 
@@ -152,7 +119,7 @@ function Sidebar({ onClose, onLogout, className }: SidebarProps) {
         {/* Vault lock button */}
         <Button variant="outline" size="sm" className="w-full" onClick={handleVaultLock}>
           {isVaultLocked ? <Unlock className="size-4" /> : <Lock className="size-4" />}
-          <span>{isVaultLocked ? t('crypto:vault.unlock') : t('crypto:vault.lock')}</span>
+          <span>{isVaultLocked ? t('vault:unlock') : t('vault:lock')}</span>
         </Button>
         {/* Settings */}
         <NavLink to="/settings" onClick={handleNavClick} className="flex items-center justify-center gap-3">

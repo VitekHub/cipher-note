@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus } from 'lucide-react'
 
@@ -8,7 +8,6 @@ import { useFieldEditor } from '@/features/fields/model/use-field-editor'
 import { FieldCard } from '@/features/fields/ui/FieldCard'
 import { NoteField } from '@/features/fields/ui/NoteField'
 import { InputField } from '@/features/fields/ui/InputField'
-import { LockedVaultCard } from '@/features/fields/ui/LockedVaultCard'
 import { SaveIndicator } from '@/features/fields/ui/SaveIndicator'
 import { DeleteEntryDialog } from '@/features/fields/ui/DeleteEntryDialog'
 import { Button } from '@/shared/ui/button'
@@ -63,7 +62,7 @@ function FieldEditorWrapper({
   )
 }
 
-function EntryDetailPage({ entryId }: { entryId: string }) {
+function EntryDetailPage({ entryId, lockedFallback }: { entryId: string; lockedFallback: ReactNode }) {
   const isVaultLocked = useCryptoStore((s) => s.isVaultLocked)
   const resetAllSyncStatus = useSyncStatusStore((s) => s.resetAll)
 
@@ -75,9 +74,7 @@ function EntryDetailPage({ entryId }: { entryId: string }) {
   return (
     <div className="flex min-h-full flex-1 flex-col">
       {isVaultLocked ? (
-        <div className="flex flex-1 items-center justify-center">
-          <LockedVaultCard />
-        </div>
+        <div className="flex flex-1 items-center justify-center">{lockedFallback}</div>
       ) : (
         <div className="mb-2 flex justify-end">
           <DeleteEntryDialog entryId={entryId} />
@@ -101,24 +98,24 @@ function EntryDetailPage({ entryId }: { entryId: string }) {
 }
 
 /** Empty state shown when user has no entries. */
-function EmptyState({ onCreateEntry }: { onCreateEntry: () => void }) {
-  const { t } = useTranslation('common')
+function EmptyState({ onCreateEntry, lockedFallback }: { onCreateEntry: () => void; lockedFallback: ReactNode }) {
+  const { t } = useTranslation('entries')
   const isVaultLocked = useCryptoStore((s) => s.isVaultLocked)
 
   if (isVaultLocked) {
-    return <LockedVaultCard />
+    return lockedFallback
   }
 
   return (
     <div className="flex min-h-full flex-1 items-center justify-center">
       <Card size="sm" className="max-w-sm">
         <CardHeader>
-          <CardTitle>{t('entries.empty')}</CardTitle>
+          <CardTitle>{t('empty')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Button onClick={onCreateEntry} className="my-4 w-full">
             <Plus className="mr-2 size-4" />
-            {t('entries.emptyAction')}
+            {t('emptyAction')}
           </Button>
         </CardContent>
       </Card>

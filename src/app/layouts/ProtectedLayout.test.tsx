@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import React from 'react'
 import { render, screen } from '@/test/utils'
 import { useAuthStore } from '@/features/auth/model/auth-store'
-import { useUiStore } from '@/features/settings/model/ui-store'
+import { useLayoutStore } from './layout-store'
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
 
 vi.mock('@tanstack/react-router', () => ({
@@ -13,21 +13,17 @@ vi.mock('@tanstack/react-router', () => ({
   useParams: vi.fn(() => ({})),
 }))
 
-vi.mock('@/features/encryption/ui/VaultUnlockDialog', () => ({
+vi.mock('@/features/vault/ui/VaultUnlockDialog', () => ({
   VaultUnlockDialog: () => React.createElement('div', { 'data-testid': 'vault-unlock-dialog' }),
 }))
 
-vi.mock('@/features/encryption/model/vault-timeout', () => ({
+vi.mock('@/features/vault/model/vault-timeout', () => ({
   useVaultTimeout: () => {},
 }))
 
-vi.mock('@/features/fields/model/use-entries', () => ({
+vi.mock('@/features/fields/model/use-entry', () => ({
   useEntries: vi.fn(() => ({ data: [] })),
   useCreateEntry: vi.fn(() => vi.fn()),
-}))
-
-vi.mock('@/features/fields/model/use-field-query', () => ({
-  useFieldQuery: vi.fn(() => ({ data: undefined })),
 }))
 
 import { ProtectedLayout } from './ProtectedLayout'
@@ -38,7 +34,7 @@ describe('ProtectedLayout', () => {
     useAuthStore.setState({
       user: { id: '1', username: 'testuser', createdAt: '2024-01-01' },
     })
-    useUiStore.setState({ sidebarOpen: false, activeField: null, sidebarWidth: 240 })
+    useLayoutStore.setState({ sidebarOpen: false, activeField: null, sidebarWidth: 240 })
     useCryptoStore.setState({ isVaultLocked: false })
   })
 
@@ -53,7 +49,7 @@ describe('ProtectedLayout', () => {
   })
 
   it('renders desktop sidebar with dynamic width', () => {
-    useUiStore.setState({ sidebarWidth: 300 })
+    useLayoutStore.setState({ sidebarWidth: 300 })
     render(<ProtectedLayout />)
     const aside = screen.getByRole('complementary')
     expect(aside).toHaveStyle({ width: '300px' })

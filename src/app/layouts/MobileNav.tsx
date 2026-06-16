@@ -1,51 +1,17 @@
 import { useTranslation } from 'react-i18next'
-import { Lock, Unlock, Settings, FileText } from 'lucide-react'
+import { Lock, Unlock, Settings } from 'lucide-react'
 import { useNavigate, useParams } from '@tanstack/react-router'
 
-import { cn } from '@/shared/lib/utils'
 import { Button } from '@/shared/ui/button'
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
-import { useVaultDialogStore } from '@/shared/crypto/vault-dialog-store'
+import { useVaultDialogStore } from '@/features/vault/model/vault-dialog-store'
 import { keyVault } from '@/shared/crypto/key-vault'
-import { useEntries } from '@/features/fields/model/use-entries'
-import { useFieldQuery } from '@/features/fields/model/use-field-query'
+import { useEntries } from '@/features/fields/model/use-entry'
+import { EntryNavItem } from '@/app/layouts/EntryNavItem'
 import { CreateEntryButton } from '@/features/fields/ui/CreateEntryButton'
 
-function MobileEntryItem({
-  entryId,
-  index,
-  isVaultLocked,
-  isActive,
-  onClick,
-}: {
-  entryId: string
-  index: number
-  isVaultLocked: boolean
-  isActive: boolean
-  onClick: () => void
-}) {
-  const { t } = useTranslation('common')
-  const { data: title } = useFieldQuery(entryId, 'title')
-  const label = isVaultLocked
-    ? t('entries.entryLabel', { number: index + 1 })
-    : title || t('entries.entryLabel', { number: index + 1 })
-
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'flex flex-col items-center gap-0.5 px-2 py-1 text-xs',
-        isActive ? 'bg-muted' : 'hover:bg-muted/50 text-muted-foreground',
-      )}
-    >
-      <FileText className="size-5" />
-      <span className="max-w-16 min-w-0 truncate text-[10px] leading-tight">{label}</span>
-    </button>
-  )
-}
-
 function MobileNav() {
-  const { t } = useTranslation(['common', 'crypto'])
+  const { t } = useTranslation(['common', 'vault'])
   const navigate = useNavigate()
   const params = useParams({ strict: false })
   const activeEntryId = 'entryId' in params ? params.entryId : undefined
@@ -73,7 +39,8 @@ function MobileNav() {
           ? entries
               .slice(0, 3)
               .map((entry, index) => (
-                <MobileEntryItem
+                <EntryNavItem
+                  variant="mobile"
                   key={entry.id}
                   entryId={entry.id}
                   index={index}
@@ -95,7 +62,7 @@ function MobileNav() {
           size="icon"
           className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           onClick={handleVaultLock}
-          aria-label={isVaultLocked ? t('crypto:vault.unlock') : t('crypto:vault.lock')}
+          aria-label={isVaultLocked ? t('vault:unlock') : t('vault:lock')}
         >
           {isVaultLocked ? <Unlock className="size-5" /> : <Lock className="size-5" />}
         </Button>

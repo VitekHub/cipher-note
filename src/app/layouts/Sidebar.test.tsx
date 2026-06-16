@@ -4,7 +4,7 @@ import React from 'react'
 import { render, screen } from '@/test/utils'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
-import { useVaultDialogStore } from '@/shared/crypto/vault-dialog-store'
+import { useVaultDialogStore } from '@/features/vault/model/vault-dialog-store'
 
 const { mockNavigate, mockLockVault } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
@@ -24,13 +24,9 @@ vi.mock('@/shared/crypto/key-vault', () => ({
   },
 }))
 
-vi.mock('@/features/fields/model/use-entries', () => ({
+vi.mock('@/features/fields/model/use-entry', () => ({
   useEntries: () => ({ data: [] }),
   useCreateEntry: () => vi.fn(),
-}))
-
-vi.mock('@/features/fields/model/use-field-query', () => ({
-  useFieldQuery: () => ({ data: null }),
 }))
 
 import { Sidebar } from './Sidebar'

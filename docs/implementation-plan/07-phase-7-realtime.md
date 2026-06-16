@@ -14,7 +14,7 @@
   - `unsubscribe(): void` — clean up subscriptions
 - `src/features/fields/model/realtime-sync.ts`:
   - When field update comes from realtime: invalidate TanStack Query cache → re-fetch → re-decrypt
-  - When key rotation event comes: invalidate field key cache → re-fetch wrapped key → re-unwrap with KEK
+  - When key rotation event comes: invalidate field key cache → re-fetch wrapped key → re-unwrap with KEK (lives here, not in vault, to avoid cross-feature imports)
 - Handle conflict: if local and remote both changed same field, show notification "Field updated remotely. Reload?"
 
 **Tests:**
@@ -30,8 +30,7 @@
 **Goal:** Handle multiple active sessions and key rotation across devices.
 
 **Code:**
-- `src/features/encryption/model/multi-device.ts`:
-  - When a field key version changes (detected via realtime): re-fetch and re-unwrap field key
+- `src/features/auth/model/session-sync.ts`:
   - When master key is rotated (password change on another device): force re-login
   - Session invalidation: if auth session expires, lock vault and redirect to login
 - `src/features/fields/ui/ConflictNotification.tsx`:
@@ -41,5 +40,5 @@
 
 **Tests:**
 - Integration: password change on device A → device B detects session change → prompts re-login
-- Unit: key rotation event → re-fetch field key → re-unwrap → success
+- Unit: key rotation event → re-fetch field key → re-unwrap → success (in realtime-sync tests)
 - Unit: session expiry → vault locks → redirect to login

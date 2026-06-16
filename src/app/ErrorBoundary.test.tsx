@@ -13,7 +13,7 @@ describe('CryptoError classes', () => {
   it('DecryptionError extends CryptoError', () => {
     const error = new DecryptionError()
     expect(error.name).toBe('DecryptionError')
-    expect(error.message).toBe('crypto:errors.decryptFailed')
+    expect(error.message).toBe('vault:errors.decryptFailed')
     expect(error).toBeInstanceOf(CryptoError)
     expect(error).toBeInstanceOf(Error)
   })
@@ -26,7 +26,7 @@ describe('CryptoError classes', () => {
   it('CorruptedDataError extends CryptoError', () => {
     const error = new CorruptedDataError()
     expect(error.name).toBe('CorruptedDataError')
-    expect(error.message).toBe('crypto:errors.corruptedData')
+    expect(error.message).toBe('vault:errors.corruptedData')
     expect(error).toBeInstanceOf(CryptoError)
     expect(error).toBeInstanceOf(Error)
   })

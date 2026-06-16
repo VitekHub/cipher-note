@@ -37,9 +37,9 @@ Field Keys (one per field) → wrapped by KEK with AAD(fieldName, version)
 ```
 main.tsx → AppProviders (QueryClientProvider > AuthProvider > RouterProvider)
   → __root.tsx (ThemeProvider + Toaster)
-    → _public (GuestOnly, redirects to /dashboard if authed)
+    → _public (redirects to /dashboard if authed — guard in route beforeLoad)
       → /login, /register, /recover
-    → _authenticated (RequireAuth, redirects to /login if not authed)
+    → _authenticated (redirects to /login if not authed — guard in route beforeLoad)
       → /dashboard (redirects to first entry or shows EmptyState)
       → /dashboard/$entryId (entry detail with field editors)
       → /settings
@@ -107,9 +107,9 @@ Backend abstracted behind interfaces: `IAuthAdapter`, `IApiAdapter`, `IRealtimeA
 - When adding a new alias, update `tsconfig.app.json` AND `vite.config.ts`.
 
 ### State Management
-- Zustand for client state (auth store, crypto store, UI store).
+- Zustand for client state (auth store, crypto store, layout store).
 - TanStack Query for server state (fields, keys).
-- Zustand stores use devtools middleware with named actions **only for stores without sensitive data** (e.g., UI store, vault dialog store). Stores that hold crypto keys or auth tokens (crypto store, auth store) must NOT use devtools — the Redux DevTools extension would expose secrets in browser devtools.
+- Zustand stores use devtools middleware with named actions **only for stores without sensitive data** (e.g., layout store, vault dialog store). Stores that hold crypto keys or auth tokens (crypto store, auth store) must NOT use devtools — the Redux DevTools extension would expose secrets in browser devtools.
 - NEVER store `language` preference in Zustand — `i18next` is the source of truth.
 
 ### Code Style
@@ -188,17 +188,17 @@ Non-obvious decisions not visible from code alone:
 
 - **Auth store `isRestoringSession`**: defaults `true`; `reset()` does NOT touch it (logout doesn't re-trigger initialization)
 - **Auto-lock**: `useVaultTimeout` hook in ProtectedLayout resets a 15-minute inactivity timer on user activity (mousemove, keydown, mousedown, touchstart, scroll); calls `lockVault()` on expiry
-- **VaultUnlockDialog**: uses a separate `vault-dialog-store` so the dialog can be opened/closed independently of vault lock state. This lets the user dismiss the dialog without unlocking, and lets the sidebar/mobile nav trigger `openUnlockDialog()` directly
+- **VaultUnlockDialog**: uses a separate `vault-dialog-store` (in `features/vault/model/`) so the dialog can be opened/closed independently of vault lock state. This lets the user dismiss the dialog without unlocking, and lets the sidebar/mobile nav trigger `openUnlockDialog()` directly
 - **`keyVault.lockVault()` vs `keyVault.clearVault()`**: `lockVault()` preserves the cached envelope (so re-unlock can skip network calls), while `clearVault()` (called on logout) zeros everything including the cache. `keyVault.unlockVault()` tries the cached envelope first and retries from server on `DecryptionError` (stale cache can happen if the password was changed in another session)
 - **Test file naming**: prefix with `-` in `src/app/routes/` to exclude from TanStack Router route tree generation
-- **Test setup**: shared setup (`src/test/setup.ts`) resets `useAuthStore` (with `isRestoringSession: false`), `useCryptoStore`, and `useUiStore` (including `sidebarWidth: 240`) in `afterEach`. Router mocking (`@tanstack/react-router`) is done per-file in each test that needs it, not centralized
+- **Test setup**: shared setup (`src/test/setup.ts`) resets `useAuthStore` (with `isRestoringSession: false`), `useCryptoStore`, and `useLayoutStore` (including `sidebarWidth: 240`) in `afterEach`. Router mocking (`@tanstack/react-router`) is done per-file in each test that needs it, not centralized
 - **Argon2id Web Worker**: `argon2id.ts` delegates all derivation to `argon2id.worker.ts` via `postMessage`. The worker lazy-loads `argon2-browser/dist/argon2-bundled.min.js` (not the default `argon2-browser` import — the default tries to load a `.wasm` file which Vite cannot handle; the bundled build embeds WASM as base64 in JS). Tests mock the Worker constructor; actual Argon2id computation is tested in E2E (Step 36).
 - **FieldCard children pattern**: uses render function `() => ReactNode`. Field editors stay mounted (hidden via CSS) when vault is locked so paused mutation observers survive and their callbacks fire on resume. Locked UI is handled by `LockedVaultCard` in the dashboard, not by individual FieldCards.
 - **FieldCard i18n keys**: `FIELD_LABEL_KEYS` is a static record (not template literals) so i18next-parser can discover them. Includes all four fields: title, note, website, email.
 - **`Uint8Array<ArrayBuffer>` for Web Crypto**: TS 6.0 made `Uint8Array` generic; bare `Uint8Array` expands to `Uint8Array<ArrayBufferLike>` which doesn't satisfy `BufferSource`. All `crypto.subtle` function signatures must use `Uint8Array<ArrayBuffer>`.
 - **`copyToUint8Array` only in aes-gcm.ts**: Web Crypto's `encrypt`, `decrypt`, and `exportKey` return `ArrayBuffer`, which can be neutered/transferred. `copyToUint8Array` wraps these calls and provides type narrowing to `Uint8Array<ArrayBuffer>`. Other crypto modules construct `Uint8Array` from scratch (e.g., `new Uint8Array(derivedBits)`) so they already own the buffer.
-- **Multi-entry architecture**: Each user can have multiple entries. An entry is a group of four encrypted fields (title, note, website, email). The `entries` table stores entry metadata; `encrypted_fields` references `entry_id`. Entry CRUD is in `entry-service.ts` + `use-entries.ts` hooks. The sidebar shows the entry list; the dashboard route is `/dashboard/$entryId` (the index `/dashboard` redirects to the first entry or shows `EmptyState`).
-- **`useFieldQuery` and `useFieldMutation` are entry-aware**: Query keys include `entryId`: `['field', entryId, fieldName]`. On entry deletion, `useDeleteEntry` removes field queries for that entry from the cache.
+- **Multi-entry architecture**: Each user can have multiple entries. An entry is a group of four encrypted fields (title, note, website, email). The `entries` table stores entry metadata; `encrypted_fields` references `entry_id`. Entry CRUD is in `entry-service.ts` + `use-entry.ts` hooks. The sidebar shows the entry list; the dashboard route is `/dashboard/$entryId` (the index `/dashboard` redirects to the first entry or shows `EmptyState`).
+- **`useField` and `useSaveField` are entry-aware**: Query keys include `entryId`: `['field', entryId, fieldName]`. On entry deletion, `useDeleteEntry` removes field queries for that entry from the cache.
 - **Master key wrapping uses AAD constants**: All key wrapping is done directly with `encrypt`/`decrypt` from `aes-gcm.ts` using `{iv, aad}` options. `changePassword` in `split-kdf.ts` uses `MASTER_KEY_PASSWORD_AAD`, recovery wrapping in `mnemonic.ts` uses `MASTER_KEY_RECOVERY_AAD`, field key wrapping uses `encodeAAD(fieldName, version)` from `crypto-utils.ts`.
 - **HKDF uses `deriveBits`, not `deriveKey`**: `deriveSubKey` returns raw `Uint8Array` bytes because the KEK bytes need to be imported as an AES-GCM CryptoKey via `importKey()` separately in `deriveFullKeyHierarchy`. HKDF uses empty salt since the master key is already random.
 - **BIP-39 mnemonic functions are async**: `generateMnemonic`, `validateMnemonic`, `mnemonicToSeed` must be `async` despite the underlying `@scure/bip39` functions being synchronous, because the lazy-loading pattern (`await loadBip39()`) requires it. Same as how `argon2id.ts` wraps sync Argon2 in async.

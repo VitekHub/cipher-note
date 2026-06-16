@@ -26,15 +26,6 @@
     "ariaLabel": "Upozornění na předběžnou verzi",
     "message": "Cipher Note je předběžná alfa verze. Očekávejte zásadní změny a občasné resety dat."
   },
-  "entries": {
-    "entriesLabel": "Poznámky",
-    "create": "Nová poznámka",
-    "empty": "Zatím žádné poznámky",
-    "emptyAction": "Vytvořte první poznámku",
-    "delete": "Smazat poznámku",
-    "deleteConfirm": "Opravdu chcete smazat tuto poznámku? Tuto akci nelze vrátit.",
-    "entryLabel": "Poznámka {{number}}"
-  },
   "nav": {
     "dashboard": "Nástěnka",
     "settings": "Nastavení",

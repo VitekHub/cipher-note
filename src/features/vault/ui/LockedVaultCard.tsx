@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { Lock } from 'lucide-react'
 
-import { useVaultDialogStore } from '@/shared/crypto/vault-dialog-store'
+import { useVaultDialogStore } from '@/features/vault/model/vault-dialog-store'
 import { Button } from '@/shared/ui/button'
 
 function LockedVaultCard() {
@@ -15,7 +15,7 @@ function LockedVaultCard() {
         <Lock className="text-muted-foreground/60 relative size-10" />
         <p className="text-muted-foreground relative text-sm">{t('vaultLocked')}</p>
         <Button variant="outline" onClick={openUnlockDialog} className="relative">
-          {t('vaultUnlock')}
+          {t('unlockVault')}
         </Button>
       </div>
     </div>
