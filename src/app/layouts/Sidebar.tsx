@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Settings, Lock, Unlock, LogOut, User, X, FileText } from 'lucide-react'
+import { Settings, Lock, Unlock, LogOut, User, X } from 'lucide-react'
 import { useNavigate, useParams } from '@tanstack/react-router'
 
 import { cn } from '@/shared/lib/utils'
@@ -12,45 +12,13 @@ import { useCryptoStore } from '@/shared/crypto/crypto-store'
 import { useVaultDialogStore } from '@/shared/crypto/vault-dialog-store'
 import { keyVault } from '@/shared/crypto/key-vault'
 import { useEntries } from '@/features/fields/model/use-entry'
-import { useField } from '@/features/fields/model/use-field'
 import { CreateEntryButton } from '@/features/fields/ui/CreateEntryButton'
+import { EntryNavItem } from '@/app/layouts/EntryNavItem'
 
 interface SidebarProps {
   onClose?: () => void
   onLogout?: () => Promise<void>
   className?: string
-}
-
-function EntryItem({
-  entryId,
-  index,
-  isVaultLocked,
-  isActive,
-  onClick,
-}: {
-  entryId: string
-  index: number
-  isVaultLocked: boolean
-  isActive: boolean
-  onClick: () => void
-}) {
-  const { t } = useTranslation('entries')
-  const { data: title } = useField(entryId, 'title')
-
-  const label = isVaultLocked ? t('entryLabel', { number: index + 1 }) : title || t('entryLabel', { number: index + 1 })
-
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'focus-visible:ring-ring/50 flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-left text-sm outline-none focus-visible:ring-2',
-        isActive ? 'bg-muted font-medium' : 'hover:bg-muted/50 text-muted-foreground',
-      )}
-    >
-      <FileText className="size-4 shrink-0" />
-      <span className="min-w-0 truncate">{label}</span>
-    </button>
-  )
 }
 
 function Sidebar({ onClose, onLogout, className }: SidebarProps) {
@@ -109,7 +77,8 @@ function Sidebar({ onClose, onLogout, className }: SidebarProps) {
         {entries && entries.length > 0 ? (
           <div className="space-y-0.5">
             {entries.map((entry, index) => (
-              <EntryItem
+              <EntryNavItem
+                variant="sidebar"
                 key={entry.id}
                 entryId={entry.id}
                 index={index}
