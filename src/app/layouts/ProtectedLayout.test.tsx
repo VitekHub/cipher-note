@@ -13,11 +13,11 @@ vi.mock('@tanstack/react-router', () => ({
   useParams: vi.fn(() => ({})),
 }))
 
-vi.mock('@/features/encryption/ui/VaultUnlockDialog', () => ({
+vi.mock('@/features/vault/ui/VaultUnlockDialog', () => ({
   VaultUnlockDialog: () => React.createElement('div', { 'data-testid': 'vault-unlock-dialog' }),
 }))
 
-vi.mock('@/features/encryption/model/vault-timeout', () => ({
+vi.mock('@/features/vault/model/vault-timeout', () => ({
   useVaultTimeout: () => {},
 }))
 

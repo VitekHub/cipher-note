@@ -7,12 +7,12 @@ import { Sheet, SheetTrigger, SheetContent, SheetTitle } from '@/shared/ui/sheet
 import { Sidebar } from './Sidebar'
 import { MobileNav } from './MobileNav'
 import { ResizeHandle } from '@/shared/ui/nav/ResizeHandle'
-import { VaultIndicator } from '@/features/encryption/ui/VaultIndicator'
-import { VaultUnlockDialog } from '@/features/encryption/ui/VaultUnlockDialog'
+import { VaultIndicator } from '@/features/vault/ui/VaultIndicator'
+import { VaultUnlockDialog } from '@/features/vault/ui/VaultUnlockDialog'
 import { OfflineBanner } from '@/shared/ui/OfflineBanner'
 import { useUiStore } from '@/features/settings/model/ui-store'
 import { useResizable } from '@/shared/lib/use-resizable'
-import { useVaultTimeout } from '@/features/encryption/model/use-vault-timeout'
+import { useVaultTimeout } from '@/features/vault/model/use-vault-timeout'
 import { logoutUser } from '@/features/auth/model/auth-service'
 
 function ProtectedLayout() {

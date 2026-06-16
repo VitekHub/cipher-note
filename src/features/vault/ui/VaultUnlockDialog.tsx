@@ -9,7 +9,7 @@ import { useCryptoStore } from '@/shared/crypto/crypto-store'
 import { useVaultDialogStore } from '@/shared/crypto/vault-dialog-store'
 import { useAuth } from '@/shared/auth/auth-context'
 import { keyVault } from '@/shared/crypto/key-vault'
-import { getCryptoErrorMessage } from '@/features/encryption/model/crypto-error-messages'
+import { getVaultErrorMessage } from '@/features/vault/model/vault-error-messages'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/shared/ui/dialog'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
@@ -65,7 +65,7 @@ function VaultUnlockDialog() {
     try {
       await keyVault.unlockVault(user.id, data.password)
     } catch (err) {
-      setError(getCryptoErrorMessage(err, t))
+      setError(getVaultErrorMessage(err, t))
     }
   }
 
