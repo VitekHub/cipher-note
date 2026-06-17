@@ -64,7 +64,7 @@ This is the implementation plan for Cipher Note, an end-to-end encrypted note-ta
 - [x] Step 24 — Supabase API Adapter
 - [x] Step 25 — Encrypted Field CRUD
 - [x] Step 26 — Auto-Save + Sync Flow
-- [ ] Step 27 — Supabase Realtime Adapter
+- [x] Step 27 — Supabase Realtime Adapter
 - [ ] Step 28 — Multi-Device Session Handling
 - [ ] Step 29 — Change Password Flow + UI
 - [ ] Step 30 — Seed Phrase Backup View
