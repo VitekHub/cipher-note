@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { AuthError, AuthErrorCode } from '@/shared/auth/auth-errors'
 import { ApiError, ApiErrorCode } from '@/shared/api/api-errors'
+import { FIELD_KEYS_TABLE } from '@/shared/types/supabase-schema'
 
 // Mock Supabase client
 const mockFrom = vi.fn()
@@ -191,7 +192,7 @@ describe('fetchFieldKeys', () => {
 
     const result = await fetchFieldKeys('user-1')
 
-    expect(mockFrom).toHaveBeenCalledWith('field_keys')
+    expect(mockFrom).toHaveBeenCalledWith(FIELD_KEYS_TABLE)
     expect(mockSelect).toHaveBeenCalledWith('field_name, version, wrapped_key, key_iv')
     expect(mockEq).toHaveBeenCalledWith('user_id', 'user-1')
     expect(result).toEqual([
@@ -266,7 +267,7 @@ describe('saveWrappedKey', () => {
       keyIV: 'bb'.repeat(12),
     })
 
-    expect(mockFrom).toHaveBeenCalledWith('field_keys')
+    expect(mockFrom).toHaveBeenCalledWith(FIELD_KEYS_TABLE)
     expect(mockUpsert).toHaveBeenCalledWith(
       {
         user_id: 'user-1',

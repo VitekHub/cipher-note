@@ -2,6 +2,7 @@ import { getSupabase } from '@/shared/api/supabase-client'
 import { wrapApiError } from '@/shared/api/api-errors'
 import { hexEncode } from '@/shared/crypto/crypto-utils'
 import type { RegistrationResult } from '@/shared/types/crypto.types'
+import { ENTRIES_TABLE, FIELD_KEYS_TABLE } from '@/shared/types/supabase-schema'
 
 export async function uploadRegistrationData(data: RegistrationResult, userId: string): Promise<void> {
   const supabase = getSupabase()
@@ -17,7 +18,7 @@ export async function uploadRegistrationData(data: RegistrationResult, userId: s
   if (keysError) throw wrapApiError(keysError)
 
   // 2. Insert entries row (user's first entry)
-  const { error: entriesError } = await supabase.from('entries').insert({
+  const { error: entriesError } = await supabase.from(ENTRIES_TABLE).insert({
     user_id: userId,
   })
   if (entriesError) throw wrapApiError(entriesError)
@@ -30,7 +31,7 @@ export async function uploadRegistrationData(data: RegistrationResult, userId: s
     wrapped_key: hexEncode(fk.wrappedKey),
     key_iv: hexEncode(fk.iv),
   }))
-  const { error: fieldKeysError } = await supabase.from('field_keys').insert(fieldKeysRows)
+  const { error: fieldKeysError } = await supabase.from(FIELD_KEYS_TABLE).insert(fieldKeysRows)
   if (fieldKeysError) throw wrapApiError(fieldKeysError)
 
   // 4. Insert recovery row (mnemonic-wrapped master key)

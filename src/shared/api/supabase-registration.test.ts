@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest'
 import { FIELD_KEY_VERSION } from '@/shared/types/crypto.types'
 import type { RegistrationResult, RecoveryData } from '@/shared/types/crypto.types'
 import { ApiError, ApiErrorCode } from '@/shared/api/api-errors'
+import { FIELD_KEYS_TABLE } from '@/shared/types/supabase-schema'
 
 vi.mock('@/shared/api/supabase-client', () => {
   const insert = vi.fn().mockResolvedValue({ error: null })
@@ -86,7 +87,7 @@ describe('uploadRegistrationData', () => {
     await uploadRegistrationData(data, USER_ID)
 
     const from = vi.mocked(getSupabase)().from
-    expect(from).toHaveBeenCalledWith('field_keys')
+    expect(from).toHaveBeenCalledWith(FIELD_KEYS_TABLE)
 
     const insert = getMockInsert()
     const fieldKeysRows = insert.mock.calls[2][0]

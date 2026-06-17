@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ApiError, ApiErrorCode } from '@/shared/api/api-errors'
+import { ENCRYPTED_FIELDS_TABLE } from '@/shared/types/supabase-schema'
 import { createSupabaseQueryMocks, createQueryBuilder } from '@/test/supabase-mock'
 
 const { maybeSingle: mockMaybeSingle, upsert: mockUpsert } = createSupabaseQueryMocks()
@@ -58,7 +59,7 @@ describe('fetchField', () => {
 
     await fetchField('entry-1', 'website')
 
-    expect(mockFrom).toHaveBeenCalledWith('encrypted_fields')
+    expect(mockFrom).toHaveBeenCalledWith(ENCRYPTED_FIELDS_TABLE)
     expect(qb.select).toHaveBeenCalledWith('entry_id, field_name, encrypted_blob, iv, updated_at')
     expect(qb.eq).toHaveBeenCalledWith('entry_id', 'entry-1')
     expect(qb.eq).toHaveBeenCalledWith('field_name', 'website')
@@ -99,7 +100,7 @@ describe('saveField', () => {
       iv: 'bb'.repeat(12),
     })
 
-    expect(mockFrom).toHaveBeenCalledWith('encrypted_fields')
+    expect(mockFrom).toHaveBeenCalledWith(ENCRYPTED_FIELDS_TABLE)
     expect(mockUpsert).toHaveBeenCalledWith(
       {
         user_id: 'user-1',

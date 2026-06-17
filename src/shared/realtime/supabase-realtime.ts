@@ -2,34 +2,11 @@ import { getSupabase } from '@/shared/api/supabase-client'
 import type { IRealtimeAdapter, RealtimeCallbacks, RealtimeEntryEventType } from '@/shared/realtime/realtime.types'
 import type { ServerEncryptedField } from '@/shared/types/api.types'
 import type { FieldName } from '@/shared/types/entities/field.types'
+import { ENCRYPTED_FIELDS_TABLE, ENTRIES_TABLE, FIELD_KEYS_TABLE, PUBLIC_SCHEMA } from '@/shared/types/supabase-schema'
+import type { EncryptedFieldRow, EntryRow, FieldKeyRow } from '@/shared/types/supabase-schema'
 
 // Inferred from the singleton client so we don't depend on a specific realtime type export.
 type RealtimeChannel = ReturnType<ReturnType<typeof getSupabase>['channel']>
-
-/** Snake_case row delivered by Supabase Realtime for an `encrypted_fields` change. */
-interface EncryptedFieldRow {
-  entry_id: string
-  field_name: string
-  encrypted_blob: string
-  iv: string
-  updated_at: string
-}
-
-/** Snake_case row delivered by Supabase Realtime for an `entries` change. */
-interface EntryRow {
-  id: string
-}
-
-/** Snake_case row delivered by Supabase Realtime for a `field_keys` change. */
-interface FieldKeyRow {
-  field_name: string
-  version: number
-}
-
-const ENCRYPTED_FIELDS = 'encrypted_fields'
-const ENTRIES = 'entries'
-const FIELD_KEYS = 'field_keys'
-const PUBLIC_SCHEMA = 'public'
 
 /**
  * Supabase Realtime adapter for client-side sync.
@@ -52,7 +29,7 @@ class SupabaseRealtimeAdapter implements IRealtimeAdapter {
 
     this.channel = supabase
       .channel(`realtime:user:${userId}`)
-      .on('postgres_changes', { event: '*', schema: PUBLIC_SCHEMA, table: ENCRYPTED_FIELDS }, (payload) => {
+      .on('postgres_changes', { event: '*', schema: PUBLIC_SCHEMA, table: ENCRYPTED_FIELDS_TABLE }, (payload) => {
         // Field rows are only ever cascade-deleted with their parent
         // entry, never removed directly.
         if (payload.eventType === 'DELETE') return
@@ -66,7 +43,7 @@ class SupabaseRealtimeAdapter implements IRealtimeAdapter {
         }
         callbacks.onFieldChange(data.fieldName, data)
       })
-      .on('postgres_changes', { event: '*', schema: PUBLIC_SCHEMA, table: ENTRIES }, (payload) => {
+      .on('postgres_changes', { event: '*', schema: PUBLIC_SCHEMA, table: ENTRIES_TABLE }, (payload) => {
         // Both INSERT (new) and DELETE (old) carry the id — that's why we
         // subscribe to all events and merge new/old here.
         const eventType = payload.eventType as RealtimeEntryEventType
@@ -74,7 +51,7 @@ class SupabaseRealtimeAdapter implements IRealtimeAdapter {
         if (!row) return
         callbacks.onEntryChange({ eventType, entryId: row.id })
       })
-      .on('postgres_changes', { event: '*', schema: PUBLIC_SCHEMA, table: FIELD_KEYS }, (payload) => {
+      .on('postgres_changes', { event: '*', schema: PUBLIC_SCHEMA, table: FIELD_KEYS_TABLE }, (payload) => {
         // Field keys are versioned and rotation replaces the existing
         // row (UPDATE), never deleting one
         if (payload.eventType === 'DELETE') return

@@ -3,6 +3,7 @@ import { USERNAME_PATTERN } from '@/shared/auth/username-utils'
 import { AuthError, AuthErrorCode, wrapAuthError } from '@/shared/auth/auth-errors'
 import { ApiError, ApiErrorCode, wrapApiError } from '@/shared/api/api-errors'
 import type { ServerMasterKeyEnvelope, ServerFieldKey, SaveWrappedKeyData } from '@/shared/types/api.types'
+import { FIELD_KEYS_TABLE } from '@/shared/types/supabase-schema'
 
 export interface LoginSalts {
   authSalt: string
@@ -60,7 +61,7 @@ export async function fetchMasterKeyEnvelope(userId: string): Promise<ServerMast
 export async function fetchFieldKeys(userId: string): Promise<ServerFieldKey[]> {
   const supabase = getSupabase()
   const { data, error } = await supabase
-    .from('field_keys')
+    .from(FIELD_KEYS_TABLE)
     .select('field_name, version, wrapped_key, key_iv')
     .eq('user_id', userId)
 
@@ -83,7 +84,7 @@ export async function fetchFieldKeys(userId: string): Promise<ServerFieldKey[]> 
  */
 export async function saveWrappedKey(userId: string, data: SaveWrappedKeyData): Promise<void> {
   const supabase = getSupabase()
-  const { error } = await supabase.from('field_keys').upsert(
+  const { error } = await supabase.from(FIELD_KEYS_TABLE).upsert(
     {
       user_id: userId,
       field_name: data.fieldName,
