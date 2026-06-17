@@ -16,7 +16,7 @@ type RealtimeChannel = ReturnType<ReturnType<typeof getSupabase>['channel']>
  * only receives rows it can SELECT (user_id = auth.uid()) — no per-channel
  * filter is needed. The adapter is transport-only: it maps rows to the
  * RealtimeCallbacks contract and forwards errors; all cache/crypto handling
- * lives in the feature layer (`realtime-sync.ts`).
+ * lives in the feature layer (`use-realtime-sync.ts`).
  */
 class SupabaseRealtimeAdapter implements IRealtimeAdapter {
   private channel: RealtimeChannel | null = null

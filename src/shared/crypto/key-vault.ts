@@ -56,6 +56,42 @@ class KeyVault {
   }
 
   /**
+   * Fetches all field keys from the server, unwraps them with the existing
+   * KEK, and stores the new CryptoKeys in the vault.
+   *
+   * Throws if the vault is locked (no KEK), on network errors, or on
+   * decryption failures (stale KEK from a password change on another device).
+   */
+  async syncFieldKeys(userId: string): Promise<void> {
+    try {
+      const kek = this.getKey('kek')
+      if (!kek) {
+        throw new Error('Cannot refresh field keys: vault is locked (no KEK)')
+      }
+
+      const serverFieldKeys = await fetchFieldKeys(userId)
+      const unwrappedKeys = await unwrapFieldKeys(serverFieldKeys, kek)
+      await this.storeFieldKeys(unwrappedKeys)
+
+      // Update the cached envelope with the fresh field key data
+      const envelope = useCryptoStore.getState().cachedEnvelope
+      if (envelope) {
+        useCryptoStore.getState().setCachedEnvelope({
+          ...envelope,
+          fieldKeys: serverFieldKeys,
+        })
+      }
+    } catch (error) {
+      // Only clear vault on decryption failures (stale KEK).
+      // Network errors should not force a vault lock.
+      if (error instanceof DecryptionError) {
+        this.clearVault()
+      }
+      throw error
+    }
+  }
+
+  /**
    * Unlock the vault by populating the KeyVault with non-extractable CryptoKey objects.
    *
    * Uses the cached envelope to skip network calls. If decryption fails (e.g., stale

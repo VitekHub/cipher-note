@@ -1,6 +1,6 @@
-# Phase 7: Realtime & Multi-Device
+# Phase 7: Realtime & Multi-Device ✅
 
-## Step 27 — Supabase Realtime Adapter
+## Step 27 — Supabase Realtime Adapter ✅
 
 **Goal:** Real-time sync when encrypted fields or entries are updated from another device or session.
 
@@ -19,7 +19,7 @@
   - `onEntryChange(change: RealtimeEntryChange)` — entry inserted/updated/deleted (for sidebar refresh)
   - `onKeyRotation(fieldName, newVersion)` — field key version bumped
   - `onError(error)` — transport errors
-- `src/features/fields/model/realtime-sync.ts` — `useRealtimeSync` hook (mounted in `ProtectedLayout`):
+- `src/features/fields/model/use-realtime-sync.ts` — `useRealtimeSync` hook (mounted in `ProtectedLayout`):
   - Field change with no pending local save → invalidate field query → re-fetch → re-decrypt
   - Field change while a save mutation for the same `(entryId, fieldName)` is in-flight → conflict toast warning, skip invalidation (let the local save win)
   - Entry change → invalidate entry list query (sidebar refreshes)
@@ -33,20 +33,21 @@
 
 ---
 
-## Step 28 — Multi-Device Session Handling
+## Step 28 — Multi-Device Session Handling ✅
 
-**Goal:** Handle multiple active sessions and key rotation across devices.
+**Goal:** Handle active sessions, key rotation, and remote conflicts across devices.
 
 **Code:**
-- `src/features/auth/model/session-sync.ts`:
-  - When master key is rotated (password change on another device): force re-login
-  - Session invalidation: if auth session expires, lock vault and redirect to login
-- `src/features/fields/ui/ConflictNotification.tsx`:
-  - Show toast notification when remote change conflicts with local edit
-  - Options: "Keep mine" or "Use remote version"
-- Handle Supabase Auth token refresh: auto-refresh JWT before expiry
+- `src/shared/crypto/key-vault.ts`: `syncFieldKeys` function to re-fetch and re-unwrap field keys.
+- `src/features/fields/model/use-realtime-sync.ts`: 
+  - `onKeyRotation`: apply rotation via `syncFieldKeys`.
+  - `onFieldChange`: add "Use remote version" action to conflict toast.
+- `src/features/fields/model/use-field.ts`: `useSaveField` locks vault on `DecryptionError`.
+- Update i18n files for realtime conflict and rotation messages.
 
 **Tests:**
-- Integration: password change on device A → device B detects session change → prompts re-login
-- Unit: key rotation event → re-fetch field key → re-unwrap → success (in realtime-sync tests)
-- Unit: session expiry → vault locks → redirect to login
+- Unit: `key-rotation.test.ts` for re-derivation logic.
+- Unit: `use-realtime-sync.test.ts` for rotation and conflict actions.
+- Unit: `use-field.test.ts` for vault locking on decryption errors.
+
+**Note:** Master key rotation (password change) is not synced in realtime because the new envelope requires the new password to unwrap. Instead, stale KEKs are detected via `DecryptionError`, triggering `lockVault()` and forcing re-authentication.

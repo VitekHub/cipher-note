@@ -27,7 +27,9 @@
     "retry": "Zkusit znovu"
   },
   "realtime": {
-    "conflict": "Toto pole bylo upraveno na jiném zařízení. Načtěte znovu, abyste viděli aktuální verzi.",
-    "keyRotation": "Klíč pro „{{field}}“ byl rotován (v{{version}}). Pro použití nového klíče načtěte znovu."
+    "conflict": "Toto pole bylo upraveno na jiném zařízení.",
+    "conflictUseRemote": "Použít vzdálenou verzi",
+    "keyRotationApplied": "Klíč pro \"{{field}}\" byl aktualizován na v{{version}}.",
+    "keyRotationFailed": "Klíče vašeho trezoru jsou zastaralé. Prosím, odemkněte trezor znovu."
   }
 }

@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { realtimeAdapter } from '@/shared/realtime/supabase-realtime'
 import { useRequiredUserId } from '@/shared/auth/use-current-user'
 import { queryKeys } from '@/shared/lib/query-keys'
+import { keyVault } from '@/shared/crypto/key-vault'
 import type { ServerEncryptedField } from '@/shared/types/api.types'
 import type { FieldName } from '@/shared/types/entities/field.types'
 
@@ -28,9 +29,9 @@ function hasPendingSave(queryClient: QueryClient, entryId: string, fieldName: Fi
 
 /**
  * Subscribes to realtime changes while the authenticated shell is mounted.
- * Field change: conflict-toast if a local save is pending, else invalidate.
- * Entry change: refresh sidebar. Key rotation: toast only (no producer yet).
- * Errors are logged, never blocking. Vault-locked invalidates are no-ops.
+ * Field change: conflict-toast with "Use remote" action if a local save is pending, else invalidate.
+ * Entry change: refresh sidebar. Key rotation: re-derive field key in-place, or lock vault on failure.
+ * Errors are logged, never blocking.
  */
 function useRealtimeSync(): void {
   const userId = useRequiredUserId()
@@ -41,7 +42,14 @@ function useRealtimeSync(): void {
     void realtimeAdapter.subscribe(userId, {
       onFieldChange: (_fieldName, data: ServerEncryptedField) => {
         if (hasPendingSave(queryClient, data.entryId, data.fieldName)) {
-          toast.warning(t('realtime.conflict'))
+          toast.warning(t('realtime.conflict'), {
+            action: {
+              label: t('realtime.conflictUseRemote'),
+              onClick: () => {
+                queryClient.invalidateQueries({ queryKey: queryKeys.field.detail(data.entryId, data.fieldName) })
+              },
+            },
+          })
           return
         }
         queryClient.invalidateQueries({ queryKey: queryKeys.field.detail(data.entryId, data.fieldName) })
@@ -49,8 +57,15 @@ function useRealtimeSync(): void {
       onEntryChange: () => {
         queryClient.invalidateQueries({ queryKey: queryKeys.entry.list(userId) })
       },
-      onKeyRotation: (fieldName, newVersion) => {
-        toast.info(t('realtime.keyRotation', { field: fieldName, version: newVersion }))
+      onKeyRotation: async (fieldName, newVersion) => {
+        try {
+          await keyVault.syncFieldKeys(userId)
+          // Invalidate all field queries — any entry's field could be affected
+          await queryClient.invalidateQueries({ queryKey: queryKeys.field.all })
+          toast.success(t('realtime.keyRotationApplied', { field: fieldName, version: newVersion }))
+        } catch {
+          toast.error(t('realtime.keyRotationFailed'))
+        }
       },
       onError: (error) => {
         console.warn('Realtime subscription error', error)
@@ -61,6 +76,8 @@ function useRealtimeSync(): void {
       realtimeAdapter.unsubscribe()
     }
   }, [userId, queryClient, t])
+
+  return
 }
 
 export { useRealtimeSync }
