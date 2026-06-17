@@ -7,6 +7,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useDeleteEntry } from '@/features/fields/model/use-entry'
 import { Button } from '@/shared/ui/button'
 import { useRequiredUserId } from '@/shared/auth/use-current-user'
+import { queryKeys } from '@/shared/lib/query-keys'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,7 +30,7 @@ function DeleteEntryDialog({ entryId }: { entryId: string }) {
   const [open, setOpen] = useState(false)
 
   function handleDelete() {
-    const entriesBeforeDelete = queryClient.getQueryData<ServerEntry[]>(['entries', userId])
+    const entriesBeforeDelete = queryClient.getQueryData<ServerEntry[]>(queryKeys.entry.list(userId))
     const remainingCount = (entriesBeforeDelete?.length ?? 1) - 1
 
     deleteEntry.mutate(entryId, {

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { QueryClient } from '@tanstack/react-query'
 import type { CachedVaultEnvelope } from '@/shared/types/api.types'
+import { queryKeys } from '@/shared/lib/query-keys'
 
 interface CryptoState {
   loadedFieldKeys: Record<string, boolean>
@@ -33,11 +34,10 @@ function setQueryClient(client: QueryClient) {
   queryClientRef = client
 }
 
-/** Remove all vault-related queries (field, entries, entry). */
+/** Remove all vault-related queries (field, entry). */
 function clearVaultQueries() {
-  queryClientRef?.removeQueries({ queryKey: ['field'] })
-  queryClientRef?.removeQueries({ queryKey: ['entries'] })
-  queryClientRef?.removeQueries({ queryKey: ['entry'] })
+  queryClientRef?.removeQueries({ queryKey: queryKeys.field.all })
+  queryClientRef?.removeQueries({ queryKey: queryKeys.entry.all })
 }
 
 const useCryptoStore = create<CryptoState & CryptoActions>()((set) => ({

@@ -30,6 +30,7 @@ vi.mock('sonner', () => ({
 // --- Import after mocks ---
 
 import { useRealtimeSync } from '@/features/fields/model/realtime-sync'
+import { queryKeys } from '@/shared/lib/query-keys'
 import type { RealtimeCallbacks } from '@/shared/realtime/realtime.types'
 import type { ServerEncryptedField } from '@/shared/types/api.types'
 
@@ -41,7 +42,7 @@ function createWrapper(queryClient: QueryClient) {
 /** A save mutation that never resolves, so it stays `pending` in the mutation cache. */
 function useNeverResolvingSave() {
   return useMutation<void, Error, void>({
-    mutationKey: ['field', 'e1', 'note'],
+    mutationKey: queryKeys.field.save('e1', 'note'),
     mutationFn: () => new Promise<void>(() => {}),
   })
 }
@@ -94,12 +95,12 @@ describe('useRealtimeSync', () => {
 
     callbacks().onFieldChange('note', FIELD_EVENT)
 
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['field', 'e1', 'note'] })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.field.detail('e1', 'note') })
     expect(ctx.toastWarning).not.toHaveBeenCalled()
   })
 
   it('shows a conflict toast and skips invalidate when a save for that (entryId, fieldName) is pending', async () => {
-    // Seed a pending save mutation for ['field', 'e1', 'note'] in the same queryClient.
+    // Seed a pending save mutation for queryKeys.field.save('e1', 'note') in the same queryClient.
     const { result: save } = renderHook(() => useNeverResolvingSave(), { wrapper: createWrapper(queryClient) })
     save.current.mutate()
     await waitFor(() => expect(save.current.isPending).toBe(true))
@@ -124,7 +125,7 @@ describe('useRealtimeSync', () => {
     // Remote change for a DIFFERENT field — should invalidate, not conflict.
     callbacks().onFieldChange('title', { ...FIELD_EVENT, fieldName: 'title' })
 
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['field', 'e1', 'title'] })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.field.detail('e1', 'title') })
     expect(ctx.toastWarning).not.toHaveBeenCalled()
   })
 
@@ -133,7 +134,7 @@ describe('useRealtimeSync', () => {
 
     callbacks().onEntryChange({ eventType: 'INSERT', entryId: 'ent-1' })
 
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['entries', 'user-123'] })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.entry.list('user-123') })
   })
 
   it('shows a key-rotation toast (Step 27 stub) and does not throw', () => {

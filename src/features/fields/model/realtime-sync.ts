@@ -4,10 +4,11 @@ import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 import { realtimeAdapter } from '@/shared/realtime/supabase-realtime'
 import { useRequiredUserId } from '@/shared/auth/use-current-user'
+import { queryKeys } from '@/shared/lib/query-keys'
 import type { ServerEncryptedField } from '@/shared/types/api.types'
 import type { FieldName } from '@/shared/types/entities/field.types'
 
-/** Structural equality for two mutationKey arrays — both `['field', entryId, fieldName]`. */
+/** Structural equality for two mutationKey arrays — both from `queryKeys.field.save(...)`. */
 function isSameMutationKey(a: unknown, b: readonly unknown[]): boolean {
   if (!Array.isArray(a) || a.length !== b.length) return false
   return a.every((value, index) => value === b[index])
@@ -16,7 +17,7 @@ function isSameMutationKey(a: unknown, b: readonly unknown[]): boolean {
 /** True if a save mutation is currently in-flight (pending) for (entryId, fieldName).
  *  Used to detect a remote change racing a local save (the conflict case). */
 function hasPendingSave(queryClient: QueryClient, entryId: string, fieldName: FieldName): boolean {
-  const mutationKey: readonly unknown[] = ['field', entryId, fieldName]
+  const mutationKey: readonly unknown[] = queryKeys.field.save(entryId, fieldName)
   return queryClient
     .getMutationCache()
     .getAll()
@@ -43,10 +44,10 @@ function useRealtimeSync(): void {
           toast.warning(t('realtime.conflict'))
           return
         }
-        queryClient.invalidateQueries({ queryKey: ['field', data.entryId, data.fieldName] })
+        queryClient.invalidateQueries({ queryKey: queryKeys.field.detail(data.entryId, data.fieldName) })
       },
       onEntryChange: () => {
-        queryClient.invalidateQueries({ queryKey: ['entries', userId] })
+        queryClient.invalidateQueries({ queryKey: queryKeys.entry.list(userId) })
       },
       onKeyRotation: (fieldName, newVersion) => {
         toast.info(t('realtime.keyRotation', { field: fieldName, version: newVersion }))

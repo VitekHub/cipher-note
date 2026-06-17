@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import type { CachedVaultEnvelope } from '@/shared/types/api.types'
+import { queryKeys } from '@/shared/lib/query-keys'
 import { useCryptoStore, hasCachedEnvelope, setQueryClient } from './crypto-store'
 
 const mockRemoveQueries = vi.fn()
@@ -93,16 +94,14 @@ describe('crypto-store', () => {
 
   it('lockVault purges vault query cache', () => {
     useCryptoStore.getState().lockVault()
-    expect(mockRemoveQueries).toHaveBeenCalledWith({ queryKey: ['field'] })
-    expect(mockRemoveQueries).toHaveBeenCalledWith({ queryKey: ['entries'] })
-    expect(mockRemoveQueries).toHaveBeenCalledWith({ queryKey: ['entry'] })
+    expect(mockRemoveQueries).toHaveBeenCalledWith({ queryKey: queryKeys.field.all })
+    expect(mockRemoveQueries).toHaveBeenCalledWith({ queryKey: queryKeys.entry.all })
   })
 
   it('clearVault purges vault query cache', () => {
     useCryptoStore.getState().clearVault()
-    expect(mockRemoveQueries).toHaveBeenCalledWith({ queryKey: ['field'] })
-    expect(mockRemoveQueries).toHaveBeenCalledWith({ queryKey: ['entries'] })
-    expect(mockRemoveQueries).toHaveBeenCalledWith({ queryKey: ['entry'] })
+    expect(mockRemoveQueries).toHaveBeenCalledWith({ queryKey: queryKeys.field.all })
+    expect(mockRemoveQueries).toHaveBeenCalledWith({ queryKey: queryKeys.entry.all })
   })
 
   describe('hasCachedEnvelope', () => {
@@ -140,9 +139,8 @@ describe('crypto-store', () => {
     expect(useCryptoStore.getState().loadedFieldKeys).toEqual({})
     expect(useCryptoStore.getState().isVaultLocked).toBe(true)
     expect(useCryptoStore.getState().cachedEnvelope).toBeNull()
-    expect(mockRemoveQueries).toHaveBeenCalledWith({ queryKey: ['field'] })
-    expect(mockRemoveQueries).toHaveBeenCalledWith({ queryKey: ['entries'] })
-    expect(mockRemoveQueries).toHaveBeenCalledWith({ queryKey: ['entry'] })
+    expect(mockRemoveQueries).toHaveBeenCalledWith({ queryKey: queryKeys.field.all })
+    expect(mockRemoveQueries).toHaveBeenCalledWith({ queryKey: queryKeys.entry.all })
   })
 
   it('never persists keys to localStorage or sessionStorage', () => {
