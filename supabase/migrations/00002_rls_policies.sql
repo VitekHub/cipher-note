@@ -137,3 +137,15 @@ CREATE POLICY "Users can update own recovery data"
   ON public.recovery FOR UPDATE
   USING (user_id = auth.uid())
   WITH CHECK (user_id = auth.uid());
+
+-- ============================================
+-- Realtime publication
+-- Enable postgres_changes broadcasting for the client-side sync tables so
+-- remote edits (another device/session) can be reflected live. Realtime
+-- respects RLS: a subscriber only receives rows it can SELECT, i.e. rows
+-- matching user_id = auth.uid() (the SELECT policies above). No per-channel
+-- filter is needed — RLS already scopes events to the current user.
+-- ============================================
+ALTER PUBLICATION supabase_realtime ADD TABLE public.encrypted_fields;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.entries;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.field_keys;

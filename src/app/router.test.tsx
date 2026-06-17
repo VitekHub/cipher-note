@@ -1,10 +1,16 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen, waitFor } from '@/test/utils'
 import { createMemoryHistory, createRouter, RouterProvider } from '@tanstack/react-router'
 import { routeTree } from '@/app/routeTree.gen'
 import type { AuthContext } from '@/shared/auth/auth-context'
 import { authAdapter } from '@/shared/auth/supabase-adapter'
 import { useAuthStore } from '@/features/auth/model/auth-store'
+
+// The authenticated layout subscribes to realtime on mount; stub the adapter so
+// rendering the route tree in tests never opens a real WebSocket.
+vi.mock('@/shared/realtime/supabase-realtime', () => ({
+  realtimeAdapter: { subscribe: vi.fn(() => Promise.resolve()), unsubscribe: vi.fn() },
+}))
 
 function renderWithRouter(authOverrides: Partial<AuthContext> = {}, initialPath = '/') {
   const auth: AuthContext = {

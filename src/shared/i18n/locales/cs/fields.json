@@ -25,5 +25,9 @@
     "saved": "Uloženo",
     "error": "Uložení selhalo",
     "retry": "Zkusit znovu"
+  },
+  "realtime": {
+    "conflict": "Toto pole bylo upraveno na jiném zařízení. Načtěte znovu, abyste viděli aktuální verzi.",
+    "keyRotation": "Klíč pro „{{field}}“ byl rotován (v{{version}}). Pro použití nového klíče načtěte znovu."
   }
 }

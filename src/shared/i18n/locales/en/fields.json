@@ -25,5 +25,9 @@
     "saved": "Saved",
     "error": "Save failed",
     "retry": "Retry"
+  },
+  "realtime": {
+    "conflict": "This field was updated on another device. Reload to see the latest version.",
+    "keyRotation": "The key for \"{{field}}\" was rotated (v{{version}}). Reload to apply the new key."
   }
 }

@@ -26,6 +26,12 @@ vi.mock('@/features/fields/model/use-entry', () => ({
   useCreateEntry: vi.fn(() => vi.fn()),
 }))
 
+// Realtime subscription is a network side-effect; stub the adapter so rendering
+// the layout in tests never opens a real WebSocket.
+vi.mock('@/shared/realtime/supabase-realtime', () => ({
+  realtimeAdapter: { subscribe: vi.fn(() => Promise.resolve()), unsubscribe: vi.fn() },
+}))
+
 import { ProtectedLayout } from './ProtectedLayout'
 
 describe('ProtectedLayout', () => {

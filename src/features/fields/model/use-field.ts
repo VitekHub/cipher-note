@@ -44,6 +44,9 @@ export function useSaveField(entryId: string, fieldName: FieldName) {
 
   return useMutation({
     networkMode: 'online', // pause mutations when offline; auto-resume when back online
+    // Stable key so realtime conflict detection (realtime-sync.ts) can find a
+    // pending save for this (entryId, fieldName) in the mutation cache.
+    mutationKey: ['field', entryId, fieldName],
     mutationFn: (plaintext: string) => fieldService.saveField({ userId, entryId, fieldName, plaintext }),
     onMutate: async (plaintext) => {
       await queryClient.cancelQueries({ queryKey })
