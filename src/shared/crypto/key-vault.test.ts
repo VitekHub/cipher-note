@@ -27,7 +27,7 @@ const { mockEnvelopeData, mockFieldKeysData } = vi.hoisted(() => ({
 }))
 
 // Unified mock store helpers
-const mockSetKeys = vi.fn()
+const mockMarkKeysLoaded = vi.fn()
 const mockSetEnvelope = vi.fn()
 const mockLockVault = vi.fn()
 const mockClearVault = vi.fn()
@@ -37,7 +37,7 @@ const cryptoStoreState = {
   isVaultLocked: true,
   lastActivity: 0,
   cachedEnvelope: null as import('@/shared/types/api.types').CachedVaultEnvelope | null,
-  setKeys: mockSetKeys,
+  markKeysLoaded: mockMarkKeysLoaded,
   lockVault: mockLockVault,
   clearVault: mockClearVault,
   setCachedEnvelope: mockSetEnvelope,
@@ -190,7 +190,7 @@ describe('key-vault', () => {
     expect(keyVault.getKey('note')).toBe(noteKey)
     expect(keyVault.getKey('website')).toBe(websiteKey)
     expect(keyVault.getKey('email')).toBe(emailKey)
-    expect(mockSetKeys).toHaveBeenCalledWith(['note', 'website', 'email'])
+    expect(mockMarkKeysLoaded).toHaveBeenCalledWith(['note', 'website', 'email'])
   })
 })
 
@@ -218,7 +218,7 @@ describe('unlockVault', () => {
     expect(decrypt).toHaveBeenCalled()
     expect(deriveKEK).toHaveBeenCalled()
     expect(unwrapFieldKeys).toHaveBeenCalledWith(mockFieldKeysData, expect.any(Object))
-    expect(mockSetKeys).toHaveBeenCalledWith(['note', 'website', 'email'])
+    expect(mockMarkKeysLoaded).toHaveBeenCalledWith(['note', 'website', 'email'])
   })
 
   it('caches envelope data after login', async () => {
@@ -246,7 +246,7 @@ describe('unlockVault', () => {
     expect(fetchFieldKeys).not.toHaveBeenCalled()
     expect(mockSetEnvelope).not.toHaveBeenCalled()
     expect(derivePasswordKey).toHaveBeenCalled()
-    expect(mockSetKeys).toHaveBeenCalled()
+    expect(mockMarkKeysLoaded).toHaveBeenCalled()
   })
 
   it('does not call setCachedEnvelope when envelope is already cached', async () => {
@@ -353,7 +353,7 @@ describe('syncFieldKeys', () => {
 
     expect(fetchFieldKeys).toHaveBeenCalledWith('user-1')
     expect(unwrapFieldKeys).toHaveBeenCalledWith(FIELD_KEYS_RESPONSE, FAKE_KEK)
-    expect(mockSetKeys).toHaveBeenCalledWith(['note', 'title'])
+    expect(mockMarkKeysLoaded).toHaveBeenCalledWith(['note', 'title'])
     expect(mockSetEnvelope).toHaveBeenCalledWith({
       ...cachedEnvelope,
       fieldKeys: FIELD_KEYS_RESPONSE,
@@ -371,14 +371,14 @@ describe('syncFieldKeys', () => {
     vi.mocked(fetchFieldKeys).mockRejectedValueOnce(new Error('Network error'))
 
     await expect(keyVault.syncFieldKeys('user-1')).rejects.toThrow('Network error')
-    expect(mockSetKeys).not.toHaveBeenCalled()
+    expect(mockMarkKeysLoaded).not.toHaveBeenCalled()
   })
 
   it('throws when unwrapFieldKeys throws DecryptionError (stale KEK)', async () => {
     vi.mocked(unwrapFieldKeys).mockRejectedValueOnce(new DecryptionError())
 
     await expect(keyVault.syncFieldKeys('user-1')).rejects.toThrow(DecryptionError)
-    expect(mockSetKeys).not.toHaveBeenCalled()
+    expect(mockMarkKeysLoaded).not.toHaveBeenCalled()
   })
 
   it('throws when unwrapFieldKeys throws a generic error', async () => {
@@ -393,7 +393,7 @@ describe('syncFieldKeys', () => {
     await keyVault.syncFieldKeys('user-1')
 
     expect(mockSetEnvelope).not.toHaveBeenCalled()
-    expect(mockSetKeys).toHaveBeenCalled()
+    expect(mockMarkKeysLoaded).toHaveBeenCalled()
   })
 
   it('calls clearVault on DecryptionError', async () => {

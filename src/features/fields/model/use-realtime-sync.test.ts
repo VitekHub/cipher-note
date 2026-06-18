@@ -10,7 +10,6 @@ const ctx = vi.hoisted(() => {
   const mockSubscribe =
     vi.fn<(userId: string, callbacks: import('@/shared/realtime/realtime.types').RealtimeCallbacks) => Promise<void>>()
   const mockUnsubscribe = vi.fn<() => void>()
-  const toastWarning = vi.fn<(msg: string, options?: unknown) => void>()
   const toastInfo = vi.fn<(msg: string, options?: unknown) => void>()
   const toastSuccess = vi.fn<(msg: string, options?: unknown) => void>()
   const toastError = vi.fn<(msg: string, options?: unknown) => void>()
@@ -19,7 +18,6 @@ const ctx = vi.hoisted(() => {
     callbacksRef,
     mockSubscribe,
     mockUnsubscribe,
-    toastWarning,
     toastInfo,
     toastSuccess,
     toastError,
@@ -36,7 +34,7 @@ vi.mock('@/shared/auth/use-current-user', () => ({
 }))
 
 vi.mock('sonner', () => ({
-  toast: { warning: ctx.toastWarning, info: ctx.toastInfo, success: ctx.toastSuccess, error: ctx.toastError },
+  toast: { info: ctx.toastInfo, success: ctx.toastSuccess, error: ctx.toastError },
 }))
 
 vi.mock('@/shared/crypto/key-vault', () => ({
@@ -47,6 +45,7 @@ vi.mock('@/shared/crypto/key-vault', () => ({
 
 import { useRealtimeSync } from '@/features/fields/model/use-realtime-sync'
 import { queryKeys } from '@/shared/lib/query-keys'
+import { DecryptionError } from '@/shared/crypto/errors'
 import type { RealtimeCallbacks } from '@/shared/realtime/realtime.types'
 import type { ServerEncryptedField } from '@/shared/types/api.types'
 
@@ -115,10 +114,10 @@ describe('useRealtimeSync', () => {
     callbacks().onFieldChange('note', FIELD_EVENT)
 
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.field.detail('e1', 'note') })
-    expect(ctx.toastWarning).not.toHaveBeenCalled()
+    expect(ctx.toastInfo).not.toHaveBeenCalled()
   })
 
-  it('shows a conflict toast with action when a save for that (entryId, fieldName) is pending', async () => {
+  it('shows an info toast when a save for that (entryId, fieldName) is pending', async () => {
     // Seed a pending save mutation for queryKeys.field.save('e1', 'note') in the same queryClient.
     const { result: save } = renderHook(() => useNeverResolvingSave(), { wrapper: createWrapper(queryClient) })
     save.current.mutate()
@@ -128,32 +127,12 @@ describe('useRealtimeSync', () => {
 
     callbacks().onFieldChange('note', FIELD_EVENT)
 
-    expect(ctx.toastWarning).toHaveBeenCalledTimes(1)
-    const [message, options] = ctx.toastWarning.mock.calls[0] as [
-      string,
-      { action: { label: string; onClick: () => void } },
-    ]
+    expect(ctx.toastInfo).toHaveBeenCalledTimes(1)
+    const [message, options] = ctx.toastInfo.mock.calls[0] as [string, { id: string }]
     expect(message).toEqual(expect.any(String))
-    expect(options).toHaveProperty('action')
-    expect(options.action).toHaveProperty('label')
-    expect(options.action).toHaveProperty('onClick')
+    expect(options).toHaveProperty('id')
+    expect(options.id).toBe('conflict:e1:note')
     expect(invalidateSpy).not.toHaveBeenCalled()
-  })
-
-  it('conflict toast action invalidates the field query when clicked', async () => {
-    const { result: save } = renderHook(() => useNeverResolvingSave(), { wrapper: createWrapper(queryClient) })
-    save.current.mutate()
-    await waitFor(() => expect(save.current.isPending).toBe(true))
-
-    renderHook(() => useRealtimeSync(), { wrapper: createWrapper(queryClient) })
-
-    callbacks().onFieldChange('note', FIELD_EVENT)
-
-    const options = ctx.toastWarning.mock.calls[0][1] as { action: { label: string; onClick: () => void } }
-    const onClick = options.action.onClick
-    onClick()
-
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.field.detail('e1', 'note') })
   })
 
   it('does not treat a pending save for a different field as a conflict', async () => {
@@ -167,7 +146,7 @@ describe('useRealtimeSync', () => {
     callbacks().onFieldChange('title', { ...FIELD_EVENT, fieldName: 'title' })
 
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.field.detail('e1', 'title') })
-    expect(ctx.toastWarning).not.toHaveBeenCalled()
+    expect(ctx.toastInfo).not.toHaveBeenCalled()
   })
 
   it('invalidates the entries list on a remote entry change', () => {
@@ -181,20 +160,44 @@ describe('useRealtimeSync', () => {
   it('calls syncFieldKeys on key rotation and shows success toast on success', async () => {
     renderHook(() => useRealtimeSync(), { wrapper: createWrapper(queryClient) })
 
-    await callbacks().onKeyRotation('note', 2)
+    // onKeyRotation returns void (void IIFE); async work resolves in the background
+    callbacks().onKeyRotation('note', 2)
 
-    expect(ctx.toastSuccess).toHaveBeenCalledTimes(1)
+    await waitFor(() => {
+      expect(ctx.toastSuccess).toHaveBeenCalledTimes(1)
+    })
     expect(ctx.toastSuccess.mock.calls[0][0]).toEqual(expect.any(String))
   })
 
-  it('clears vault and shows error toast when syncFieldKeys throws', async () => {
-    ctx.mockSyncFieldKeys.mockRejectedValue(new Error('vault locked'))
+  it('shows keyRotationFailed toast on DecryptionError (stale KEK)', async () => {
+    ctx.mockSyncFieldKeys.mockRejectedValue(new DecryptionError())
 
     renderHook(() => useRealtimeSync(), { wrapper: createWrapper(queryClient) })
 
-    await callbacks().onKeyRotation('note', 2)
+    callbacks().onKeyRotation('note', 2)
 
-    expect(ctx.toastError).toHaveBeenCalledTimes(1)
+    await waitFor(() => {
+      expect(ctx.toastError).toHaveBeenCalledTimes(1)
+    })
+    expect(ctx.toastError.mock.calls[0][0]).toEqual(expect.any(String))
+    // keyRotationFailed, not keyRotationNetworkError
+    expect(ctx.toastError.mock.calls[0][0]).not.toContain('reconnect')
+  })
+
+  it('shows keyRotationNetworkError toast on network error', async () => {
+    ctx.mockSyncFieldKeys.mockRejectedValue(new TypeError('Failed to fetch'))
+
+    renderHook(() => useRealtimeSync(), { wrapper: createWrapper(queryClient) })
+
+    // onKeyRotation returns void (void IIFE); async work resolves in the background
+    callbacks().onKeyRotation('note', 2)
+
+    await waitFor(() => {
+      expect(ctx.toastError).toHaveBeenCalledTimes(1)
+    })
+    expect(ctx.toastError.mock.calls[0][0]).toEqual(expect.any(String))
+    // keyRotationNetworkError, not keyRotationFailed
+    expect(ctx.toastError.mock.calls[0][0]).toContain('reconnect')
   })
 
   it('logs and swallows realtime errors without throwing', () => {

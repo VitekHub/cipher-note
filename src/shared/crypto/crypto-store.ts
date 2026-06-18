@@ -12,7 +12,7 @@ interface CryptoState {
 }
 
 interface CryptoActions {
-  setKeys: (fieldKeyNames: string[]) => void
+  markKeysLoaded: (fieldKeyNames: string[]) => void
   setCachedEnvelope: (envelope: CachedVaultEnvelope) => void
   lockVault: () => void
   clearVault: () => void
@@ -42,7 +42,7 @@ function clearVaultQueries() {
 
 const useCryptoStore = create<CryptoState & CryptoActions>()((set) => ({
   ...initialState,
-  setKeys: (fieldKeyNames) =>
+  markKeysLoaded: (fieldKeyNames) =>
     set({
       loadedFieldKeys: Object.fromEntries(fieldKeyNames.map((name) => [name, true])),
       isVaultLocked: false,

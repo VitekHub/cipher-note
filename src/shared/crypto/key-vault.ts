@@ -22,13 +22,13 @@ class KeyVault {
     this.vault.set(id, key)
   }
 
-  async storeFieldKeys(fieldKeys: Map<string, CryptoKey>): Promise<void> {
+  storeFieldKeys(fieldKeys: Map<string, CryptoKey>): void {
     const fieldKeyNames: Array<string> = []
     for (const [name, key] of fieldKeys) {
       this.storeKey(name, key)
       fieldKeyNames.push(name)
     }
-    useCryptoStore.getState().setKeys(fieldKeyNames)
+    useCryptoStore.getState().markKeysLoaded(fieldKeyNames)
   }
 
   getKey(id: string): CryptoKey | undefined {
@@ -71,7 +71,7 @@ class KeyVault {
 
       const serverFieldKeys = await fetchFieldKeys(userId)
       const unwrappedKeys = await unwrapFieldKeys(serverFieldKeys, kek)
-      await this.storeFieldKeys(unwrappedKeys)
+      this.storeFieldKeys(unwrappedKeys)
 
       // Update the cached envelope with the fresh field key data
       const envelope = useCryptoStore.getState().cachedEnvelope
