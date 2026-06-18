@@ -2,12 +2,9 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Trash2 } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
-import { useQueryClient } from '@tanstack/react-query'
 
 import { useDeleteEntry } from '@/features/fields/model/use-entry'
 import { Button } from '@/shared/ui/button'
-import { useRequiredUserId } from '@/shared/auth/use-current-user'
-import { queryKeys } from '@/shared/lib/query-keys'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,29 +16,18 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/shared/ui/alert-dialog'
-import type { ServerEntry } from '@/shared/types/entities/entry.types'
 
 function DeleteEntryDialog({ entryId }: { entryId: string }) {
   const { t } = useTranslation('entries')
   const navigate = useNavigate()
   const deleteEntry = useDeleteEntry()
-  const queryClient = useQueryClient()
-  const userId = useRequiredUserId()
   const [open, setOpen] = useState(false)
 
   function handleDelete() {
-    const entriesBeforeDelete = queryClient.getQueryData<ServerEntry[]>(queryKeys.entry.list(userId))
-    const remainingCount = (entriesBeforeDelete?.length ?? 1) - 1
-
     deleteEntry.mutate(entryId, {
       onSuccess: () => {
         setOpen(false)
-        if (remainingCount > 0) {
-          const remaining = entriesBeforeDelete!.filter((e) => e.id !== entryId)
-          navigate({ to: '/dashboard/$entryId', params: { entryId: remaining[0].id } })
-        } else {
-          navigate({ to: '/dashboard' })
-        }
+        navigate({ to: '/dashboard' })
       },
     })
   }
