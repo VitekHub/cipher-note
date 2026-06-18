@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useField } from '@/features/fields/model/use-field'
 import { useSaveField } from '@/features/fields/model/use-field'
-import { useSyncStatusStore, useFieldSyncStatus } from '@/features/fields/model/sync-status-store'
+import { useSyncStatusStore, useFieldSyncStatus, SYNC_STATUS } from '@/features/fields/model/sync-status-store'
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
 import { useSaveScheduler } from '@/features/fields/model/use-save-scheduler'
 import type { FieldName } from '@/shared/types/entities/field.types'
@@ -45,7 +45,7 @@ function useFieldEditor(entryId: string, fieldName: FieldName): UseFieldEditorRe
   }
   if (syncStatus !== prevSyncStatus) {
     setPrevSyncStatus(syncStatus)
-    if (syncStatus === 'saved') {
+    if (syncStatus === SYNC_STATUS.SAVED) {
       setDraft(null)
     }
   }
@@ -54,8 +54,8 @@ function useFieldEditor(entryId: string, fieldName: FieldName): UseFieldEditorRe
   useEffect(() => {
     // Read store directly (not via selector). We only want to reset stale
     // status on mount, not re-render every time any field's status changes.
-    if (useSyncStatusStore.getState().status[entryId]?.[fieldName] === 'saved') {
-      setSyncStatus(entryId, fieldName, 'idle')
+    if (useSyncStatusStore.getState().status[entryId]?.[fieldName] === SYNC_STATUS.SAVED) {
+      setSyncStatus(entryId, fieldName, SYNC_STATUS.IDLE)
     }
   }, [entryId, fieldName, setSyncStatus])
 
@@ -71,10 +71,10 @@ function useFieldEditor(entryId: string, fieldName: FieldName): UseFieldEditorRe
   // When offline, TanStack Query pauses the mutation - reflect this in the UI
   // by deriving 'paused' during render rather than syncing via effect.
   const effectiveSyncStatus: SyncStatus =
-    saveMutation.isPaused && syncStatus === 'saving'
-      ? 'paused'
-      : !saveMutation.isPaused && syncStatus === 'paused'
-        ? 'saving'
+    saveMutation.isPaused && syncStatus === SYNC_STATUS.SAVING
+      ? SYNC_STATUS.PAUSED
+      : !saveMutation.isPaused && syncStatus === SYNC_STATUS.PAUSED
+        ? SYNC_STATUS.SAVING
         : syncStatus
 
   const saveFieldValue = useCallback(

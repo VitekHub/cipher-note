@@ -6,8 +6,8 @@ import { unwrapFieldKeys } from '@/shared/crypto/key-hierarchy'
 import { deriveKEK } from '@/shared/crypto/hkdf'
 import { MASTER_KEY_PASSWORD_AAD } from '@/shared/types/crypto.types'
 import { derivePasswordKey } from '@/shared/crypto/argon2id'
+import { DecryptionError } from '@/shared/crypto/errors'
 import type { CachedVaultEnvelope } from '@/shared/types/api.types'
-import { DecryptionError } from './errors'
 
 /**
  * Module-scoped crypto key vault.

@@ -2,7 +2,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRequiredUserId } from '@/shared/auth/use-current-user'
 import { fieldService } from '@/features/fields/model/field-service'
 import { DecryptionError } from '@/shared/crypto/errors'
-import { keyVault } from '@/shared/crypto/key-vault'
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
 import { queryKeys } from '@/shared/lib/query-keys'
 import type { FieldName } from '@/shared/types/entities/field.types'
@@ -56,14 +55,9 @@ export function useSaveField(entryId: string, fieldName: FieldName) {
       queryClient.setQueryData(queryKey, plaintext)
       return { previousValue }
     },
-    onError: (err, _plaintext, context) => {
+    onError: (_err, _plaintext, context) => {
       if (context?.previousValue !== undefined) {
         queryClient.setQueryData(queryKey, context.previousValue)
-      }
-      // If the field key is stale (rotated on another device), the vault must
-      // be re-unlocked to re-derive keys from the fresh server envelope.
-      if (err instanceof DecryptionError) {
-        keyVault.lockVault()
       }
     },
     onSettled: () => {

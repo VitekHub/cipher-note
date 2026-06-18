@@ -183,8 +183,8 @@ describe('key-vault', () => {
       ['email', emailKey],
     ])
 
-    await keyVault.storeKey('kek', kek)
-    await keyVault.storeFieldKeys(fieldKeys)
+    keyVault.storeKey('kek', kek)
+    keyVault.storeFieldKeys(fieldKeys)
 
     expect(keyVault.getKey('kek')).toBe(kek)
     expect(keyVault.getKey('note')).toBe(noteKey)

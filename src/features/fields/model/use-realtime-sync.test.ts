@@ -14,6 +14,7 @@ const ctx = vi.hoisted(() => {
   const toastSuccess = vi.fn<(msg: string, options?: unknown) => string | number>()
   const toastError = vi.fn<(msg: string, options?: unknown) => string | number>()
   const mockSyncFieldKeys = vi.fn<(userId: string) => Promise<void>>()
+  const cryptoStoreState = { isVaultLocked: false }
   return {
     callbacksRef,
     mockSubscribe,
@@ -22,6 +23,7 @@ const ctx = vi.hoisted(() => {
     toastSuccess,
     toastError,
     mockSyncFieldKeys,
+    cryptoStoreState,
   }
 })
 
@@ -41,10 +43,16 @@ vi.mock('@/shared/crypto/key-vault', () => ({
   keyVault: { syncFieldKeys: ctx.mockSyncFieldKeys },
 }))
 
+vi.mock('@/shared/crypto/crypto-store', () => ({
+  useCryptoStore: {
+    getState: () => ctx.cryptoStoreState,
+  },
+}))
+
 // --- Import after mocks ---
 
 import { useRealtimeSync } from '@/features/fields/model/use-realtime-sync'
-import { useSyncStatusStore } from '@/features/fields/model/sync-status-store'
+import { useSyncStatusStore, SYNC_STATUS } from '@/features/fields/model/sync-status-store'
 import { markLocalSave, clearEchoMarkers } from '@/shared/realtime/realtime-echo'
 import { queryKeys } from '@/shared/lib/query-keys'
 import { DecryptionError } from '@/shared/crypto/errors'
@@ -81,6 +89,7 @@ describe('useRealtimeSync', () => {
     ctx.callbacksRef.current = null
     useSyncStatusStore.getState().resetAll()
     clearEchoMarkers()
+    ctx.cryptoStoreState.isVaultLocked = false
 
     queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
@@ -126,7 +135,7 @@ describe('useRealtimeSync', () => {
 
     callbacks().onFieldChange(FIELD_EVENT)
 
-    expect(useSyncStatusStore.getState().status['e1']?.['note'] ?? 'idle').toBe('remote-update')
+    expect(useSyncStatusStore.getState().status['e1']?.['note'] ?? SYNC_STATUS.IDLE).toBe(SYNC_STATUS.REMOTE_UPDATE)
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.field.detail('e1', 'note') })
   })
 
@@ -140,7 +149,7 @@ describe('useRealtimeSync', () => {
 
     // Echo should be suppressed entirely — no invalidate, no status, no toast
     expect(invalidateSpy).not.toHaveBeenCalled()
-    expect(useSyncStatusStore.getState().status['e1']?.['note'] ?? 'idle').toBe('idle')
+    expect(useSyncStatusStore.getState().status['e1']?.['note'] ?? SYNC_STATUS.IDLE).toBe(SYNC_STATUS.IDLE)
     expect(ctx.toastInfo).not.toHaveBeenCalled()
   })
 
@@ -154,7 +163,7 @@ describe('useRealtimeSync', () => {
 
     // Not an echo — should invalidate and set remote-update
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.field.detail('e1', 'note') })
-    expect(useSyncStatusStore.getState().status['e1']?.['note'] ?? 'idle').toBe('remote-update')
+    expect(useSyncStatusStore.getState().status['e1']?.['note'] ?? SYNC_STATUS.IDLE).toBe(SYNC_STATUS.REMOTE_UPDATE)
   })
 
   it('does not treat a pending save for that field as a conflict if it is an echo', () => {
@@ -187,7 +196,7 @@ describe('useRealtimeSync', () => {
 
     // Conflict: no invalidate, no remote-update status
     expect(invalidateSpy).not.toHaveBeenCalled()
-    expect(useSyncStatusStore.getState().status['e1']?.['note'] ?? 'idle').toBe('idle')
+    expect(useSyncStatusStore.getState().status['e1']?.['note'] ?? SYNC_STATUS.IDLE).toBe(SYNC_STATUS.IDLE)
   })
 
   it('does not treat a pending save for a different field as a conflict', async () => {
@@ -210,6 +219,43 @@ describe('useRealtimeSync', () => {
     callbacks().onEntryChange({ eventType: 'INSERT', entryId: 'ent-1' })
 
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.entry.list('user-123') })
+  })
+
+  it('skips onFieldChange when the vault is locked', () => {
+    ctx.cryptoStoreState.isVaultLocked = true
+
+    renderHook(() => useRealtimeSync(), { wrapper: createWrapper(queryClient) })
+
+    callbacks().onFieldChange(FIELD_EVENT)
+
+    expect(invalidateSpy).not.toHaveBeenCalled()
+    expect(useSyncStatusStore.getState().status['e1']?.['note'] ?? SYNC_STATUS.IDLE).toBe(SYNC_STATUS.IDLE)
+    expect(ctx.toastInfo).not.toHaveBeenCalled()
+  })
+
+  it('skips onEntryChange when the vault is locked', () => {
+    ctx.cryptoStoreState.isVaultLocked = true
+
+    renderHook(() => useRealtimeSync(), { wrapper: createWrapper(queryClient) })
+
+    callbacks().onEntryChange({ eventType: 'INSERT', entryId: 'ent-1' })
+
+    expect(invalidateSpy).not.toHaveBeenCalled()
+  })
+
+  it('skips onKeyRotation when the vault is locked', async () => {
+    ctx.cryptoStoreState.isVaultLocked = true
+
+    renderHook(() => useRealtimeSync(), { wrapper: createWrapper(queryClient) })
+
+    callbacks().onKeyRotation('note', 2)
+
+    // Give the async IIFE a chance to run (it shouldn't)
+    await waitFor(() => {
+      expect(ctx.mockSyncFieldKeys).not.toHaveBeenCalled()
+    })
+    expect(ctx.toastSuccess).not.toHaveBeenCalled()
+    expect(ctx.toastError).not.toHaveBeenCalled()
   })
 
   it('calls syncFieldKeys on key rotation and shows success toast on success', async () => {
@@ -270,10 +316,10 @@ describe('useRealtimeSync', () => {
 
     callbacks().onFieldChange(FIELD_EVENT)
 
-    expect(useSyncStatusStore.getState().status['e1']?.['note']).toBe('remote-update')
+    expect(useSyncStatusStore.getState().status['e1']?.['note']).toBe(SYNC_STATUS.REMOTE_UPDATE)
 
     vi.advanceTimersByTime(3000)
-    expect(useSyncStatusStore.getState().status['e1']?.['note']).toBe('idle')
+    expect(useSyncStatusStore.getState().status['e1']?.['note']).toBe(SYNC_STATUS.IDLE)
 
     vi.useRealTimers()
   })
@@ -284,11 +330,11 @@ describe('useRealtimeSync', () => {
 
     callbacks().onFieldChange(FIELD_EVENT)
     // User starts editing before the 3s timer fires
-    useSyncStatusStore.getState().setStatus('e1', 'note', 'saving')
+    useSyncStatusStore.getState().setStatus('e1', 'note', SYNC_STATUS.SAVING)
 
     vi.advanceTimersByTime(3000)
     // saving should not be reset to idle
-    expect(useSyncStatusStore.getState().status['e1']?.['note']).toBe('saving')
+    expect(useSyncStatusStore.getState().status['e1']?.['note']).toBe(SYNC_STATUS.SAVING)
 
     vi.useRealTimers()
   })

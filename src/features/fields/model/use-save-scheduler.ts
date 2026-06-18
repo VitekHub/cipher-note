@@ -1,6 +1,7 @@
 import { useRef, useEffect, useCallback } from 'react'
 import { useSyncStatusStore } from '@/features/fields/model/sync-status-store'
 import type { FieldName } from '@/shared/types/entities/field.types'
+import { SYNC_STATUS } from '@/features/fields/model/sync-status-store'
 import type { SyncStatus } from '@/features/fields/model/sync-status-store'
 import type { SaveFieldCallbacks } from '@/features/fields/model/use-field'
 import { markLocalSave } from '@/shared/realtime/realtime-echo'
@@ -32,8 +33,8 @@ function debounceResetStatus(entryId: string, fieldName: FieldName, setSyncStatu
     // Read latest status via getState(). We're in a setTimeout callback,
     // so we need the current value, not the stale closure value.
     const current = useSyncStatusStore.getState().status[entryId]?.[fieldName]
-    if (current === 'saved') {
-      setSyncStatus(entryId, fieldName, 'idle')
+    if (current === SYNC_STATUS.SAVED) {
+      setSyncStatus(entryId, fieldName, SYNC_STATUS.IDLE)
     }
     timerRef.current = null
   }, SAVED_DISPLAY_MS)
@@ -88,15 +89,15 @@ function useSaveScheduler(options: UseSaveSchedulerOptions): UseSaveSchedulerRes
 
   const triggerSave = useCallback(
     (value: string) => {
-      setSyncStatus(entryId, fieldName, 'saving')
+      setSyncStatus(entryId, fieldName, SYNC_STATUS.SAVING)
       saveMutationRef.current(value, {
         onSuccess: (updatedAt: string) => {
-          setSyncStatus(entryId, fieldName, 'saved')
+          setSyncStatus(entryId, fieldName, SYNC_STATUS.SAVED)
           markLocalSave(entryId, fieldName, updatedAt)
           debounceResetStatus(entryId, fieldName, setSyncStatus, savedTimerRef)
         },
         onError: () => {
-          setSyncStatus(entryId, fieldName, 'error')
+          setSyncStatus(entryId, fieldName, SYNC_STATUS.ERROR)
         },
       })
     },

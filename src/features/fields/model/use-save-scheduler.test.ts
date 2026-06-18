@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
-import { useSyncStatusStore } from '@/features/fields/model/sync-status-store'
+import { useSyncStatusStore, SYNC_STATUS } from '@/features/fields/model/sync-status-store'
 import { useSaveScheduler } from '@/features/fields/model/use-save-scheduler'
 
 const DEBOUNCE_MS = 1000
@@ -100,13 +100,13 @@ describe('useSaveScheduler', () => {
     act(() => {
       vi.advanceTimersByTime(DEBOUNCE_MS)
     })
-    expect(status()).toBe('saved')
+    expect(status()).toBe(SYNC_STATUS.SAVED)
 
     // After SAVED_DISPLAY_MS, auto-transition to idle
     act(() => {
       vi.advanceTimersByTime(SAVED_DISPLAY_MS)
     })
-    expect(status()).toBe('idle')
+    expect(status()).toBe(SYNC_STATUS.IDLE)
   })
 
   it('sets sync status to error when save fails', () => {
@@ -135,7 +135,7 @@ describe('useSaveScheduler', () => {
       vi.advanceTimersByTime(DEBOUNCE_MS)
     })
 
-    expect(useSyncStatusStore.getState().status[ENTRY_ID]['note']).toBe('error')
+    expect(useSyncStatusStore.getState().status[ENTRY_ID]['note']).toBe(SYNC_STATUS.ERROR)
   })
 
   it('retry calls save immediately without debounce', () => {

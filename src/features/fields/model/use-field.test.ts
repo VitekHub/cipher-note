@@ -14,9 +14,8 @@ const { mockSaveField, mockLoadField } = vi.hoisted(() => ({
   mockLoadField: vi.fn<(...args: [string, string]) => Promise<string | null>>(),
 }))
 
-const { mockUseRequiredUserId, mockLockVault } = vi.hoisted(() => ({
+const { mockUseRequiredUserId } = vi.hoisted(() => ({
   mockUseRequiredUserId: vi.fn<() => string>(),
-  mockLockVault: vi.fn<() => void>(),
 }))
 
 vi.mock('@/features/fields/model/field-service', () => ({
@@ -28,10 +27,6 @@ vi.mock('@/features/fields/model/field-service', () => ({
 
 vi.mock('@/shared/auth/use-current-user', () => ({
   useRequiredUserId: mockUseRequiredUserId,
-}))
-
-vi.mock('@/shared/crypto/key-vault', () => ({
-  keyVault: { lockVault: mockLockVault },
 }))
 
 // --- Import after mocks ---
@@ -248,43 +243,5 @@ describe('useSaveField', () => {
     expect(() => renderHook(() => useSaveField(TEST_ENTRY_ID, TEST_FIELD_NAME), { wrapper })).toThrow(
       'useUserId requires an authenticated user',
     )
-  })
-
-  it('locks the vault when save fails with DecryptionError', async () => {
-    const { DecryptionError } = await import('@/shared/crypto/errors')
-    mockSaveField.mockRejectedValue(new DecryptionError('Decryption failed'))
-
-    const queryClient = createQueryClient()
-    queryClient.setQueryData(queryKeys.field.detail(TEST_ENTRY_ID, TEST_FIELD_NAME), 'original')
-
-    const localWrapper = ({ children }: { children: ReactNode }) =>
-      createElement(QueryClientProvider, { client: queryClient }, children)
-
-    const { result } = renderHook(() => useSaveField(TEST_ENTRY_ID, TEST_FIELD_NAME), { wrapper: localWrapper })
-
-    result.current.mutate('test')
-
-    await waitFor(() => {
-      expect(result.current.isError).toBe(true)
-    })
-    expect(mockLockVault).toHaveBeenCalledTimes(1)
-  })
-
-  it('does not lock the vault when save fails with a non-crypto error', async () => {
-    mockSaveField.mockRejectedValue(new Error('Network error'))
-
-    const queryClient = createQueryClient()
-
-    const localWrapper = ({ children }: { children: ReactNode }) =>
-      createElement(QueryClientProvider, { client: queryClient }, children)
-
-    const { result } = renderHook(() => useSaveField(TEST_ENTRY_ID, TEST_FIELD_NAME), { wrapper: localWrapper })
-
-    result.current.mutate('test')
-
-    await waitFor(() => {
-      expect(result.current.isError).toBe(true)
-    })
-    expect(mockLockVault).not.toHaveBeenCalled()
   })
 })

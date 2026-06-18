@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@/test/utils'
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
-import { useSyncStatusStore } from '@/features/fields/model/sync-status-store'
+import { useSyncStatusStore, SYNC_STATUS } from '@/features/fields/model/sync-status-store'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { LockedVaultCard } from '@/features/vault/ui/LockedVaultCard'
 
@@ -13,7 +13,7 @@ vi.mock('@/features/fields/model/use-field-editor', () => {
     useFieldEditor: (entryId: string, fieldName: string) => ({
       fieldValue: `mock-${entryId}-${fieldName}-value`,
       saveFieldValue: vi.fn(),
-      fieldSyncStatus: 'idle' as const,
+      fieldSyncStatus: SYNC_STATUS.IDLE,
       retrySave: vi.fn(),
       isOfflineAwaitingData: false,
     }),
@@ -63,8 +63,8 @@ describe('EntryDetailPage', () => {
   it('resets sync status when entryId changes', () => {
     const { rerender } = render(<EntryDetailPage entryId="entry-1" lockedFallback={<LockedVaultCard />} />)
 
-    useSyncStatusStore.getState().setStatus('entry-1', 'note', 'saving')
-    useSyncStatusStore.getState().setStatus('entry-1', 'website', 'saved')
+    useSyncStatusStore.getState().setStatus('entry-1', 'note', SYNC_STATUS.SAVING)
+    useSyncStatusStore.getState().setStatus('entry-1', 'website', SYNC_STATUS.SAVED)
 
     // Change entryId — this triggers the useEffect
     rerender(<EntryDetailPage entryId="entry-2" lockedFallback={<LockedVaultCard />} />)

@@ -2,12 +2,13 @@ import { useEffect, useRef } from 'react'
 import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
+import { useSyncStatusStore, SYNC_STATUS } from '@/features/fields/model/sync-status-store'
 import { realtimeAdapter } from '@/shared/realtime/supabase-realtime'
 import { useRequiredUserId } from '@/shared/auth/use-current-user'
 import { queryKeys } from '@/shared/lib/query-keys'
 import { keyVault } from '@/shared/crypto/key-vault'
 import { DecryptionError } from '@/shared/crypto/errors'
-import { useSyncStatusStore } from '@/features/fields/model/sync-status-store'
+import { useCryptoStore } from '@/shared/crypto/crypto-store'
 import { isLocalEcho, scheduleRemoteUpdateClear } from '@/shared/realtime/realtime-echo'
 import type { ServerEncryptedField } from '@/shared/types/api.types'
 import type { FieldName } from '@/shared/types/entities/field.types'
@@ -41,45 +42,50 @@ function useRealtimeSync(): void {
     void realtimeAdapter.subscribe(userId, {
       onFieldChange: (data: ServerEncryptedField) => {
         const { t, queryClient } = cbRef.current
-        // 1. Echo suppression: if this is our own write bouncing back, skip entirely.
+        if (useCryptoStore.getState().isVaultLocked) return
+
+        // 1. Echo suppression: if this is our own write bouncing back, skip entirely
         if (isLocalEcho(data.entryId, data.fieldName, data.updatedAt)) return
 
-        // 2. Conflict: a local save is in flight — last-write-wins, don't invalidate.
+        // 2. Conflict: a local save is in flight, last-write-wins, don't invalidate.
         if (hasPendingSave(queryClient, data.entryId, data.fieldName)) {
-          // A local save is in flight, it will overwrite the remote change
-          // (last-write-wins). Don't invalidate now; onSettled will refetch
-          // once the local save completes, landing on the local version.
           toast.info(t('realtime.conflict'), {
             id: `conflict:${data.entryId}:${data.fieldName}`,
           })
           return
         }
 
-        // 3. Genuine remote update: show indicator and invalidate.
-        useSyncStatusStore.getState().setStatus(data.entryId, data.fieldName, 'remote-update')
+        // 3. Genuine remote update: show indicator and invalidate
+        useSyncStatusStore.getState().setStatus(data.entryId, data.fieldName, SYNC_STATUS.REMOTE_UPDATE)
         scheduleRemoteUpdateClear(data.entryId, data.fieldName, () => {
           const current = useSyncStatusStore.getState().status[data.entryId]?.[data.fieldName]
-          if (current === 'remote-update') {
-            useSyncStatusStore.getState().setStatus(data.entryId, data.fieldName, 'idle')
+          if (current === SYNC_STATUS.REMOTE_UPDATE) {
+            useSyncStatusStore.getState().setStatus(data.entryId, data.fieldName, SYNC_STATUS.IDLE)
           }
         })
         queryClient.invalidateQueries({ queryKey: queryKeys.field.detail(data.entryId, data.fieldName) })
       },
       onEntryChange: (change) => {
         const { queryClient } = cbRef.current
+        if (useCryptoStore.getState().isVaultLocked) return
         queryClient.invalidateQueries({ queryKey: queryKeys.entry.list(userId) })
         if (change.eventType === 'DELETE') {
           queryClient.removeQueries({ queryKey: queryKeys.field.byEntry(change.entryId) })
         }
       },
       onKeyRotation: (fieldName, newVersion) => {
+        // Vault is locked: no KEK to refresh field keys. A locked vault
+        // will fetch fresh keys on the next unlock, so skip processing
+        // and avoid a misleading "network error" toast.
+        if (useCryptoStore.getState().isVaultLocked) return
+
         // Void IIFE: the type contract says void, so we must not return the
-        // Promise. Any unhandled rejection is caught here, not by the adapter.
+        // Promise. Any unhandled rejection is caught here, not by the adapter
         void (async () => {
           const { t, queryClient } = cbRef.current
           try {
             await keyVault.syncFieldKeys(userId)
-            // Invalidate all field queries — any entry's field could be affected
+            // Invalidate all field queries: any entry's field could be affected
             queryClient.invalidateQueries({ queryKey: queryKeys.field.all })
             toast.success(t('realtime.keyRotationApplied', { field: fieldName, version: newVersion }))
           } catch (error) {

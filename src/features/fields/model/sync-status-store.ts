@@ -2,7 +2,16 @@ import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
 import type { FieldName } from '@/shared/types/entities/field.types'
 
-export type SyncStatus = 'idle' | 'saving' | 'paused' | 'saved' | 'error' | 'remote-update'
+export const SYNC_STATUS = {
+  IDLE: 'idle',
+  SAVING: 'saving',
+  PAUSED: 'paused',
+  SAVED: 'saved',
+  ERROR: 'error',
+  REMOTE_UPDATE: 'remote-update',
+} as const
+
+export type SyncStatus = (typeof SYNC_STATUS)[keyof typeof SYNC_STATUS]
 
 interface SyncStatusState {
   status: Record<string, Record<FieldName, SyncStatus>>
@@ -48,7 +57,7 @@ const useSyncStatusStore = create<SyncStatusState & SyncStatusActions>()(
 
 /** Selector hook: subscribes to a single (entryId, fieldName) status only. */
 function useFieldSyncStatus(entryId: string, fieldName: FieldName): SyncStatus {
-  return useSyncStatusStore((s) => s.status[entryId]?.[fieldName] ?? 'idle')
+  return useSyncStatusStore((s) => s.status[entryId]?.[fieldName] ?? SYNC_STATUS.IDLE)
 }
 
 export { useSyncStatusStore, useFieldSyncStatus }
