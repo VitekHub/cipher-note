@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ApiError, ApiErrorCode } from '@/shared/api/api-errors'
 import { createSupabaseQueryMocks, createQueryBuilder } from '@/test/supabase-mock'
 
-const { maybeSingle: mockMaybeSingle, upsert: mockUpsert } = createSupabaseQueryMocks()
+const { maybeSingle, single } = createSupabaseQueryMocks()
 const mockFrom = vi.fn()
 
 vi.mock('@/shared/api/supabase-client', () => ({
@@ -18,12 +18,12 @@ describe('fetchRecoveryData', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    qb = createQueryBuilder({ maybeSingle: mockMaybeSingle, upsert: mockUpsert })
+    qb = createQueryBuilder({ maybeSingle, single })
     mockFrom.mockReturnValue(qb)
   })
 
   it('returns null when recovery data does not exist', async () => {
-    mockMaybeSingle.mockResolvedValueOnce({ data: null, error: null })
+    maybeSingle.mockResolvedValueOnce({ data: null, error: null })
 
     const result = await fetchRecoveryData('user-1')
 
@@ -31,7 +31,7 @@ describe('fetchRecoveryData', () => {
   })
 
   it('maps snake_case row to camelCase ServerRecoveryData', async () => {
-    mockMaybeSingle.mockResolvedValueOnce({
+    maybeSingle.mockResolvedValueOnce({
       data: {
         recovery_salt: 'aa'.repeat(16),
         wrapped_master_key: 'bb'.repeat(48),
@@ -50,7 +50,7 @@ describe('fetchRecoveryData', () => {
   })
 
   it('queries with userId filter', async () => {
-    mockMaybeSingle.mockResolvedValueOnce({ data: null, error: null })
+    maybeSingle.mockResolvedValueOnce({ data: null, error: null })
 
     await fetchRecoveryData('user-1')
 
@@ -60,7 +60,7 @@ describe('fetchRecoveryData', () => {
   })
 
   it('throws ApiError on Supabase query error', async () => {
-    mockMaybeSingle.mockResolvedValueOnce({
+    maybeSingle.mockResolvedValueOnce({
       data: null,
       error: { message: 'Query error' },
     })
@@ -80,12 +80,24 @@ describe('saveRecoveryData', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    qb = createQueryBuilder({ maybeSingle: mockMaybeSingle, upsert: mockUpsert })
+    qb = createQueryBuilder({ maybeSingle, single })
     mockFrom.mockReturnValue(qb)
   })
 
   it('calls upsert with correct data and onConflict', async () => {
-    mockUpsert.mockResolvedValueOnce({ data: null, error: null })
+    // saveRecoveryData uses upsert() without .select().single(),
+    // but the mock builder makes upsert() return qb for chaining.
+    // The await on the upsert result is handled by making the
+    // entire chain thenable. For simplicity, we mock single to resolve.
+    // Since saveRecoveryData destructures { error } from the result,
+    // we need upsert to return a thenable that resolves with { error: null }.
+    // The easiest way: make upsert return a thenable object that also has select().
+    const upsertResult = { data: null, error: null }
+    qb.upsert = vi.fn().mockReturnValue({
+      // Make the upsert result thenable so `await upsert(...)` works
+      then: (resolve: (value: unknown) => void) => resolve(upsertResult),
+      select: vi.fn().mockReturnValue(qb),
+    })
 
     await saveRecoveryData('user-1', {
       recoverySalt: 'aa'.repeat(16),
@@ -94,7 +106,7 @@ describe('saveRecoveryData', () => {
     })
 
     expect(mockFrom).toHaveBeenCalledWith('recovery')
-    expect(mockUpsert).toHaveBeenCalledWith(
+    expect(qb.upsert).toHaveBeenCalledWith(
       {
         user_id: 'user-1',
         recovery_salt: 'aa'.repeat(16),
@@ -106,9 +118,10 @@ describe('saveRecoveryData', () => {
   })
 
   it('throws ApiError on Supabase upsert error', async () => {
-    mockUpsert.mockResolvedValueOnce({
-      data: null,
-      error: { message: 'Upsert failed' },
+    const upsertResult = { data: null, error: { message: 'Upsert failed' } }
+    qb.upsert = vi.fn().mockReturnValue({
+      then: (resolve: (value: unknown) => void) => resolve(upsertResult),
+      select: vi.fn().mockReturnValue(qb),
     })
 
     try {

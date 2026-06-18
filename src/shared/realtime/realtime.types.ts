@@ -12,7 +12,7 @@ export interface RealtimeEntryChange {
 }
 
 export interface RealtimeCallbacks {
-  onFieldChange: (fieldName: string, data: ServerEncryptedField) => void
+  onFieldChange: (data: ServerEncryptedField) => void
   onEntryChange: (change: RealtimeEntryChange) => void
   onKeyRotation: (fieldName: string, newVersion: number) => void
   onError: (error: Error) => void

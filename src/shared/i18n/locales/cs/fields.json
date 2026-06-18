@@ -24,7 +24,8 @@
     "paused": "Čeká na připojení...",
     "saved": "Uloženo",
     "error": "Uložení selhalo",
-    "retry": "Zkusit znovu"
+    "retry": "Zkusit znovu",
+    "remoteUpdate": "Aktualizováno"
   },
   "realtime": {
     "conflict": "Toto pole bylo upraveno na jiném zařízení. Vaše úprava tuto změnu přepíše.",

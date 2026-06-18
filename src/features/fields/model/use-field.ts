@@ -9,7 +9,7 @@ import type { FieldName } from '@/shared/types/entities/field.types'
 
 /** Callbacks for field save mutations. */
 export interface SaveFieldCallbacks {
-  onSuccess?: () => void
+  onSuccess?: (updatedAt: string) => void
   onError?: () => void
 }
 

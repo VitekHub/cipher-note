@@ -2,45 +2,53 @@ import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
 import type { FieldName } from '@/shared/types/entities/field.types'
 
-export type SyncStatus = 'idle' | 'saving' | 'paused' | 'saved' | 'error'
+export type SyncStatus = 'idle' | 'saving' | 'paused' | 'saved' | 'error' | 'remote-update'
 
 interface SyncStatusState {
-  status: Record<FieldName, SyncStatus>
+  status: Record<string, Record<FieldName, SyncStatus>>
 }
 
 interface SyncStatusActions {
-  setStatus: (fieldName: FieldName, status: SyncStatus) => void
-  resetField: (fieldName: FieldName) => void
+  setStatus: (entryId: string, fieldName: FieldName, status: SyncStatus) => void
   resetAll: () => void
 }
 
-const initialStatus: Record<FieldName, SyncStatus> = {
-  title: 'idle',
-  note: 'idle',
-  website: 'idle',
-  email: 'idle',
+function updateFieldStatus(
+  state: SyncStatusState,
+  entryId: string,
+  fieldName: FieldName,
+  status: SyncStatus,
+): SyncStatusState {
+  return {
+    status: {
+      ...state.status,
+      [entryId]: {
+        ...state.status[entryId],
+        [fieldName]: status,
+      },
+    },
+  }
 }
 
 const useSyncStatusStore = create<SyncStatusState & SyncStatusActions>()(
   devtools(
     (set) => ({
-      status: { ...initialStatus },
-      setStatus: (fieldName, status) =>
+      status: {},
+      setStatus: (entryId, fieldName, newStatus) =>
         set(
-          (state) => ({ status: { ...state.status, [fieldName]: status } }),
+          (state) => updateFieldStatus(state, entryId, fieldName, newStatus),
           false,
-          `syncStatus/setStatus/${fieldName}`,
+          `syncStatus/setStatus/${entryId}/${fieldName}`,
         ),
-      resetField: (fieldName) =>
-        set(
-          (state) => ({ status: { ...state.status, [fieldName]: 'idle' } }),
-          false,
-          `syncStatus/resetField/${fieldName}`,
-        ),
-      resetAll: () => set({ status: { ...initialStatus } }, false, 'syncStatus/resetAll'),
+      resetAll: () => set({ status: {} }, false, 'syncStatus/resetAll'),
     }),
     { name: 'SyncStatusStore' },
   ),
 )
 
-export { useSyncStatusStore }
+/** Selector hook: subscribes to a single (entryId, fieldName) status only. */
+function useFieldSyncStatus(entryId: string, fieldName: FieldName): SyncStatus {
+  return useSyncStatusStore((s) => s.status[entryId]?.[fieldName] ?? 'idle')
+}
+
+export { useSyncStatusStore, useFieldSyncStatus }

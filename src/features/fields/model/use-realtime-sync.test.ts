@@ -10,9 +10,9 @@ const ctx = vi.hoisted(() => {
   const mockSubscribe =
     vi.fn<(userId: string, callbacks: import('@/shared/realtime/realtime.types').RealtimeCallbacks) => Promise<void>>()
   const mockUnsubscribe = vi.fn<() => void>()
-  const toastInfo = vi.fn<(msg: string, options?: unknown) => void>()
-  const toastSuccess = vi.fn<(msg: string, options?: unknown) => void>()
-  const toastError = vi.fn<(msg: string, options?: unknown) => void>()
+  const toastInfo = vi.fn<(msg: string, options?: unknown) => string | number>()
+  const toastSuccess = vi.fn<(msg: string, options?: unknown) => string | number>()
+  const toastError = vi.fn<(msg: string, options?: unknown) => string | number>()
   const mockSyncFieldKeys = vi.fn<(userId: string) => Promise<void>>()
   return {
     callbacksRef,
@@ -44,6 +44,8 @@ vi.mock('@/shared/crypto/key-vault', () => ({
 // --- Import after mocks ---
 
 import { useRealtimeSync } from '@/features/fields/model/use-realtime-sync'
+import { useSyncStatusStore } from '@/features/fields/model/sync-status-store'
+import { markLocalSave, clearEchoMarkers } from '@/shared/realtime/realtime-echo'
 import { queryKeys } from '@/shared/lib/query-keys'
 import { DecryptionError } from '@/shared/crypto/errors'
 import type { RealtimeCallbacks } from '@/shared/realtime/realtime.types'
@@ -77,6 +79,8 @@ describe('useRealtimeSync', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     ctx.callbacksRef.current = null
+    useSyncStatusStore.getState().resetAll()
+    clearEchoMarkers()
 
     queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
@@ -111,13 +115,67 @@ describe('useRealtimeSync', () => {
   it('invalidates the field query on a remote field change when no save is pending', () => {
     renderHook(() => useRealtimeSync(), { wrapper: createWrapper(queryClient) })
 
-    callbacks().onFieldChange('note', FIELD_EVENT)
+    callbacks().onFieldChange(FIELD_EVENT)
 
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.field.detail('e1', 'note') })
     expect(ctx.toastInfo).not.toHaveBeenCalled()
   })
 
-  it('shows an info toast when a save for that (entryId, fieldName) is pending', async () => {
+  it('sets remote-update status and invalidates for genuine remote changes', () => {
+    renderHook(() => useRealtimeSync(), { wrapper: createWrapper(queryClient) })
+
+    callbacks().onFieldChange(FIELD_EVENT)
+
+    expect(useSyncStatusStore.getState().status['e1']?.['note'] ?? 'idle').toBe('remote-update')
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.field.detail('e1', 'note') })
+  })
+
+  it('skips invalidation and indicator when isLocalEcho returns true', () => {
+    // Mark a local save with the same timestamp as the incoming event
+    markLocalSave('e1', 'note', FIELD_EVENT.updatedAt)
+
+    renderHook(() => useRealtimeSync(), { wrapper: createWrapper(queryClient) })
+
+    callbacks().onFieldChange(FIELD_EVENT)
+
+    // Echo should be suppressed entirely — no invalidate, no status, no toast
+    expect(invalidateSpy).not.toHaveBeenCalled()
+    expect(useSyncStatusStore.getState().status['e1']?.['note'] ?? 'idle').toBe('idle')
+    expect(ctx.toastInfo).not.toHaveBeenCalled()
+  })
+
+  it('does not suppress when timestamps differ (not an echo)', () => {
+    // Mark a local save with a different timestamp
+    markLocalSave('e1', 'note', '2025-12-31T23:59:59Z')
+
+    renderHook(() => useRealtimeSync(), { wrapper: createWrapper(queryClient) })
+
+    callbacks().onFieldChange(FIELD_EVENT)
+
+    // Not an echo — should invalidate and set remote-update
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.field.detail('e1', 'note') })
+    expect(useSyncStatusStore.getState().status['e1']?.['note'] ?? 'idle').toBe('remote-update')
+  })
+
+  it('does not treat a pending save for that field as a conflict if it is an echo', () => {
+    // Mark a local save — the echo should be suppressed even if there's also a pending save
+    markLocalSave('e1', 'note', FIELD_EVENT.updatedAt)
+
+    // Also seed a pending mutation to test that echo detection takes priority
+    const { result: save } = renderHook(() => useNeverResolvingSave(), { wrapper: createWrapper(queryClient) })
+    save.current.mutate()
+
+    return waitFor(() => expect(save.current.isPending).toBe(true)).then(() => {
+      renderHook(() => useRealtimeSync(), { wrapper: createWrapper(queryClient) })
+
+      callbacks().onFieldChange(FIELD_EVENT)
+
+      // Echo detection should suppress this before the pending-save check
+      expect(invalidateSpy).not.toHaveBeenCalled()
+    })
+  })
+
+  it('skips invalidation when a save for that (entryId, fieldName) is pending (conflict)', async () => {
     // Seed a pending save mutation for queryKeys.field.save('e1', 'note') in the same queryClient.
     const { result: save } = renderHook(() => useNeverResolvingSave(), { wrapper: createWrapper(queryClient) })
     save.current.mutate()
@@ -125,14 +183,11 @@ describe('useRealtimeSync', () => {
 
     renderHook(() => useRealtimeSync(), { wrapper: createWrapper(queryClient) })
 
-    callbacks().onFieldChange('note', FIELD_EVENT)
+    callbacks().onFieldChange(FIELD_EVENT)
 
-    expect(ctx.toastInfo).toHaveBeenCalledTimes(1)
-    const [message, options] = ctx.toastInfo.mock.calls[0] as [string, { id: string }]
-    expect(message).toEqual(expect.any(String))
-    expect(options).toHaveProperty('id')
-    expect(options.id).toBe('conflict:e1:note')
+    // Conflict: no invalidate, no remote-update status
     expect(invalidateSpy).not.toHaveBeenCalled()
+    expect(useSyncStatusStore.getState().status['e1']?.['note'] ?? 'idle').toBe('idle')
   })
 
   it('does not treat a pending save for a different field as a conflict', async () => {
@@ -143,7 +198,7 @@ describe('useRealtimeSync', () => {
     renderHook(() => useRealtimeSync(), { wrapper: createWrapper(queryClient) })
 
     // Remote change for a DIFFERENT field — should invalidate, not conflict.
-    callbacks().onFieldChange('title', { ...FIELD_EVENT, fieldName: 'title' })
+    callbacks().onFieldChange({ ...FIELD_EVENT, fieldName: 'title' })
 
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.field.detail('e1', 'title') })
     expect(ctx.toastInfo).not.toHaveBeenCalled()
@@ -207,5 +262,34 @@ describe('useRealtimeSync', () => {
     expect(() => callbacks().onError(new Error('boom'))).not.toThrow()
     expect(warnSpy).toHaveBeenCalled()
     warnSpy.mockRestore()
+  })
+
+  it('auto-clears remote-update status after 3 seconds', () => {
+    vi.useFakeTimers()
+    renderHook(() => useRealtimeSync(), { wrapper: createWrapper(queryClient) })
+
+    callbacks().onFieldChange(FIELD_EVENT)
+
+    expect(useSyncStatusStore.getState().status['e1']?.['note']).toBe('remote-update')
+
+    vi.advanceTimersByTime(3000)
+    expect(useSyncStatusStore.getState().status['e1']?.['note']).toBe('idle')
+
+    vi.useRealTimers()
+  })
+
+  it('does not auto-clear remote-update if status changed before timer fires', () => {
+    vi.useFakeTimers()
+    renderHook(() => useRealtimeSync(), { wrapper: createWrapper(queryClient) })
+
+    callbacks().onFieldChange(FIELD_EVENT)
+    // User starts editing before the 3s timer fires
+    useSyncStatusStore.getState().setStatus('e1', 'note', 'saving')
+
+    vi.advanceTimersByTime(3000)
+    // saving should not be reset to idle
+    expect(useSyncStatusStore.getState().status['e1']?.['note']).toBe('saving')
+
+    vi.useRealTimers()
   })
 })

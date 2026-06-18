@@ -63,16 +63,15 @@ describe('EntryDetailPage', () => {
   it('resets sync status when entryId changes', () => {
     const { rerender } = render(<EntryDetailPage entryId="entry-1" lockedFallback={<LockedVaultCard />} />)
 
-    useSyncStatusStore.getState().setStatus('note', 'saving')
-    useSyncStatusStore.getState().setStatus('website', 'saved')
+    useSyncStatusStore.getState().setStatus('entry-1', 'note', 'saving')
+    useSyncStatusStore.getState().setStatus('entry-1', 'website', 'saved')
 
     // Change entryId — this triggers the useEffect
     rerender(<EntryDetailPage entryId="entry-2" lockedFallback={<LockedVaultCard />} />)
 
     const { status } = useSyncStatusStore.getState()
-    expect(status.note).toBe('idle')
-    expect(status.website).toBe('idle')
-    expect(status.email).toBe('idle')
+    // resetAll() clears everything, so all entries are gone
+    expect(Object.keys(status)).toHaveLength(0)
   })
 })
 

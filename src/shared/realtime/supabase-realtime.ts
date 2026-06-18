@@ -41,7 +41,7 @@ class SupabaseRealtimeAdapter implements IRealtimeAdapter {
           iv: row.iv,
           updatedAt: row.updated_at,
         }
-        callbacks.onFieldChange(data.fieldName, data)
+        callbacks.onFieldChange(data)
       })
       .on('postgres_changes', { event: '*', schema: PUBLIC_SCHEMA, table: ENTRIES_TABLE }, (payload) => {
         // Both INSERT (new) and DELETE (old) carry the id — that's why we

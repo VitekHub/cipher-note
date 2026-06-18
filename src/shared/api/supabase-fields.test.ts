@@ -3,7 +3,7 @@ import { ApiError, ApiErrorCode } from '@/shared/api/api-errors'
 import { ENCRYPTED_FIELDS_TABLE } from '@/shared/types/supabase-schema'
 import { createSupabaseQueryMocks, createQueryBuilder } from '@/test/supabase-mock'
 
-const { maybeSingle: mockMaybeSingle, upsert: mockUpsert } = createSupabaseQueryMocks()
+const { maybeSingle, single } = createSupabaseQueryMocks()
 const mockFrom = vi.fn()
 
 vi.mock('@/shared/api/supabase-client', () => ({
@@ -19,12 +19,12 @@ describe('fetchField', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    qb = createQueryBuilder({ maybeSingle: mockMaybeSingle, upsert: mockUpsert })
+    qb = createQueryBuilder({ maybeSingle, single })
     mockFrom.mockReturnValue(qb)
   })
 
   it('returns null when field does not exist', async () => {
-    mockMaybeSingle.mockResolvedValueOnce({ data: null, error: null })
+    maybeSingle.mockResolvedValueOnce({ data: null, error: null })
 
     const result = await fetchField('entry-1', 'note')
 
@@ -32,7 +32,7 @@ describe('fetchField', () => {
   })
 
   it('maps snake_case row to camelCase ServerEncryptedField', async () => {
-    mockMaybeSingle.mockResolvedValueOnce({
+    maybeSingle.mockResolvedValueOnce({
       data: {
         entry_id: 'entry-1',
         field_name: 'note',
@@ -55,7 +55,7 @@ describe('fetchField', () => {
   })
 
   it('queries with userId and fieldName filters', async () => {
-    mockMaybeSingle.mockResolvedValueOnce({ data: null, error: null })
+    maybeSingle.mockResolvedValueOnce({ data: null, error: null })
 
     await fetchField('entry-1', 'website')
 
@@ -66,7 +66,7 @@ describe('fetchField', () => {
   })
 
   it('throws ApiError on Supabase query error', async () => {
-    mockMaybeSingle.mockResolvedValueOnce({
+    maybeSingle.mockResolvedValueOnce({
       data: null,
       error: { message: 'Query error' },
     })
@@ -86,22 +86,23 @@ describe('saveField', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    qb = createQueryBuilder({ maybeSingle: mockMaybeSingle, upsert: mockUpsert })
+    qb = createQueryBuilder({ maybeSingle, single })
     mockFrom.mockReturnValue(qb)
   })
 
-  it('calls upsert with correct data and onConflict', async () => {
-    mockUpsert.mockResolvedValueOnce({ data: null, error: null })
+  it('calls upsert with correct data and returns updatedAt', async () => {
+    single.mockResolvedValueOnce({ data: { updated_at: '2026-01-01T00:00:00Z' }, error: null })
 
-    await saveField('user-1', {
+    const result = await saveField('user-1', {
       entryId: 'entry-1',
       fieldName: 'note',
       encryptedBlob: 'aa'.repeat(16),
       iv: 'bb'.repeat(12),
     })
 
+    expect(result).toBe('2026-01-01T00:00:00Z')
     expect(mockFrom).toHaveBeenCalledWith(ENCRYPTED_FIELDS_TABLE)
-    expect(mockUpsert).toHaveBeenCalledWith(
+    expect(qb.upsert).toHaveBeenCalledWith(
       {
         user_id: 'user-1',
         entry_id: 'entry-1',
@@ -111,10 +112,11 @@ describe('saveField', () => {
       },
       { onConflict: 'entry_id,field_name' },
     )
+    expect(qb.select).toHaveBeenCalledWith('updated_at')
   })
 
   it('throws ApiError on Supabase upsert error', async () => {
-    mockUpsert.mockResolvedValueOnce({
+    single.mockResolvedValueOnce({
       data: null,
       error: { message: 'Upsert failed' },
     })

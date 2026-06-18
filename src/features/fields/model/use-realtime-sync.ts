@@ -7,6 +7,8 @@ import { useRequiredUserId } from '@/shared/auth/use-current-user'
 import { queryKeys } from '@/shared/lib/query-keys'
 import { keyVault } from '@/shared/crypto/key-vault'
 import { DecryptionError } from '@/shared/crypto/errors'
+import { useSyncStatusStore } from '@/features/fields/model/sync-status-store'
+import { isLocalEcho, scheduleRemoteUpdateClear } from '@/shared/realtime/realtime-echo'
 import type { ServerEncryptedField } from '@/shared/types/api.types'
 import type { FieldName } from '@/shared/types/entities/field.types'
 
@@ -21,7 +23,7 @@ function hasPendingSave(queryClient: QueryClient, entryId: string, fieldName: Fi
 
 /**
  * Subscribes to realtime changes while the authenticated shell is mounted.
- * Field change: info toast if a local save is pending (last-write-wins), else invalidate.
+ * Field change: echo-suppressed; remote updates show a 'remote-update' indicator.
  * Entry change: refresh sidebar. Key rotation: re-derive field key in-place, or lock vault on failure.
  * Errors are logged, never blocking.
  */
@@ -36,9 +38,13 @@ function useRealtimeSync(): void {
   }, [t, queryClient])
 
   useEffect(() => {
-    const { t, queryClient } = cbRef.current
     void realtimeAdapter.subscribe(userId, {
-      onFieldChange: (_fieldName, data: ServerEncryptedField) => {
+      onFieldChange: (data: ServerEncryptedField) => {
+        const { t, queryClient } = cbRef.current
+        // 1. Echo suppression: if this is our own write bouncing back, skip entirely.
+        if (isLocalEcho(data.entryId, data.fieldName, data.updatedAt)) return
+
+        // 2. Conflict: a local save is in flight — last-write-wins, don't invalidate.
         if (hasPendingSave(queryClient, data.entryId, data.fieldName)) {
           // A local save is in flight, it will overwrite the remote change
           // (last-write-wins). Don't invalidate now; onSettled will refetch
@@ -48,9 +54,19 @@ function useRealtimeSync(): void {
           })
           return
         }
+
+        // 3. Genuine remote update: show indicator and invalidate.
+        useSyncStatusStore.getState().setStatus(data.entryId, data.fieldName, 'remote-update')
+        scheduleRemoteUpdateClear(data.entryId, data.fieldName, () => {
+          const current = useSyncStatusStore.getState().status[data.entryId]?.[data.fieldName]
+          if (current === 'remote-update') {
+            useSyncStatusStore.getState().setStatus(data.entryId, data.fieldName, 'idle')
+          }
+        })
         queryClient.invalidateQueries({ queryKey: queryKeys.field.detail(data.entryId, data.fieldName) })
       },
       onEntryChange: (change) => {
+        const { queryClient } = cbRef.current
         queryClient.invalidateQueries({ queryKey: queryKeys.entry.list(userId) })
         if (change.eventType === 'DELETE') {
           queryClient.removeQueries({ queryKey: queryKeys.field.byEntry(change.entryId) })
@@ -60,6 +76,7 @@ function useRealtimeSync(): void {
         // Void IIFE: the type contract says void, so we must not return the
         // Promise. Any unhandled rejection is caught here, not by the adapter.
         void (async () => {
+          const { t, queryClient } = cbRef.current
           try {
             await keyVault.syncFieldKeys(userId)
             // Invalidate all field queries — any entry's field could be affected

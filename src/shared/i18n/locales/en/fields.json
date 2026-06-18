@@ -24,7 +24,8 @@
     "paused": "Waiting for connection...",
     "saved": "Saved",
     "error": "Save failed",
-    "retry": "Retry"
+    "retry": "Retry",
+    "remoteUpdate": "Updated"
   },
   "realtime": {
     "conflict": "This field was changed on another device. Your edit will overwrite that change.",

@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Loader2, Check, AlertCircle, CloudOff } from 'lucide-react'
+import { Loader2, Check, AlertCircle, CloudOff, CloudDownload } from 'lucide-react'
 import type { SyncStatus } from '@/features/fields/model/sync-status-store'
 import { cn } from '@/shared/lib/utils'
 
@@ -10,6 +10,7 @@ const STATUS_I18N_KEYS: Record<SyncStatus, { text: string; retry?: string }> = {
   paused: { text: 'status.paused' },
   saved: { text: 'status.saved' },
   error: { text: 'status.error', retry: 'status.retry' },
+  'remote-update': { text: 'status.remoteUpdate' },
 }
 
 interface SaveIndicatorProps {
@@ -47,6 +48,15 @@ function SaveIndicator({ status, onRetry, className }: SaveIndicatorProps) {
     return (
       <span className={cn('inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400', className)}>
         <Check className="size-3" />
+        {t(keys.text)}
+      </span>
+    )
+  }
+
+  if (status === 'remote-update') {
+    return (
+      <span className={cn('inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400', className)}>
+        <CloudDownload className="size-3" />
         {t(keys.text)}
       </span>
     )

@@ -10,7 +10,7 @@ import type { FieldName } from '@/shared/types/entities/field.types'
 
 const { mockSaveField, mockLoadField } = vi.hoisted(() => ({
   mockSaveField:
-    vi.fn<(args: { userId: string; entryId: string; fieldName: string; plaintext: string }) => Promise<void>>(),
+    vi.fn<(args: { userId: string; entryId: string; fieldName: string; plaintext: string }) => Promise<string>>(),
   mockLoadField: vi.fn<(...args: [string, string]) => Promise<string | null>>(),
 }))
 
@@ -151,7 +151,7 @@ describe('useField', () => {
 describe('useSaveField', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockSaveField.mockResolvedValue(undefined)
+    mockSaveField.mockResolvedValue('2026-01-01T00:00:00Z')
     mockUseRequiredUserId.mockReturnValue('user-123')
   })
 

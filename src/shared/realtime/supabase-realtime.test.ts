@@ -71,7 +71,7 @@ describe('SupabaseRealtimeAdapter', () => {
     ctx.client.channel.mockClear()
 
     callbacks = {
-      onFieldChange: vi.fn<(fieldName: string, data: ServerEncryptedField) => void>(),
+      onFieldChange: vi.fn<(data: ServerEncryptedField) => void>(),
       onEntryChange: vi.fn<(change: RealtimeEntryChange) => void>(),
       onKeyRotation: vi.fn<(fieldName: string, newVersion: number) => void>(),
       onError: vi.fn<(error: Error) => void>(),
@@ -97,7 +97,7 @@ describe('SupabaseRealtimeAdapter', () => {
       },
       old: null,
     })
-    expect(callbacks.onFieldChange).toHaveBeenCalledWith('note', {
+    expect(callbacks.onFieldChange).toHaveBeenCalledWith({
       entryId: 'e1',
       fieldName: 'note',
       encryptedBlob: 'deadbeef',

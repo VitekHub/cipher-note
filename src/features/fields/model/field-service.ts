@@ -40,14 +40,14 @@ class FieldService {
    * Encrypt and save a field's content to the server.
    * Uses upsert — will create or update the field.
    */
-  async saveField({ userId, entryId, fieldName, plaintext }: SaveFieldParams): Promise<void> {
+  async saveField({ userId, entryId, fieldName, plaintext }: SaveFieldParams): Promise<string> {
     if (!userId) throw new Error(USER_ID_REQUIRED)
     if (!entryId) throw new Error(ENTRY_ID_REQUIRED)
     const fieldKey = this.getFieldKey(fieldName)
 
     const encryptedData = await encryptField(plaintext, fieldKey, fieldName)
     const saveData = toSaveFieldData(encryptedData, entryId, fieldName)
-    await saveFieldToServer(userId, saveData)
+    return saveFieldToServer(userId, saveData)
   }
 
   /**

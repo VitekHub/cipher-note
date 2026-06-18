@@ -10,7 +10,7 @@ import { useSyncStatusStore } from '@/features/fields/model/sync-status-store'
 const { mockLoadField, mockSaveField, mockUseRequiredUserId } = vi.hoisted(() => ({
   mockLoadField: vi.fn<(args: { userId: string; entryId: string; fieldName: string }) => Promise<string | null>>(),
   mockSaveField:
-    vi.fn<(args: { userId: string; entryId: string; fieldName: string; plaintext: string }) => Promise<void>>(),
+    vi.fn<(args: { userId: string; entryId: string; fieldName: string; plaintext: string }) => Promise<string>>(),
   mockUseRequiredUserId: vi.fn<() => string>(),
 }))
 
@@ -59,7 +59,7 @@ describe('useFieldEditor', () => {
     useSyncStatusStore.getState().resetAll()
     mockUseRequiredUserId.mockReturnValue('user-123')
     mockLoadField.mockResolvedValue('initial content')
-    mockSaveField.mockResolvedValue(undefined)
+    mockSaveField.mockResolvedValue('2026-01-01T00:00:00Z')
   })
 
   afterEach(() => {
@@ -309,7 +309,7 @@ describe('useFieldEditor (debounce)', () => {
     useSyncStatusStore.getState().resetAll()
     mockUseRequiredUserId.mockReturnValue('user-123')
     mockLoadField.mockResolvedValue('initial content')
-    mockSaveField.mockResolvedValue(undefined)
+    mockSaveField.mockResolvedValue('2026-01-01T00:00:00Z')
   })
 
   afterEach(() => {
@@ -431,7 +431,7 @@ describe('useFieldEditor (debounce)', () => {
     expect(result.current.fieldSyncStatus).toBe('error')
 
     // Reset the mock so next call succeeds
-    mockSaveField.mockResolvedValue(undefined)
+    mockSaveField.mockResolvedValue('2026-01-01T00:00:00Z')
 
     // Retry should call save immediately (no debounce)
     act(() => {

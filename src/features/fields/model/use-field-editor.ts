@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useField } from '@/features/fields/model/use-field'
 import { useSaveField } from '@/features/fields/model/use-field'
-import { useSyncStatusStore } from '@/features/fields/model/sync-status-store'
+import { useSyncStatusStore, useFieldSyncStatus } from '@/features/fields/model/sync-status-store'
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
 import { useSaveScheduler } from '@/features/fields/model/use-save-scheduler'
 import type { FieldName } from '@/shared/types/entities/field.types'
@@ -25,7 +25,7 @@ function useFieldEditor(entryId: string, fieldName: FieldName): UseFieldEditorRe
   const fieldQuery = useField(entryId, fieldName)
   const saveMutation = useSaveField(entryId, fieldName)
   const setSyncStatus = useSyncStatusStore((s) => s.setStatus)
-  const syncStatus = useSyncStatusStore((s) => s.status[fieldName])
+  const syncStatus = useFieldSyncStatus(entryId, fieldName)
   const isVaultLocked = useCryptoStore((s) => s.isVaultLocked)
 
   // Local draft for optimistic editing.
@@ -54,12 +54,13 @@ function useFieldEditor(entryId: string, fieldName: FieldName): UseFieldEditorRe
   useEffect(() => {
     // Read store directly (not via selector). We only want to reset stale
     // status on mount, not re-render every time any field's status changes.
-    if (useSyncStatusStore.getState().status[fieldName] === 'saved') {
-      setSyncStatus(fieldName, 'idle')
+    if (useSyncStatusStore.getState().status[entryId]?.[fieldName] === 'saved') {
+      setSyncStatus(entryId, fieldName, 'idle')
     }
-  }, [fieldName, setSyncStatus])
+  }, [entryId, fieldName, setSyncStatus])
 
   const { debounceSave, retrySave } = useSaveScheduler({
+    entryId,
     fieldName,
     setSyncStatus,
     saveMutate: saveMutation.mutate,

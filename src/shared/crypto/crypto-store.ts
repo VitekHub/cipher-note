@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { QueryClient } from '@tanstack/react-query'
 import type { CachedVaultEnvelope } from '@/shared/types/api.types'
 import { queryKeys } from '@/shared/lib/query-keys'
+import { clearEchoMarkers } from '@/shared/realtime/realtime-echo'
 
 interface CryptoState {
   loadedFieldKeys: Record<string, boolean>
@@ -56,10 +57,12 @@ const useCryptoStore = create<CryptoState & CryptoActions>()((set) => ({
       lastActivity: 0,
     })
     clearVaultQueries()
+    clearEchoMarkers()
   },
   clearVault: () => {
     set(initialState)
     clearVaultQueries()
+    clearEchoMarkers()
   },
   updateActivity: () => set({ lastActivity: Date.now() }),
 }))
