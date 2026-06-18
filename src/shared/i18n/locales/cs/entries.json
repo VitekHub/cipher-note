@@ -5,5 +5,7 @@
   "emptyAction": "Vytvořte první poznámku",
   "delete": "Smazat poznámku",
   "deleteConfirm": "Opravdu chcete smazat tuto poznámku? Tuto akci nelze vrátit.",
-  "entryLabel": "Poznámka {{number}}"
+  "entryLabel": "Poznámka {{number}}",
+  "notFound": "Poznámka nebyla nalezena",
+  "deleted": "Tato poznámka byla smazána. Změny nebudou uloženy"
 }

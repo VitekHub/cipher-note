@@ -12,6 +12,12 @@ vi.mock('@/shared/realtime/supabase-realtime', () => ({
   realtimeAdapter: { subscribe: vi.fn(() => Promise.resolve()), unsubscribe: vi.fn() },
 }))
 
+// The entry detail route uses useEntryStatus which depends on useEntries;
+// stub it so the dashboard route renders field cards in tests.
+vi.mock('@/features/fields/model/use-entry-status', () => ({
+  useEntryStatus: () => 'valid',
+}))
+
 function renderWithRouter(authOverrides: Partial<AuthContext> = {}, initialPath = '/') {
   const auth: AuthContext = {
     isAuthenticated: false,
