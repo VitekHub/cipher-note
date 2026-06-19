@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import type { FieldName } from '@/shared/types/entities/field.types'
+import type { ServerFieldKey } from '@/shared/types/api.types'
 
 import { keyVault } from '@/shared/crypto/key-vault'
 import { decrypt } from '@/shared/crypto/aes-gcm'
@@ -25,7 +27,7 @@ const { mockEnvelopeData, mockFieldKeysData } = vi.hoisted(() => ({
 }))
 
 // Unified mock store helpers
-const mockSetKeys = vi.fn()
+const mockMarkKeysLoaded = vi.fn()
 const mockSetEnvelope = vi.fn()
 const mockLockVault = vi.fn()
 const mockClearVault = vi.fn()
@@ -35,7 +37,7 @@ const cryptoStoreState = {
   isVaultLocked: true,
   lastActivity: 0,
   cachedEnvelope: null as import('@/shared/types/api.types').CachedVaultEnvelope | null,
-  setKeys: mockSetKeys,
+  markKeysLoaded: mockMarkKeysLoaded,
   lockVault: mockLockVault,
   clearVault: mockClearVault,
   setCachedEnvelope: mockSetEnvelope,
@@ -181,14 +183,14 @@ describe('key-vault', () => {
       ['email', emailKey],
     ])
 
-    await keyVault.storeKey('kek', kek)
-    await keyVault.storeFieldKeys(fieldKeys)
+    keyVault.storeKey('kek', kek)
+    keyVault.storeFieldKeys(fieldKeys)
 
     expect(keyVault.getKey('kek')).toBe(kek)
     expect(keyVault.getKey('note')).toBe(noteKey)
     expect(keyVault.getKey('website')).toBe(websiteKey)
     expect(keyVault.getKey('email')).toBe(emailKey)
-    expect(mockSetKeys).toHaveBeenCalledWith(['note', 'website', 'email'])
+    expect(mockMarkKeysLoaded).toHaveBeenCalledWith(['note', 'website', 'email'])
   })
 })
 
@@ -216,7 +218,7 @@ describe('unlockVault', () => {
     expect(decrypt).toHaveBeenCalled()
     expect(deriveKEK).toHaveBeenCalled()
     expect(unwrapFieldKeys).toHaveBeenCalledWith(mockFieldKeysData, expect.any(Object))
-    expect(mockSetKeys).toHaveBeenCalledWith(['note', 'website', 'email'])
+    expect(mockMarkKeysLoaded).toHaveBeenCalledWith(['note', 'website', 'email'])
   })
 
   it('caches envelope data after login', async () => {
@@ -244,7 +246,7 @@ describe('unlockVault', () => {
     expect(fetchFieldKeys).not.toHaveBeenCalled()
     expect(mockSetEnvelope).not.toHaveBeenCalled()
     expect(derivePasswordKey).toHaveBeenCalled()
-    expect(mockSetKeys).toHaveBeenCalled()
+    expect(mockMarkKeysLoaded).toHaveBeenCalled()
   })
 
   it('does not call setCachedEnvelope when envelope is already cached', async () => {
@@ -308,5 +310,105 @@ describe('unlockVault', () => {
     await expect(keyVault.unlockVault('1', 'testpass123')).rejects.toThrow('Some other error')
     expect(mockClearVault).not.toHaveBeenCalled()
     expect(fetchMasterKeyEnvelope).not.toHaveBeenCalled()
+  })
+})
+
+describe('syncFieldKeys', () => {
+  const FAKE_KEK = {} as CryptoKey
+  const FIELD_KEYS_RESPONSE: ServerFieldKey[] = [
+    { fieldName: 'note', version: 2, wrappedKey: 'new-wrapped-note-key', keyIV: 'new-note-iv' },
+    { fieldName: 'title', version: 1, wrappedKey: 'wrapped-title-key', keyIV: 'title-iv' },
+  ]
+
+  const cachedEnvelope = {
+    authSalt: 'aabb',
+    keySalt: 'ccdd',
+    wrappedMasterKey: 'eeff',
+    masterKeyIV: '1122',
+    fieldKeys: [{ fieldName: 'note', version: 1, wrappedKey: 'old-note-key', keyIV: 'note-iv' }],
+  }
+
+  function makeUnwrappedKeys(names: FieldName[]): Map<string, CryptoKey> {
+    const map = new Map<string, CryptoKey>()
+    for (const name of names) {
+      map.set(name, {} as CryptoKey)
+    }
+    return map
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    keyVault.zeroKeys()
+
+    // Default: KEK available, happy path
+    keyVault.storeKey('kek', FAKE_KEK)
+    vi.mocked(fetchFieldKeys).mockResolvedValue(FIELD_KEYS_RESPONSE)
+    vi.mocked(unwrapFieldKeys).mockResolvedValue(makeUnwrappedKeys(['note', 'title']))
+
+    cryptoStoreState.cachedEnvelope = cachedEnvelope
+  })
+
+  it('fetches field keys, unwraps, stores in vault, updates envelope', async () => {
+    await keyVault.syncFieldKeys('user-1')
+
+    expect(fetchFieldKeys).toHaveBeenCalledWith('user-1')
+    expect(unwrapFieldKeys).toHaveBeenCalledWith(FIELD_KEYS_RESPONSE, FAKE_KEK)
+    expect(mockMarkKeysLoaded).toHaveBeenCalledWith(['note', 'title'])
+    expect(mockSetEnvelope).toHaveBeenCalledWith({
+      ...cachedEnvelope,
+      fieldKeys: FIELD_KEYS_RESPONSE,
+    })
+  })
+
+  it('throws when KEK is not in vault (vault locked)', async () => {
+    keyVault.zeroKeys()
+
+    await expect(keyVault.syncFieldKeys('user-1')).rejects.toThrow('Cannot refresh field keys')
+    expect(fetchFieldKeys).not.toHaveBeenCalled()
+  })
+
+  it('throws when fetchFieldKeys throws a network error', async () => {
+    vi.mocked(fetchFieldKeys).mockRejectedValueOnce(new Error('Network error'))
+
+    await expect(keyVault.syncFieldKeys('user-1')).rejects.toThrow('Network error')
+    expect(mockMarkKeysLoaded).not.toHaveBeenCalled()
+  })
+
+  it('throws when unwrapFieldKeys throws DecryptionError (stale KEK)', async () => {
+    vi.mocked(unwrapFieldKeys).mockRejectedValueOnce(new DecryptionError())
+
+    await expect(keyVault.syncFieldKeys('user-1')).rejects.toThrow(DecryptionError)
+    expect(mockMarkKeysLoaded).not.toHaveBeenCalled()
+  })
+
+  it('throws when unwrapFieldKeys throws a generic error', async () => {
+    vi.mocked(unwrapFieldKeys).mockRejectedValueOnce(new Error('unexpected'))
+
+    await expect(keyVault.syncFieldKeys('user-1')).rejects.toThrow('unexpected')
+  })
+
+  it('succeeds when cachedEnvelope is null (envelope not cached)', async () => {
+    cryptoStoreState.cachedEnvelope = null
+
+    await keyVault.syncFieldKeys('user-1')
+
+    expect(mockSetEnvelope).not.toHaveBeenCalled()
+    expect(mockMarkKeysLoaded).toHaveBeenCalled()
+  })
+
+  it('calls clearVault on DecryptionError', async () => {
+    const clearVaultSpy = vi.spyOn(keyVault, 'clearVault')
+    vi.mocked(unwrapFieldKeys).mockRejectedValueOnce(new DecryptionError())
+
+    await expect(keyVault.syncFieldKeys('user-1')).rejects.toThrow(DecryptionError)
+    expect(clearVaultSpy).toHaveBeenCalled()
+  })
+
+  it('does not call clearVault on network error', async () => {
+    const clearVaultSpy = vi.spyOn(keyVault, 'clearVault')
+    vi.mocked(fetchFieldKeys).mockRejectedValueOnce(new Error('boom'))
+
+    await expect(keyVault.syncFieldKeys('user-1')).rejects.toThrow('boom')
+    expect(clearVaultSpy).not.toHaveBeenCalled()
   })
 })

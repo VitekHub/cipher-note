@@ -54,7 +54,7 @@ main.tsx → AppProviders (QueryClientProvider > AuthProvider > RouterProvider)
 - Username availability: `check_username_availability()` RPC with IP-based rate limiting
 
 ### Adapter Pattern
-Backend abstracted behind interfaces: `IAuthAdapter`, `IApiAdapter`, `IRealtimeAdapter` (not yet implemented). Current implementations use Supabase. Entry CRUD is in `supabase-entries.ts`, field CRUD in `supabase-fields.ts`.
+Backend abstracted behind interfaces: `IAuthAdapter`, `IApiAdapter`, `IRealtimeAdapter`. Current implementations use Supabase. Entry CRUD is in `supabase-entries.ts`, field CRUD in `supabase-fields.ts`, realtime in `supabase-realtime.ts`.
 
 ## Key Conventions
 
@@ -181,6 +181,8 @@ See `IMPLEMENTATION-PLAN.md` for the full 36-step plan.
 - Step 24 (Supabase API Adapter) — complete
 - Step 25 (Encrypted Field CRUD) — complete
 - Step 26 (Auto-Save + Sync Flow) — complete
+- Step 27 (Supabase Realtime Adapter) — complete
+- Step 28 (Multi-Device Session Handling) — complete
 
 ### Implementation Notes
 
@@ -198,7 +200,7 @@ Non-obvious decisions not visible from code alone:
 - **`Uint8Array<ArrayBuffer>` for Web Crypto**: TS 6.0 made `Uint8Array` generic; bare `Uint8Array` expands to `Uint8Array<ArrayBufferLike>` which doesn't satisfy `BufferSource`. All `crypto.subtle` function signatures must use `Uint8Array<ArrayBuffer>`.
 - **`copyToUint8Array` only in aes-gcm.ts**: Web Crypto's `encrypt`, `decrypt`, and `exportKey` return `ArrayBuffer`, which can be neutered/transferred. `copyToUint8Array` wraps these calls and provides type narrowing to `Uint8Array<ArrayBuffer>`. Other crypto modules construct `Uint8Array` from scratch (e.g., `new Uint8Array(derivedBits)`) so they already own the buffer.
 - **Multi-entry architecture**: Each user can have multiple entries. An entry is a group of four encrypted fields (title, note, website, email). The `entries` table stores entry metadata; `encrypted_fields` references `entry_id`. Entry CRUD is in `entry-service.ts` + `use-entry.ts` hooks. The sidebar shows the entry list; the dashboard route is `/dashboard/$entryId` (the index `/dashboard` redirects to the first entry or shows `EmptyState`).
-- **`useField` and `useSaveField` are entry-aware**: Query keys include `entryId`: `['field', entryId, fieldName]`. On entry deletion, `useDeleteEntry` removes field queries for that entry from the cache.
+- **`useField` and `useSaveField` are entry-aware**: Query keys include `entryId` via the centralized `queryKeys` factory (`src/shared/lib/query-keys.ts`). On entry deletion, `useDeleteEntry` removes field queries for that entry from the cache.
 - **Master key wrapping uses AAD constants**: All key wrapping is done directly with `encrypt`/`decrypt` from `aes-gcm.ts` using `{iv, aad}` options. `changePassword` in `split-kdf.ts` uses `MASTER_KEY_PASSWORD_AAD`, recovery wrapping in `mnemonic.ts` uses `MASTER_KEY_RECOVERY_AAD`, field key wrapping uses `encodeAAD(fieldName, version)` from `crypto-utils.ts`.
 - **HKDF uses `deriveBits`, not `deriveKey`**: `deriveSubKey` returns raw `Uint8Array` bytes because the KEK bytes need to be imported as an AES-GCM CryptoKey via `importKey()` separately in `deriveFullKeyHierarchy`. HKDF uses empty salt since the master key is already random.
 - **BIP-39 mnemonic functions are async**: `generateMnemonic`, `validateMnemonic`, `mnemonicToSeed` must be `async` despite the underlying `@scure/bip39` functions being synchronous, because the lazy-loading pattern (`await loadBip39()`) requires it. Same as how `argon2id.ts` wraps sync Argon2 in async.
@@ -210,3 +212,5 @@ Non-obvious decisions not visible from code alone:
 - **Auth error codes fold username format into invalid credentials**: `AuthErrorCode.INVALID_USERNAME_FORMAT` doesn't exist — `supabase-keys.ts` throws `INVALID_CREDENTIALS` for invalid username format. This is deliberate: showing a different error for "wrong format" vs "wrong password" would leak whether a username exists. Missing key data is `ApiError(NOT_FOUND)`, not an auth error — `KEYS_NOT_FOUND` was removed from `AuthErrorCode` because "data not found" is a data-layer concern, not an auth concern.
 - **`AuthError` vs `ApiError` domain boundary**: `AuthError` (in `shared/auth/auth-errors.ts`) covers authentication errors (`INVALID_CREDENTIALS`, `USERNAME_TAKEN`, `NETWORK_ERROR`, `UNEXPECTED`). `ApiError` (in `shared/api/api-errors.ts`) covers data-layer errors (`NETWORK_ERROR`, `NOT_FOUND`, `UNEXPECTED`). `fetchLoginSalts` throws `AuthError` because it's a pre-auth RPC that's part of the login flow; all other data queries throw `ApiError`. Each domain has its own `wrapXxxError` that classifies raw errors using the shared `isNetworkError` helper.
 - **Network errors can bypass the adapter boundary**: `isNetworkError` (in `shared/lib/network-errors.ts`) is shared by both `wrapAuthError` and `wrapApiError`. Raw `TypeError('Failed to fetch')` from the browser can reach the UI without being wrapped by any adapter, so `getAuthErrorMessage` in `auth-error-messages.ts` also calls `isNetworkError` as a final fallback.
+- **Stale KEK detection**: Stale KEK from a password change on another device is detected in two places: (1) `use-realtime-sync.ts` `onKeyRotation` — when a key rotation event arrives, `syncFieldKeys` tries to unwrap with the current KEK; a `DecryptionError` means the KEK is stale, so `clearVault()` forces re-auth. (2) `key-vault.ts` `unlockVault` — if the cached envelope is stale, `clearVault` + retry from server. The save path (`useSaveField`) cannot produce a `DecryptionError` — `encryptField` only encrypts, and `getFieldKey` throws a generic `Error` when the vault is locked, not `DecryptionError`.
+

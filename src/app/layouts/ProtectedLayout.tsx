@@ -14,6 +14,7 @@ import { useLayoutStore } from './layout-store'
 import { useResizable } from '@/shared/lib/use-resizable'
 import { useVaultTimeout } from '@/features/vault/model/use-vault-timeout'
 import { logoutUser } from '@/features/auth/model/auth-service'
+import { useRealtimeSync } from '@/features/fields/model/use-realtime-sync'
 
 function ProtectedLayout() {
   const { t } = useTranslation('common')
@@ -31,6 +32,7 @@ function ProtectedLayout() {
   })
 
   useVaultTimeout()
+  useRealtimeSync()
 
   return (
     <div className="text-foreground bg-background flex h-[calc(100vh-var(--banner-height))]">

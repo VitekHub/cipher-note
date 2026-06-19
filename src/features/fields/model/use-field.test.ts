@@ -3,13 +3,14 @@ import { renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
 import { createElement, type ReactNode } from 'react'
+import { queryKeys } from '@/shared/lib/query-keys'
 import type { FieldName } from '@/shared/types/entities/field.types'
 
 // --- Hoisted mocks ---
 
 const { mockSaveField, mockLoadField } = vi.hoisted(() => ({
   mockSaveField:
-    vi.fn<(args: { userId: string; entryId: string; fieldName: string; plaintext: string }) => Promise<void>>(),
+    vi.fn<(args: { userId: string; entryId: string; fieldName: string; plaintext: string }) => Promise<string>>(),
   mockLoadField: vi.fn<(...args: [string, string]) => Promise<string | null>>(),
 }))
 
@@ -145,7 +146,7 @@ describe('useField', () => {
 describe('useSaveField', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockSaveField.mockResolvedValue(undefined)
+    mockSaveField.mockResolvedValue('2026-01-01T00:00:00Z')
     mockUseRequiredUserId.mockReturnValue('user-123')
   })
 
@@ -168,7 +169,7 @@ describe('useSaveField', () => {
   it('optimistically updates the field query cache on mutate', async () => {
     const queryClient = createQueryClient()
     // Pre-populate cache with existing data
-    queryClient.setQueryData(['field', TEST_ENTRY_ID, TEST_FIELD_NAME], 'old content')
+    queryClient.setQueryData(queryKeys.field.detail(TEST_ENTRY_ID, TEST_FIELD_NAME), 'old content')
 
     const localWrapper = ({ children }: { children: ReactNode }) =>
       createElement(QueryClientProvider, { client: queryClient }, children)
@@ -179,7 +180,7 @@ describe('useSaveField', () => {
 
     // Optimistic update should be visible immediately
     await waitFor(() => {
-      expect(queryClient.getQueryData(['field', TEST_ENTRY_ID, TEST_FIELD_NAME])).toBe('new content')
+      expect(queryClient.getQueryData(queryKeys.field.detail(TEST_ENTRY_ID, TEST_FIELD_NAME))).toBe('new content')
     })
   })
 
@@ -187,7 +188,7 @@ describe('useSaveField', () => {
     mockSaveField.mockRejectedValue(new Error('Save failed'))
 
     const queryClient = createQueryClient()
-    queryClient.setQueryData(['field', TEST_ENTRY_ID, TEST_FIELD_NAME], 'original content')
+    queryClient.setQueryData(queryKeys.field.detail(TEST_ENTRY_ID, TEST_FIELD_NAME), 'original content')
 
     const localWrapper = ({ children }: { children: ReactNode }) =>
       createElement(QueryClientProvider, { client: queryClient }, children)
@@ -200,7 +201,7 @@ describe('useSaveField', () => {
       expect(result.current.isError).toBe(true)
     })
     // Cache should be rolled back
-    expect(queryClient.getQueryData(['field', TEST_ENTRY_ID, TEST_FIELD_NAME])).toBe('original content')
+    expect(queryClient.getQueryData(queryKeys.field.detail(TEST_ENTRY_ID, TEST_FIELD_NAME))).toBe('original content')
   })
 
   it('invalidates the field query on settled', async () => {
@@ -217,7 +218,7 @@ describe('useSaveField', () => {
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true)
     })
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['field', TEST_ENTRY_ID, TEST_FIELD_NAME] })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.field.detail(TEST_ENTRY_ID, TEST_FIELD_NAME) })
   })
 
   it('sets error state when saveField throws', async () => {

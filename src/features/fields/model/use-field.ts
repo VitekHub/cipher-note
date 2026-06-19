@@ -3,11 +3,12 @@ import { useRequiredUserId } from '@/shared/auth/use-current-user'
 import { fieldService } from '@/features/fields/model/field-service'
 import { DecryptionError } from '@/shared/crypto/errors'
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
+import { queryKeys } from '@/shared/lib/query-keys'
 import type { FieldName } from '@/shared/types/entities/field.types'
 
 /** Callbacks for field save mutations. */
 export interface SaveFieldCallbacks {
-  onSuccess?: () => void
+  onSuccess?: (updatedAt: string) => void
   onError?: () => void
 }
 
@@ -21,7 +22,7 @@ export function useField(entryId: string, fieldName: FieldName) {
   const enabled = useCryptoStore((s) => !s.isVaultLocked && s.loadedFieldKeys[fieldName] === true) && !!entryId
 
   return useQuery({
-    queryKey: ['field', entryId, fieldName],
+    queryKey: queryKeys.field.detail(entryId, fieldName),
     queryFn: () => fieldService.loadField(entryId, fieldName),
     enabled,
     retry: (failureCount, error) => {
@@ -40,10 +41,13 @@ export function useField(entryId: string, fieldName: FieldName) {
 export function useSaveField(entryId: string, fieldName: FieldName) {
   const queryClient = useQueryClient()
   const userId = useRequiredUserId()
-  const queryKey = ['field', entryId, fieldName] as const
+  const queryKey = queryKeys.field.detail(entryId, fieldName)
 
   return useMutation({
     networkMode: 'online', // pause mutations when offline; auto-resume when back online
+    // Stable key so realtime conflict detection (use-realtime-sync.ts) can find a
+    // pending save for this (entryId, fieldName) in the mutation cache.
+    mutationKey: queryKeys.field.save(entryId, fieldName),
     mutationFn: (plaintext: string) => fieldService.saveField({ userId, entryId, fieldName, plaintext }),
     onMutate: async (plaintext) => {
       await queryClient.cancelQueries({ queryKey })

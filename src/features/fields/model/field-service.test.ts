@@ -18,7 +18,7 @@ const { mockFetchField, mockSaveField, mockFetchAllFields, mockGetKey } = vi.hoi
           encryptedBlob: string
           iv: string
         },
-      ) => Promise<void>
+      ) => Promise<string>
     >(),
     mockFetchAllFields: vi.fn<(entryId: string) => Promise<ServerEncryptedField[]>>(),
     mockGetKey: vi.fn<(id: string) => CryptoKey | undefined>(),
@@ -113,7 +113,7 @@ describe('FieldService', () => {
     })
 
     it('encrypts plaintext and calls saveFieldToServer with hex-encoded data', async () => {
-      mockSaveField.mockResolvedValue(undefined)
+      mockSaveField.mockResolvedValue('2026-01-01T00:00:00Z')
 
       await fieldService.saveField({
         userId: TEST_USER_ID,

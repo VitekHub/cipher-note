@@ -3,14 +3,14 @@ import { renderHook, act, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query'
 import { createElement, type ReactNode } from 'react'
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
-import { useSyncStatusStore } from '@/features/fields/model/sync-status-store'
+import { useSyncStatusStore, SYNC_STATUS } from '@/features/fields/model/sync-status-store'
 
 // --- Hoisted mocks ---
 
 const { mockLoadField, mockSaveField, mockUseRequiredUserId } = vi.hoisted(() => ({
   mockLoadField: vi.fn<(args: { userId: string; entryId: string; fieldName: string }) => Promise<string | null>>(),
   mockSaveField:
-    vi.fn<(args: { userId: string; entryId: string; fieldName: string; plaintext: string }) => Promise<void>>(),
+    vi.fn<(args: { userId: string; entryId: string; fieldName: string; plaintext: string }) => Promise<string>>(),
   mockUseRequiredUserId: vi.fn<() => string>(),
 }))
 
@@ -59,7 +59,7 @@ describe('useFieldEditor', () => {
     useSyncStatusStore.getState().resetAll()
     mockUseRequiredUserId.mockReturnValue('user-123')
     mockLoadField.mockResolvedValue('initial content')
-    mockSaveField.mockResolvedValue(undefined)
+    mockSaveField.mockResolvedValue('2026-01-01T00:00:00Z')
   })
 
   afterEach(() => {
@@ -120,7 +120,7 @@ describe('useFieldEditor', () => {
 
     // Status should still be 'idle' immediately after setFieldValue
     // (it will transition to 'saving' only when the debounce fires)
-    expect(result.current.fieldSyncStatus).toBe('idle')
+    expect(result.current.fieldSyncStatus).toBe(SYNC_STATUS.IDLE)
   })
 
   it('sets sync status to error when save fails', async () => {
@@ -140,7 +140,7 @@ describe('useFieldEditor', () => {
     // Wait for the debounce + mutation to complete
     await waitFor(
       () => {
-        expect(result.current.fieldSyncStatus).toBe('error')
+        expect(result.current.fieldSyncStatus).toBe(SYNC_STATUS.ERROR)
       },
       { timeout: 5000 },
     )
@@ -195,7 +195,7 @@ describe('useFieldEditor', () => {
     // Wait for debounce + mutation pause → status 'paused'
     await waitFor(
       () => {
-        expect(result.current.fieldSyncStatus).toBe('paused')
+        expect(result.current.fieldSyncStatus).toBe(SYNC_STATUS.PAUSED)
       },
       { timeout: 5000 },
     )
@@ -211,7 +211,7 @@ describe('useFieldEditor', () => {
     // Wait for auto-resume to succeed
     await waitFor(
       () => {
-        expect(result.current.fieldSyncStatus).toBe('saved')
+        expect(result.current.fieldSyncStatus).toBe(SYNC_STATUS.SAVED)
       },
       { timeout: 5000 },
     )
@@ -235,7 +235,7 @@ describe('useFieldEditor', () => {
     })
 
     // Status is 'idle' — firing online should NOT trigger a save
-    expect(result.current.fieldSyncStatus).toBe('idle')
+    expect(result.current.fieldSyncStatus).toBe(SYNC_STATUS.IDLE)
 
     act(() => {
       window.dispatchEvent(new Event('online'))
@@ -265,7 +265,7 @@ describe('useFieldEditor', () => {
 
     await waitFor(
       () => {
-        expect(result.current.fieldSyncStatus).toBe('paused')
+        expect(result.current.fieldSyncStatus).toBe(SYNC_STATUS.PAUSED)
       },
       { timeout: 5000 },
     )
@@ -277,7 +277,7 @@ describe('useFieldEditor', () => {
 
     await waitFor(
       () => {
-        expect(result.current.fieldSyncStatus).toBe('saved')
+        expect(result.current.fieldSyncStatus).toBe(SYNC_STATUS.SAVED)
       },
       { timeout: 5000 },
     )
@@ -309,7 +309,7 @@ describe('useFieldEditor (debounce)', () => {
     useSyncStatusStore.getState().resetAll()
     mockUseRequiredUserId.mockReturnValue('user-123')
     mockLoadField.mockResolvedValue('initial content')
-    mockSaveField.mockResolvedValue(undefined)
+    mockSaveField.mockResolvedValue('2026-01-01T00:00:00Z')
   })
 
   afterEach(() => {
@@ -346,7 +346,7 @@ describe('useFieldEditor (debounce)', () => {
 
     // Not yet saved, status still idle
     expect(mockSaveField).not.toHaveBeenCalled()
-    expect(result.current.fieldSyncStatus).toBe('idle')
+    expect(result.current.fieldSyncStatus).toBe(SYNC_STATUS.IDLE)
 
     // After debounce period, save fires and status becomes 'saving'
     await act(async () => {
@@ -376,13 +376,13 @@ describe('useFieldEditor (debounce)', () => {
       result.current.saveFieldValue('new content')
     })
     // Status is still 'idle' immediately after setFieldValue
-    expect(result.current.fieldSyncStatus).toBe('idle')
+    expect(result.current.fieldSyncStatus).toBe(SYNC_STATUS.IDLE)
 
     // Partway through the debounce period, status is still 'idle'
     act(() => {
       vi.advanceTimersByTime(300)
     })
-    expect(result.current.fieldSyncStatus).toBe('idle')
+    expect(result.current.fieldSyncStatus).toBe(SYNC_STATUS.IDLE)
 
     // Advance past debounce: save fires, status becomes 'saving'
     await act(async () => {
@@ -394,13 +394,13 @@ describe('useFieldEditor (debounce)', () => {
       vi.advanceTimersByTime(0)
     })
 
-    expect(result.current.fieldSyncStatus).toBe('saved')
+    expect(result.current.fieldSyncStatus).toBe(SYNC_STATUS.SAVED)
 
     // After SAVED_DISPLAY_MS, auto-transition to idle
     act(() => {
       vi.advanceTimersByTime(SAVED_DISPLAY_MS)
     })
-    expect(result.current.fieldSyncStatus).toBe('idle')
+    expect(result.current.fieldSyncStatus).toBe(SYNC_STATUS.IDLE)
   })
 
   it('retry calls save immediately without debounce', async () => {
@@ -428,10 +428,10 @@ describe('useFieldEditor (debounce)', () => {
       vi.advanceTimersByTime(0)
     })
 
-    expect(result.current.fieldSyncStatus).toBe('error')
+    expect(result.current.fieldSyncStatus).toBe(SYNC_STATUS.ERROR)
 
     // Reset the mock so next call succeeds
-    mockSaveField.mockResolvedValue(undefined)
+    mockSaveField.mockResolvedValue('2026-01-01T00:00:00Z')
 
     // Retry should call save immediately (no debounce)
     act(() => {

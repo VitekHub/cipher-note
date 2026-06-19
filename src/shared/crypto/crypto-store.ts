@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import type { QueryClient } from '@tanstack/react-query'
 import type { CachedVaultEnvelope } from '@/shared/types/api.types'
+import { queryKeys } from '@/shared/lib/query-keys'
+import { clearEchoMarkers } from '@/shared/realtime/realtime-echo'
 
 interface CryptoState {
   loadedFieldKeys: Record<string, boolean>
@@ -11,7 +13,7 @@ interface CryptoState {
 }
 
 interface CryptoActions {
-  setKeys: (fieldKeyNames: string[]) => void
+  markKeysLoaded: (fieldKeyNames: string[]) => void
   setCachedEnvelope: (envelope: CachedVaultEnvelope) => void
   lockVault: () => void
   clearVault: () => void
@@ -33,16 +35,15 @@ function setQueryClient(client: QueryClient) {
   queryClientRef = client
 }
 
-/** Remove all vault-related queries (field, entries, entry). */
+/** Remove all vault-related queries (field, entry). */
 function clearVaultQueries() {
-  queryClientRef?.removeQueries({ queryKey: ['field'] })
-  queryClientRef?.removeQueries({ queryKey: ['entries'] })
-  queryClientRef?.removeQueries({ queryKey: ['entry'] })
+  queryClientRef?.removeQueries({ queryKey: queryKeys.field.all })
+  queryClientRef?.removeQueries({ queryKey: queryKeys.entry.all })
 }
 
 const useCryptoStore = create<CryptoState & CryptoActions>()((set) => ({
   ...initialState,
-  setKeys: (fieldKeyNames) =>
+  markKeysLoaded: (fieldKeyNames) =>
     set({
       loadedFieldKeys: Object.fromEntries(fieldKeyNames.map((name) => [name, true])),
       isVaultLocked: false,
@@ -56,10 +57,12 @@ const useCryptoStore = create<CryptoState & CryptoActions>()((set) => ({
       lastActivity: 0,
     })
     clearVaultQueries()
+    clearEchoMarkers()
   },
   clearVault: () => {
     set(initialState)
     clearVaultQueries()
+    clearEchoMarkers()
   },
   updateActivity: () => set({ lastActivity: Date.now() }),
 }))

@@ -5,5 +5,9 @@
   "emptyAction": "Create your first note",
   "delete": "Delete note",
   "deleteConfirm": "Are you sure you want to delete this note? This cannot be undone.",
-  "entryLabel": "Note {{number}}"
+  "entryLabel": "Note {{number}}",
+  "notFound": "Note not found",
+  "deleted": "This note was deleted. Changes won't be saved",
+  "welcome": "Welcome {{username}}",
+  "welcomeNoteCount": "You have {{count}} notes. Select one from the sidebar to get started."
 }

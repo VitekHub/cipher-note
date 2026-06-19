@@ -1,23 +1,14 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useEffect, useRef } from 'react'
+import { createFileRoute } from '@tanstack/react-router'
 
 import { useEntries, useCreateEntry } from '@/features/fields/model/use-entry'
-import { EmptyState } from '@/features/fields/ui/DashboardPage'
+import { EmptyState, DashboardWelcome } from '@/features/fields/ui/DashboardPage'
 import { LockedVaultCard } from '@/features/vault/ui/LockedVaultCard'
+import { useNavigate } from '@tanstack/react-router'
 
 function DashboardIndex() {
   const { data: entries, isLoading } = useEntries()
   const createEntry = useCreateEntry()
   const navigate = useNavigate()
-  const hasRedirected = useRef(false)
-
-  // Redirect to the first entry only on the initial load, not on subsequent refetches
-  useEffect(() => {
-    if (!hasRedirected.current && entries && entries.length > 0) {
-      hasRedirected.current = true
-      navigate({ to: '/dashboard/$entryId', params: { entryId: entries[0].id }, replace: true })
-    }
-  }, [entries, navigate])
 
   if (isLoading) return null
 
@@ -36,7 +27,7 @@ function DashboardIndex() {
     )
   }
 
-  return null
+  return <DashboardWelcome />
 }
 
 const Route = createFileRoute('/_authenticated/dashboard')({

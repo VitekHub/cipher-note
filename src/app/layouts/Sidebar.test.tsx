@@ -29,6 +29,11 @@ vi.mock('@/features/fields/model/use-entry', () => ({
   useCreateEntry: () => vi.fn(),
 }))
 
+vi.mock('@/features/fields/model/sync-status-store', () => ({
+  useSyncStatusStore: () => ({ getState: () => ({ resetAll: vi.fn() }) }),
+  useFieldSyncStatus: () => 'idle',
+}))
+
 import { Sidebar } from './Sidebar'
 
 describe('Sidebar', () => {

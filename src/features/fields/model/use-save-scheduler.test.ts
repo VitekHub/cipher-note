@@ -1,16 +1,18 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
-import { useSyncStatusStore } from '@/features/fields/model/sync-status-store'
+import { useSyncStatusStore, SYNC_STATUS } from '@/features/fields/model/sync-status-store'
 import { useSaveScheduler } from '@/features/fields/model/use-save-scheduler'
 
 const DEBOUNCE_MS = 1000
 const SAVED_DISPLAY_MS = 3000
+const ENTRY_ID = 'entry-123'
 
 /** Create a mock saveMutate function that calls onSuccess by default. */
 function createMockSaveMutate() {
-  const mock = vi.fn<(value: string, options?: { onSuccess?: () => void; onError?: () => void }) => void>()
+  const mock =
+    vi.fn<(value: string, options?: { onSuccess?: (updatedAt: string) => void; onError?: () => void }) => void>()
   mock.mockImplementation((_value, options) => {
-    options?.onSuccess?.()
+    options?.onSuccess?.('2026-01-01T00:00:00Z')
   })
   return mock
 }
@@ -32,6 +34,7 @@ describe('useSaveScheduler', () => {
   it('debounces saves — rapid scheduleSave calls trigger only one save', () => {
     const { result } = renderHook(() =>
       useSaveScheduler({
+        entryId: ENTRY_ID,
         fieldName: 'note',
         setSyncStatus: useSyncStatusStore.getState().setStatus,
         saveMutate: mockSaveMutate,
@@ -75,6 +78,7 @@ describe('useSaveScheduler', () => {
     const setStatus = useSyncStatusStore.getState().setStatus
     const { result } = renderHook(() =>
       useSaveScheduler({
+        entryId: ENTRY_ID,
         fieldName: 'note',
         setSyncStatus: setStatus,
         saveMutate: mockSaveMutate,
@@ -82,39 +86,45 @@ describe('useSaveScheduler', () => {
       }),
     )
 
-    const status = () => useSyncStatusStore.getState().status['note']
+    const status = () => useSyncStatusStore.getState().status[ENTRY_ID]?.['note']
 
-    expect(status()).toBe('idle')
+    expect(status()).toBeUndefined()
 
     // Schedule a save
     act(() => {
       result.current.debounceSave('new content')
     })
-    // Status is still 'idle' immediately after scheduleSave
-    expect(status()).toBe('idle')
+    // Status is still undefined immediately after scheduleSave (not set yet)
 
     // After debounce fires, mockSaveMutate.onSuccess runs → status becomes 'saved'
     act(() => {
       vi.advanceTimersByTime(DEBOUNCE_MS)
     })
-    expect(status()).toBe('saved')
+    expect(status()).toBe(SYNC_STATUS.SAVED)
 
     // After SAVED_DISPLAY_MS, auto-transition to idle
     act(() => {
       vi.advanceTimersByTime(SAVED_DISPLAY_MS)
     })
-    expect(status()).toBe('idle')
+    expect(status()).toBe(SYNC_STATUS.IDLE)
   })
 
   it('sets sync status to error when save fails', () => {
-    const errorMock = vi.fn<(value: string, options?: { onSuccess?: () => void; onError?: () => void }) => void>()
+    const errorMock =
+      vi.fn<(value: string, options?: { onSuccess?: (updatedAt: string) => void; onError?: () => void }) => void>()
     errorMock.mockImplementation((_value, options) => {
       options?.onError?.()
     })
 
     const setStatus = useSyncStatusStore.getState().setStatus
     const { result } = renderHook(() =>
-      useSaveScheduler({ fieldName: 'note', setSyncStatus: setStatus, saveMutate: errorMock, isVaultLocked: false }),
+      useSaveScheduler({
+        entryId: ENTRY_ID,
+        fieldName: 'note',
+        setSyncStatus: setStatus,
+        saveMutate: errorMock,
+        isVaultLocked: false,
+      }),
     )
 
     // Schedule a save that will fail
@@ -125,7 +135,7 @@ describe('useSaveScheduler', () => {
       vi.advanceTimersByTime(DEBOUNCE_MS)
     })
 
-    expect(useSyncStatusStore.getState().status['note']).toBe('error')
+    expect(useSyncStatusStore.getState().status[ENTRY_ID]['note']).toBe(SYNC_STATUS.ERROR)
   })
 
   it('retry calls save immediately without debounce', () => {
@@ -137,7 +147,13 @@ describe('useSaveScheduler', () => {
 
     const setStatus = useSyncStatusStore.getState().setStatus
     const { result } = renderHook(() =>
-      useSaveScheduler({ fieldName: 'note', setSyncStatus: setStatus, saveMutate: errorMock, isVaultLocked: false }),
+      useSaveScheduler({
+        entryId: ENTRY_ID,
+        fieldName: 'note',
+        setSyncStatus: setStatus,
+        saveMutate: errorMock,
+        isVaultLocked: false,
+      }),
     )
 
     // Schedule initial save
@@ -152,7 +168,7 @@ describe('useSaveScheduler', () => {
 
     // Reset mock so next call succeeds
     errorMock.mockImplementation((_value, options) => {
-      options?.onSuccess?.()
+      options?.onSuccess?.('2026-01-01T00:00:00Z')
     })
 
     // Retry should call save immediately (no debounce)
@@ -171,7 +187,13 @@ describe('useSaveScheduler', () => {
     const setStatus = useSyncStatusStore.getState().setStatus
     const { rerender } = renderHook(
       ({ isVaultLocked }) =>
-        useSaveScheduler({ fieldName: 'note', setSyncStatus: setStatus, saveMutate: mockSaveMutate, isVaultLocked }),
+        useSaveScheduler({
+          entryId: ENTRY_ID,
+          fieldName: 'note',
+          setSyncStatus: setStatus,
+          saveMutate: mockSaveMutate,
+          isVaultLocked,
+        }),
       { initialProps: { isVaultLocked: false } },
     )
 
@@ -190,6 +212,7 @@ describe('useSaveScheduler', () => {
     const setStatus = useSyncStatusStore.getState().setStatus
     const { result, unmount } = renderHook(() =>
       useSaveScheduler({
+        entryId: ENTRY_ID,
         fieldName: 'note',
         setSyncStatus: setStatus,
         saveMutate: mockSaveMutate,
@@ -220,7 +243,13 @@ describe('useSaveScheduler', () => {
 
     const { rerender, result } = renderHook(
       ({ saveMutate }) =>
-        useSaveScheduler({ fieldName: 'note', setSyncStatus: setStatus, saveMutate, isVaultLocked: false }),
+        useSaveScheduler({
+          entryId: ENTRY_ID,
+          fieldName: 'note',
+          setSyncStatus: setStatus,
+          saveMutate,
+          isVaultLocked: false,
+        }),
       { initialProps: { saveMutate: firstMutate } },
     )
 

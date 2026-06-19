@@ -1,10 +1,12 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus } from 'lucide-react'
+import { Plus, FileText } from 'lucide-react'
 
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
 import { useSyncStatusStore } from '@/features/fields/model/sync-status-store'
 import { useFieldEditor } from '@/features/fields/model/use-field-editor'
+import { useEntries } from '@/features/fields/model/use-entry'
+import { useCurrentUser } from '@/shared/auth/use-current-user'
 import { FieldCard } from '@/features/fields/ui/FieldCard'
 import { NoteField } from '@/features/fields/ui/NoteField'
 import { InputField } from '@/features/fields/ui/InputField'
@@ -123,4 +125,23 @@ function EmptyState({ onCreateEntry, lockedFallback }: { onCreateEntry: () => vo
   )
 }
 
-export { EntryDetailPage, EmptyState }
+/** Welcome view shown on /dashboard when the user has entries but none is selected. */
+function DashboardWelcome() {
+  const { t } = useTranslation('entries')
+  const user = useCurrentUser()
+  const { data: entries } = useEntries()
+
+  return (
+    <div className="flex min-h-full flex-1 items-center justify-center">
+      <div className="flex flex-col items-center gap-6">
+        <FileText className="text-muted-foreground size-16" />
+        <div className="text-center">
+          <p className="text-lg font-semibold">{t('welcome', { username: user?.username ?? '' })}</p>
+          <p className="text-muted-foreground mt-2">{t('welcomeNoteCount', { count: entries?.length ?? 0 })}</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export { EntryDetailPage, EmptyState, DashboardWelcome }

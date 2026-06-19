@@ -2,6 +2,8 @@ import { getSupabase } from '@/shared/api/supabase-client'
 import { wrapApiError } from '@/shared/api/api-errors'
 import type { ServerEncryptedField, SaveFieldData } from '@/shared/types/api.types'
 import type { FieldName } from '@/shared/types/entities/field.types'
+import { ENCRYPTED_FIELDS_TABLE } from '@/shared/types/supabase-schema'
+import type { EncryptedFieldRow } from '@/shared/types/supabase-schema'
 
 /**
  * Fetch all encrypted fields for a single entry.
@@ -10,7 +12,7 @@ import type { FieldName } from '@/shared/types/entities/field.types'
 export async function fetchAllFields(entryId: string): Promise<ServerEncryptedField[]> {
   const supabase = getSupabase()
   const { data, error } = await supabase
-    .from('encrypted_fields')
+    .from(ENCRYPTED_FIELDS_TABLE)
     .select('entry_id, field_name, encrypted_blob, iv, updated_at')
     .eq('entry_id', entryId)
 
@@ -25,7 +27,7 @@ export async function fetchAllFields(entryId: string): Promise<ServerEncryptedFi
 export async function fetchField(entryId: string, fieldName: FieldName): Promise<ServerEncryptedField | null> {
   const supabase = getSupabase()
   const { data, error } = await supabase
-    .from('encrypted_fields')
+    .from(ENCRYPTED_FIELDS_TABLE)
     .select('entry_id, field_name, encrypted_blob, iv, updated_at')
     .eq('entry_id', entryId)
     .eq('field_name', fieldName)
@@ -41,30 +43,29 @@ export async function fetchField(entryId: string, fieldName: FieldName): Promise
  * Uses onConflict to handle the unique (entry_id, field_name) constraint.
  * Requires userId for RLS (INSERT policy checks user_id = auth.uid()).
  */
-export async function saveField(userId: string, data: SaveFieldData): Promise<void> {
+export async function saveField(userId: string, data: SaveFieldData): Promise<string> {
   const supabase = getSupabase()
-  const { error } = await supabase.from('encrypted_fields').upsert(
-    {
-      user_id: userId,
-      entry_id: data.entryId,
-      field_name: data.fieldName,
-      encrypted_blob: data.encryptedBlob,
-      iv: data.iv,
-    },
-    { onConflict: 'entry_id,field_name' },
-  )
+  const { data: row, error } = await supabase
+    .from(ENCRYPTED_FIELDS_TABLE)
+    .upsert(
+      {
+        user_id: userId,
+        entry_id: data.entryId,
+        field_name: data.fieldName,
+        encrypted_blob: data.encryptedBlob,
+        iv: data.iv,
+      },
+      { onConflict: 'entry_id,field_name' },
+    )
+    .select('updated_at')
+    .single()
 
   if (error) throw wrapApiError(error)
+  return row.updated_at
 }
 
 /** Map a Supabase row (snake_case) to ServerEncryptedField (camelCase). */
-function mapServerField(row: {
-  entry_id: string
-  field_name: string
-  encrypted_blob: string
-  iv: string
-  updated_at: string
-}): ServerEncryptedField {
+function mapServerField(row: EncryptedFieldRow): ServerEncryptedField {
   return {
     entryId: row.entry_id,
     fieldName: row.field_name as FieldName,

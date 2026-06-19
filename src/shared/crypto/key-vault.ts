@@ -6,8 +6,8 @@ import { unwrapFieldKeys } from '@/shared/crypto/key-hierarchy'
 import { deriveKEK } from '@/shared/crypto/hkdf'
 import { MASTER_KEY_PASSWORD_AAD } from '@/shared/types/crypto.types'
 import { derivePasswordKey } from '@/shared/crypto/argon2id'
+import { DecryptionError } from '@/shared/crypto/errors'
 import type { CachedVaultEnvelope } from '@/shared/types/api.types'
-import { DecryptionError } from './errors'
 
 /**
  * Module-scoped crypto key vault.
@@ -22,13 +22,13 @@ class KeyVault {
     this.vault.set(id, key)
   }
 
-  async storeFieldKeys(fieldKeys: Map<string, CryptoKey>): Promise<void> {
+  storeFieldKeys(fieldKeys: Map<string, CryptoKey>): void {
     const fieldKeyNames: Array<string> = []
     for (const [name, key] of fieldKeys) {
       this.storeKey(name, key)
       fieldKeyNames.push(name)
     }
-    useCryptoStore.getState().setKeys(fieldKeyNames)
+    useCryptoStore.getState().markKeysLoaded(fieldKeyNames)
   }
 
   getKey(id: string): CryptoKey | undefined {
@@ -53,6 +53,42 @@ class KeyVault {
   clearVault(): void {
     this.zeroKeys()
     useCryptoStore.getState().clearVault()
+  }
+
+  /**
+   * Fetches all field keys from the server, unwraps them with the existing
+   * KEK, and stores the new CryptoKeys in the vault.
+   *
+   * Throws if the vault is locked (no KEK), on network errors, or on
+   * decryption failures (stale KEK from a password change on another device).
+   */
+  async syncFieldKeys(userId: string): Promise<void> {
+    try {
+      const kek = this.getKey('kek')
+      if (!kek) {
+        throw new Error('Cannot refresh field keys: vault is locked (no KEK)')
+      }
+
+      const serverFieldKeys = await fetchFieldKeys(userId)
+      const unwrappedKeys = await unwrapFieldKeys(serverFieldKeys, kek)
+      this.storeFieldKeys(unwrappedKeys)
+
+      // Update the cached envelope with the fresh field key data
+      const envelope = useCryptoStore.getState().cachedEnvelope
+      if (envelope) {
+        useCryptoStore.getState().setCachedEnvelope({
+          ...envelope,
+          fieldKeys: serverFieldKeys,
+        })
+      }
+    } catch (error) {
+      // Only clear vault on decryption failures (stale KEK).
+      // Network errors should not force a vault lock.
+      if (error instanceof DecryptionError) {
+        this.clearVault()
+      }
+      throw error
+    }
   }
 
   /**

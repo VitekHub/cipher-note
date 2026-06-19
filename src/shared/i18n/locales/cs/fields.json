@@ -24,6 +24,13 @@
     "paused": "Čeká na připojení...",
     "saved": "Uloženo",
     "error": "Uložení selhalo",
-    "retry": "Zkusit znovu"
+    "retry": "Zkusit znovu",
+    "remoteUpdate": "Aktualizováno"
+  },
+  "realtime": {
+    "conflict": "Toto pole bylo upraveno na jiném zařízení. Vaše úprava tuto změnu přepíše.",
+    "keyRotationApplied": "Klíč pro \"{{field}}\" byl aktualizován na v{{version}}.",
+    "keyRotationFailed": "Klíče vašeho trezoru jsou zastaralé. Prosím, odemkněte trezor znovu.",
+    "keyRotationNetworkError": "Chyba sítě při aktualizaci klíčů. Prosím, připojte se znovu a obnovte stránku."
   }
 }
