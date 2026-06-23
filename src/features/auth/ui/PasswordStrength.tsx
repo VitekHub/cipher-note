@@ -24,9 +24,10 @@ interface PasswordStrengthProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   anchorRef: RefObject<Element | null>
+  container?: RefObject<HTMLElement | null>
 }
 
-function PasswordStrength({ password, open, onOpenChange, anchorRef }: PasswordStrengthProps) {
+function PasswordStrength({ password, open, onOpenChange, anchorRef, container }: PasswordStrengthProps) {
   const { t } = useTranslation('auth')
 
   const { score, criteria } = useMemo(() => calculateStrength(password), [password])
@@ -35,7 +36,7 @@ function PasswordStrength({ password, open, onOpenChange, anchorRef }: PasswordS
 
   return (
     <Popover open={open && password.length > 0} onOpenChange={onOpenChange}>
-      <PopoverPortal>
+      <PopoverPortal container={container}>
         <PopoverPositioner anchor={anchorRef} side="right" sideOffset={12} align="center">
           <PopoverArrow />
           <div className="border-border bg-popover space-y-3 rounded-lg border p-3 shadow-md">

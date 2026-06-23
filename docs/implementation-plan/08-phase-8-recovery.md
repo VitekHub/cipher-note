@@ -1,29 +1,32 @@
 # Phase 8: Password & Recovery
 
-## Step 29 — Change Password Flow + UI
+## Step 29 — Change Password Flow + UI ✅
 
 **Goal:** Change password without re-encrypting field data (only re-wrap master key).
 
 **Code:**
-- `src/shared/crypto/change-password.ts`:
-  - Pure crypto function: derive new split KDF, unwrap master key with old password key, re-wrap with new password key
-  - No side effects (same pattern as `registration-crypto.ts`)
-- `src/features/settings/ui/ChangePasswordDialog.tsx`:
-  - Current password input + new password input + confirm new password
-  - Validation: new password must differ from current, confirm matches
-  - On submit:
-    1. Call change-password crypto function
-    2. Upload new wrapped master key + new salts to server
+- Validate `changePassword` pure crypto function in split-kdf module:
+  - Derive old password key from existing `keySalt`, unwrap master key
+  - Generate fresh `authSalt` and `keySalt`, derive new credentials via `deriveAuthCredentials`
+  - Re-wrap master key with new password key, return new auth hash + salts + wrapped master key + IV
+  - Zero out sensitive intermediate values
+- `src/features/auth/ui/ChangePasswordDialog.tsx`:
+  - Current password input + new password input (with password strength) + confirm new password
+  - Zod schema validation: required fields, min length, new password must differ from current, passwords must match
+  - On submit — 4-step orchestration:
+    1. Call pure crypto function to derive new credentials
+    2. Upload new key envelope to server
     3. Update Supabase Auth password (new auth_hash)
-    4. Update crypto store with new keys
-  - Show success/error feedback
-- Add i18n strings to `settings.json` for password change
+    4. Update cached envelope in crypto store
+  - Rollback: if step 3 fails after step 2 succeeds, attempt DB rollback with old envelope values; if rollback also fails, force logout
+  - Error mapping: `DecryptionError` → incorrect password, `AuthErrorCode` / `ApiErrorCode` → appropriate messages, network error fallback
+  - Show toast notifications for success/error feedback
+- `change-password-dialog-store.ts` — Zustand store for dialog open/close state (rendered at app layout level, triggered from SecuritySection)
+- Add i18n strings to `auth.json` (not `settings.json` — this is an auth feature)
 
 **Tests:**
-- Integration: change password → logout → login with new password → verify vault unlocks
-- Integration: change password → old password no longer works
-- Component test: form validation works
-- Security test: field data is unchanged after password change (no re-encryption)
+- Integration: change password → old password can no longer unwrap master key; field keys still decrypt unchanged data
+- Component test: form validation rejects mismatched/empty/too-short passwords
 
 ---
 

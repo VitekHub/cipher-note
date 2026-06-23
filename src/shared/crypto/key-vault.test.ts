@@ -9,7 +9,7 @@ import { deriveKEK } from '@/shared/crypto/hkdf'
 import { unwrapFieldKeys } from '@/shared/crypto/key-hierarchy'
 import { DecryptionError } from '@/shared/crypto/errors'
 import { derivePasswordKey } from '@/shared/crypto/argon2id'
-import { fetchMasterKeyEnvelope, fetchFieldKeys } from '@/shared/api/supabase-keys'
+import { fetchFreshEnvelope, fetchFieldKeys } from '@/shared/api/supabase-keys'
 
 // Shared mock data used across legacy key vault tests
 const { mockEnvelopeData, mockFieldKeysData } = vi.hoisted(() => ({
@@ -76,7 +76,7 @@ vi.mock('@/shared/crypto/hkdf', () => ({
 }))
 
 vi.mock('@/shared/api/supabase-keys', () => ({
-  fetchMasterKeyEnvelope: vi.fn().mockResolvedValue(mockEnvelopeData),
+  fetchFreshEnvelope: vi.fn().mockResolvedValue({ ...mockEnvelopeData, fieldKeys: mockFieldKeysData }),
   fetchFieldKeys: vi.fn().mockResolvedValue(mockFieldKeysData),
 }))
 
@@ -203,11 +203,10 @@ describe('unlockVault', () => {
     keyVault.zeroKeys()
   })
 
-  it('fetches envelope and field keys after authentication', async () => {
+  it('fetches vault envelope after authentication', async () => {
     await keyVault.unlockVault('1', 'testpass123')
 
-    expect(fetchMasterKeyEnvelope).toHaveBeenCalledWith('1')
-    expect(fetchFieldKeys).toHaveBeenCalledWith('1')
+    expect(fetchFreshEnvelope).toHaveBeenCalledWith('1')
   })
 
   it('derives KEK from password and envelope, then stores field keys', async () => {
@@ -242,8 +241,7 @@ describe('unlockVault', () => {
 
     await keyVault.unlockVault('1', 'testpass123')
 
-    expect(fetchMasterKeyEnvelope).not.toHaveBeenCalled()
-    expect(fetchFieldKeys).not.toHaveBeenCalled()
+    expect(fetchFreshEnvelope).not.toHaveBeenCalled()
     expect(mockSetEnvelope).not.toHaveBeenCalled()
     expect(derivePasswordKey).toHaveBeenCalled()
     expect(mockMarkKeysLoaded).toHaveBeenCalled()
@@ -276,8 +274,7 @@ describe('unlockVault', () => {
     vi.mocked(deriveKEK).mockResolvedValueOnce(new Uint8Array(32).fill(0x08))
     await keyVault.unlockVault('1', 'testpass123')
     expect(mockClearVault).toHaveBeenCalled()
-    expect(fetchMasterKeyEnvelope).toHaveBeenCalledWith('1')
-    expect(fetchFieldKeys).toHaveBeenCalledWith('1')
+    expect(fetchFreshEnvelope).toHaveBeenCalledWith('1')
     expect(mockSetEnvelope).toHaveBeenCalled()
     expect(storeFieldKeysSpy).toHaveBeenCalled()
   })
@@ -294,7 +291,7 @@ describe('unlockVault', () => {
     vi.mocked(deriveKEK).mockRejectedValue(new DecryptionError())
     await expect(keyVault.unlockVault('1', 'testpass123')).rejects.toThrow(DecryptionError)
     expect(mockClearVault).toHaveBeenCalled()
-    expect(fetchMasterKeyEnvelope).toHaveBeenCalled()
+    expect(fetchFreshEnvelope).toHaveBeenCalled()
   })
 
   it('does not retry on non-DecryptionError', async () => {
@@ -309,7 +306,7 @@ describe('unlockVault', () => {
     vi.mocked(derivePasswordKey).mockRejectedValueOnce(new Error('Some other error'))
     await expect(keyVault.unlockVault('1', 'testpass123')).rejects.toThrow('Some other error')
     expect(mockClearVault).not.toHaveBeenCalled()
-    expect(fetchMasterKeyEnvelope).not.toHaveBeenCalled()
+    expect(fetchFreshEnvelope).not.toHaveBeenCalled()
   })
 })
 

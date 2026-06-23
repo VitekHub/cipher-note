@@ -1,5 +1,5 @@
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
-import { fetchMasterKeyEnvelope, fetchFieldKeys } from '@/shared/api/supabase-keys'
+import { fetchFieldKeys, fetchFreshEnvelope } from '@/shared/api/supabase-keys'
 import { hexDecode, zeroFill } from '@/shared/crypto/crypto-utils'
 import { decrypt, importKey } from '@/shared/crypto/aes-gcm'
 import { unwrapFieldKeys } from '@/shared/crypto/key-hierarchy'
@@ -117,7 +117,7 @@ class KeyVault {
     }
 
     if (!cachedEnvelope || staleCache) {
-      const freshEnvelope = await this.fetchFreshEnvelope(userId)
+      const freshEnvelope = await fetchFreshEnvelope(userId)
       useCryptoStore.getState().setCachedEnvelope(freshEnvelope)
       await this.populateKeyVault(password, freshEnvelope)
     }
@@ -133,15 +133,6 @@ class KeyVault {
     this.storeKey('kek', kek)
     const unwrappedFieldKeys = await unwrapFieldKeys(envelope.fieldKeys, kek)
     this.storeFieldKeys(unwrappedFieldKeys)
-  }
-
-  private async fetchFreshEnvelope(userId: string): Promise<CachedVaultEnvelope> {
-    // Sequential: both calls require an active auth session;
-    // parallel requests can race on session initialization
-    const masterKeyEnvelope = await fetchMasterKeyEnvelope(userId)
-    const serverFieldKeys = await fetchFieldKeys(userId)
-    const freshEnvelope = { ...masterKeyEnvelope, fieldKeys: serverFieldKeys }
-    return freshEnvelope
   }
 
   private async deriveKekFromEnvelope(password: string, envelope: CachedVaultEnvelope): Promise<CryptoKey> {

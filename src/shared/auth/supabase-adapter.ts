@@ -63,6 +63,11 @@ class SupabaseAuthAdapter implements IAuthAdapter {
     throw new AuthError(AuthErrorCode.UNEXPECTED)
   }
 
+  async updatePassword(newAuthHash: string): Promise<void> {
+    const { error } = await getSupabase().auth.updateUser({ password: newAuthHash })
+    if (error) throw wrapSupabaseAuthError(error)
+  }
+
   onAuthStateChange(callback: AuthStateChangeCallback): AuthUnsubscribe {
     const { data } = getSupabase().auth.onAuthStateChange((_event, supabaseSession) => {
       if (!supabaseSession) {

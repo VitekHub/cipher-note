@@ -13,7 +13,7 @@ import { DecryptionError } from '@/shared/crypto/errors'
 import { MASTER_KEY_PASSWORD_AAD } from '@/shared/types/crypto.types'
 import { hexEncode } from '@/shared/crypto/crypto-utils'
 import type { WrappedFieldKey } from '@/shared/types/crypto.types'
-import type { ServerFieldKey } from '../types/api.types'
+import type { ServerFieldKey, ServerMasterKeyEnvelope } from '../types/api.types'
 
 // Mock Argon2id module — Web Worker won't run in jsdom
 vi.mock('@/shared/crypto/argon2id', () => ({
@@ -230,13 +230,14 @@ describe('crypto integration', () => {
       vi.mocked(deriveAuthHash).mockResolvedValue('b'.repeat(64))
       vi.mocked(generateSalt).mockReturnValueOnce(newAuthSalt).mockReturnValueOnce(newKeySalt)
 
-      const result = await changePassword(
-        PASSWORD,
-        'new-password-456',
-        authCreds.keySalt,
-        wrappedMasterKey,
-        masterKeyIV,
-      )
+      const envelope: ServerMasterKeyEnvelope = {
+        authSalt: hexEncode(authCreds.authSalt),
+        keySalt: hexEncode(authCreds.keySalt),
+        wrappedMasterKey: hexEncode(wrappedMasterKey),
+        masterKeyIV: hexEncode(masterKeyIV),
+      }
+
+      const result = await changePassword(PASSWORD, 'new-password-456', envelope)
 
       const newCryptoKey = await importKey(mockBytes(32, NEW_PASSWORD_KEY_FILL))
       const unwrapped = await decrypt(result.newWrappedMasterKey, newCryptoKey, {

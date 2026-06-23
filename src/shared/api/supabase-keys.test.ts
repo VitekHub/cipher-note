@@ -10,6 +10,7 @@ const mockSelect = vi.fn()
 const mockEq = vi.fn()
 const mockSingle = vi.fn()
 const mockUpsert = vi.fn()
+const mockUpdate = vi.fn()
 
 vi.mock('@/shared/api/supabase-client', () => ({
   getSupabase: () => ({
@@ -18,7 +19,14 @@ vi.mock('@/shared/api/supabase-client', () => ({
   }),
 }))
 
-import { fetchLoginSalts, fetchMasterKeyEnvelope, fetchFieldKeys, saveWrappedKey } from '@/shared/api/supabase-keys'
+import {
+  fetchLoginSalts,
+  fetchMasterKeyEnvelope,
+  fetchFieldKeys,
+  fetchFreshEnvelope,
+  saveWrappedKey,
+  updateMasterKeyEnvelope,
+} from '@/shared/api/supabase-keys'
 
 describe('fetchLoginSalts', () => {
   beforeEach(() => {
@@ -248,6 +256,120 @@ describe('fetchFieldKeys', () => {
   })
 })
 
+describe('fetchFreshEnvelope', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('combines master key envelope and field keys', async () => {
+    // Use separate mock functions for each query chain to avoid shared state issues
+    const keysSelect = vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        single: mockSingle,
+      }),
+    })
+    const keysFrom = vi.fn().mockReturnValue({ select: keysSelect })
+
+    const fieldKeysEq = vi.fn().mockResolvedValue({
+      data: [
+        { field_name: 'note', version: 1, wrapped_key: 'cc'.repeat(48), key_iv: 'dd'.repeat(12) },
+        { field_name: 'title', version: 1, wrapped_key: 'ee'.repeat(48), key_iv: 'ff'.repeat(12) },
+      ],
+      error: null,
+    })
+    const fieldKeysSelect = vi.fn().mockReturnValue({ eq: fieldKeysEq })
+    const fieldKeysFrom = vi.fn().mockReturnValue({ select: fieldKeysSelect })
+
+    mockSingle.mockResolvedValueOnce({
+      data: {
+        auth_salt: 'a1b2c3d4'.repeat(4),
+        key_salt: 'e5f6g7h8'.repeat(4),
+        wrapped_master_key: 'aa'.repeat(48),
+        master_key_iv: 'bb'.repeat(12),
+      },
+      error: null,
+    })
+
+    // First call returns keys chain, second returns field_keys chain
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'keys') return keysFrom()
+      return fieldKeysFrom()
+    })
+
+    const result = await fetchFreshEnvelope('user-1')
+
+    expect(result).toEqual({
+      authSalt: 'a1b2c3d4'.repeat(4),
+      keySalt: 'e5f6g7h8'.repeat(4),
+      wrappedMasterKey: 'aa'.repeat(48),
+      masterKeyIV: 'bb'.repeat(12),
+      fieldKeys: [
+        { fieldName: 'note', version: 1, wrappedKey: 'cc'.repeat(48), keyIV: 'dd'.repeat(12) },
+        { fieldName: 'title', version: 1, wrappedKey: 'ee'.repeat(48), keyIV: 'ff'.repeat(12) },
+      ],
+    })
+  })
+
+  it('propagates errors from fetchMasterKeyEnvelope', async () => {
+    mockFrom.mockReturnValue({
+      select: mockSelect.mockReturnValue({
+        eq: mockEq.mockReturnValue({
+          single: mockSingle,
+        }),
+      }),
+    })
+
+    mockSingle.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'Query error' },
+    })
+
+    try {
+      await fetchFreshEnvelope('user-1')
+      expect.unreachable('should have thrown')
+    } catch (e) {
+      expect(e).toBeInstanceOf(ApiError)
+    }
+  })
+
+  it('propagates errors from fetchFieldKeys', async () => {
+    // Use separate mock functions for the keys query to avoid polluting shared mocks
+    const keysSelect = vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        single: mockSingle,
+      }),
+    })
+
+    mockSingle.mockResolvedValueOnce({
+      data: {
+        auth_salt: 'a1b2c3d4'.repeat(4),
+        key_salt: 'e5f6g7h8'.repeat(4),
+        wrapped_master_key: 'aa'.repeat(48),
+        master_key_iv: 'bb'.repeat(12),
+      },
+      error: null,
+    })
+
+    const fieldKeysEq = vi.fn().mockResolvedValue({
+      data: null,
+      error: { message: 'Query error' },
+    })
+    const fieldKeysSelect = vi.fn().mockReturnValue({ eq: fieldKeysEq })
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'keys') return { select: keysSelect }
+      return { select: fieldKeysSelect }
+    })
+
+    try {
+      await fetchFreshEnvelope('user-1')
+      expect.unreachable('should have thrown')
+    } catch (e) {
+      expect(e).toBeInstanceOf(ApiError)
+    }
+  })
+})
+
 describe('saveWrappedKey', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -292,6 +414,58 @@ describe('saveWrappedKey', () => {
         version: 1,
         wrappedKey: 'aa'.repeat(48),
         keyIV: 'bb'.repeat(12),
+      })
+      expect.unreachable('should have thrown')
+    } catch (e) {
+      expect(e).toBeInstanceOf(ApiError)
+      expect((e as ApiError).code).toBe(ApiErrorCode.UNEXPECTED)
+    }
+  })
+})
+
+describe('updateMasterKeyEnvelope', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+
+    mockFrom.mockReturnValue({
+      update: mockUpdate.mockReturnValue({
+        eq: mockEq,
+      }),
+    })
+  })
+
+  it('updates keys table with correct data', async () => {
+    mockEq.mockResolvedValueOnce({ data: null, error: null })
+
+    await updateMasterKeyEnvelope('user-1', {
+      authSalt: 'a1b2c3d4'.repeat(4),
+      keySalt: 'e5f6g7h8'.repeat(4),
+      wrappedMasterKey: 'aa'.repeat(48),
+      masterKeyIV: 'bb'.repeat(12),
+    })
+
+    expect(mockFrom).toHaveBeenCalledWith('keys')
+    expect(mockUpdate).toHaveBeenCalledWith({
+      auth_salt: 'a1b2c3d4'.repeat(4),
+      key_salt: 'e5f6g7h8'.repeat(4),
+      wrapped_master_key: 'aa'.repeat(48),
+      master_key_iv: 'bb'.repeat(12),
+    })
+    expect(mockEq).toHaveBeenCalledWith('user_id', 'user-1')
+  })
+
+  it('throws ApiError on update error', async () => {
+    mockEq.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'Update failed' },
+    })
+
+    try {
+      await updateMasterKeyEnvelope('user-1', {
+        authSalt: 'a1b2c3d4'.repeat(4),
+        keySalt: 'e5f6g7h8'.repeat(4),
+        wrappedMasterKey: 'aa'.repeat(48),
+        masterKeyIV: 'bb'.repeat(12),
       })
       expect.unreachable('should have thrown')
     } catch (e) {

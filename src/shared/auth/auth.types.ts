@@ -19,6 +19,7 @@ export interface IAuthAdapter {
   getSession(): Promise<AuthResult | null>
   signup(username: string, authHash: string): Promise<AuthResult>
   recoverPassword(username: string, recoveryData: RecoveryCredentials): Promise<void>
+  updatePassword(newAuthHash: string): Promise<void>
   onAuthStateChange(callback: AuthStateChangeCallback): AuthUnsubscribe
 }
 

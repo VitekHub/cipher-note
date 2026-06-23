@@ -1,0 +1,104 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen } from '@/test/utils'
+import userEvent from '@testing-library/user-event'
+
+// Mock the auth service module
+vi.mock('@/features/auth/model/auth-service', () => ({
+  changeUserPassword: vi.fn(),
+}))
+
+import { ChangePasswordDialog } from './ChangePasswordDialog'
+import { changeUserPassword } from '@/features/auth/model/auth-service'
+import { useChangePasswordDialogStore } from '@/shared/auth/change-password-dialog-store'
+
+const mockChangeUserPassword = vi.mocked(changeUserPassword)
+
+describe('ChangePasswordDialog', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    useChangePasswordDialogStore.setState({ isChangePasswordDialogOpen: true })
+  })
+
+  it('renders the dialog with all form fields when open', () => {
+    render(<ChangePasswordDialog />)
+
+    expect(screen.getByLabelText('Current password')).toBeInTheDocument()
+    expect(screen.getByLabelText('New password')).toBeInTheDocument()
+    expect(screen.getByLabelText('Confirm new password')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Change password' })).toBeInTheDocument()
+  })
+
+  it('does not render form fields when closed', () => {
+    useChangePasswordDialogStore.setState({ isChangePasswordDialogOpen: false })
+    render(<ChangePasswordDialog />)
+
+    expect(screen.queryByLabelText('Current password')).not.toBeInTheDocument()
+  })
+
+  it('shows validation errors on empty submit', async () => {
+    const user = userEvent.setup()
+    render(<ChangePasswordDialog />)
+
+    const submitButton = screen.getByRole('button', { name: 'Change password' })
+    await user.click(submitButton)
+
+    // Should show validation errors for required fields
+    await vi.waitFor(() => {
+      expect(screen.getAllByRole('alert').length).toBeGreaterThan(0)
+    })
+  })
+
+  it('calls changeUserPassword on valid form submission', async () => {
+    const user = userEvent.setup()
+    mockChangeUserPassword.mockResolvedValue(undefined)
+
+    render(<ChangePasswordDialog />)
+
+    await user.type(screen.getByLabelText('Current password'), 'oldPassword123')
+    await user.type(screen.getByLabelText('New password'), 'newPassword456')
+    await user.type(screen.getByLabelText('Confirm new password'), 'newPassword456')
+
+    const submitButton = screen.getByRole('button', { name: 'Change password' })
+    await user.click(submitButton)
+
+    await vi.waitFor(() => {
+      expect(mockChangeUserPassword).toHaveBeenCalledWith('oldPassword123', 'newPassword456')
+    })
+  })
+
+  it('closes the dialog after successful submission', async () => {
+    const user = userEvent.setup()
+    mockChangeUserPassword.mockResolvedValue(undefined)
+
+    render(<ChangePasswordDialog />)
+
+    await user.type(screen.getByLabelText('Current password'), 'oldPassword123')
+    await user.type(screen.getByLabelText('New password'), 'newPassword456')
+    await user.type(screen.getByLabelText('Confirm new password'), 'newPassword456')
+
+    const submitButton = screen.getByRole('button', { name: 'Change password' })
+    await user.click(submitButton)
+
+    await vi.waitFor(() => {
+      expect(useChangePasswordDialogStore.getState().isChangePasswordDialogOpen).toBe(false)
+    })
+  })
+
+  it('shows error toast when changeUserPassword fails', async () => {
+    const user = userEvent.setup()
+    mockChangeUserPassword.mockRejectedValue(new Error('Test error'))
+
+    render(<ChangePasswordDialog />)
+
+    await user.type(screen.getByLabelText('Current password'), 'oldPassword123')
+    await user.type(screen.getByLabelText('New password'), 'newPassword456')
+    await user.type(screen.getByLabelText('Confirm new password'), 'newPassword456')
+
+    const submitButton = screen.getByRole('button', { name: 'Change password' })
+    await user.click(submitButton)
+
+    await vi.waitFor(() => {
+      expect(mockChangeUserPassword).toHaveBeenCalled()
+    })
+  })
+})

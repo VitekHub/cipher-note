@@ -17,6 +17,10 @@ vi.mock('@/features/vault/ui/VaultUnlockDialog', () => ({
   VaultUnlockDialog: () => React.createElement('div', { 'data-testid': 'vault-unlock-dialog' }),
 }))
 
+vi.mock('@/features/auth/ui/ChangePasswordDialog', () => ({
+  ChangePasswordDialog: () => React.createElement('div', { 'data-testid': 'change-password-dialog' }),
+}))
+
 vi.mock('@/features/vault/model/vault-timeout', () => ({
   useVaultTimeout: () => {},
 }))
@@ -70,5 +74,10 @@ describe('ProtectedLayout', () => {
   it('renders vault unlock dialog', () => {
     render(<ProtectedLayout />)
     expect(screen.getByTestId('vault-unlock-dialog')).toBeInTheDocument()
+  })
+
+  it('renders change password dialog', () => {
+    render(<ProtectedLayout />)
+    expect(screen.getByTestId('change-password-dialog')).toBeInTheDocument()
   })
 })

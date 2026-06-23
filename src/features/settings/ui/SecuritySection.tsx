@@ -4,6 +4,7 @@ import { ChevronRight, KeyRound, ShieldCheck, Fingerprint, type LucideIcon } fro
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/ui/card'
 import { Separator } from '@/shared/ui/separator'
+import { useChangePasswordDialogStore } from '@/shared/auth/change-password-dialog-store'
 
 const ITEMS: { icon: LucideIcon; labelKey: string }[] = [
   { icon: KeyRound, labelKey: 'security.changePassword' },
@@ -11,9 +12,15 @@ const ITEMS: { icon: LucideIcon; labelKey: string }[] = [
   { icon: Fingerprint, labelKey: 'security.keyVersions' },
 ]
 
-function SecurityItem({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
+function SecurityItem({ icon: Icon, label, onClick }: { icon: LucideIcon; label: string; onClick?: () => void }) {
   return (
-    <div className="flex items-center justify-between py-2">
+    <div
+      className={`flex items-center justify-between py-2 ${onClick ? 'hover:bg-muted/50 -mx-1 cursor-pointer rounded-md px-1' : ''}`}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e: React.KeyboardEvent) => e.key === 'Enter' && onClick() : undefined}
+    >
       <span className="flex items-center gap-3 text-sm">
         <Icon className="size-4" />
         {label}
@@ -25,6 +32,7 @@ function SecurityItem({ icon: Icon, label }: { icon: LucideIcon; label: string }
 
 function SecuritySection() {
   const { t } = useTranslation('settings')
+  const openChangePasswordDialog = useChangePasswordDialogStore((s) => s.openChangePasswordDialog)
 
   return (
     <Card>
@@ -36,7 +44,11 @@ function SecuritySection() {
         {ITEMS.map((item, i) => (
           <Fragment key={item.labelKey}>
             {i > 0 && <Separator />}
-            <SecurityItem icon={item.icon} label={t(item.labelKey)} />
+            <SecurityItem
+              icon={item.icon}
+              label={t(item.labelKey)}
+              onClick={item.labelKey === 'security.changePassword' ? openChangePasswordDialog : undefined}
+            />
           </Fragment>
         ))}
       </CardContent>
