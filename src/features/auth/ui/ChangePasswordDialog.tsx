@@ -56,7 +56,11 @@ function ChangePasswordDialog() {
     <Dialog
       open={isChangePasswordDialogOpen}
       onOpenChange={(open) => {
-        if (!open) closeChangePasswordDialog()
+        if (!open) {
+          reset()
+          setPasswordFocused(false)
+          closeChangePasswordDialog()
+        }
       }}
     >
       <DialogContent className="sm:max-w-md" ref={cardRef}>
@@ -123,7 +127,7 @@ function ChangePasswordDialog() {
           </FormField>
 
           <Button type="submit" className="w-full" disabled={isSubmitting}>
-            {isSubmitting && <Loader2 className="size-4 animate-spin" />}
+            {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : null}
             {isSubmitting ? t('changePassword.submitting') : t('changePassword.submit')}
           </Button>
         </form>

@@ -33,8 +33,19 @@ describe('SecuritySection', () => {
     const user = userEvent.setup()
     render(<SecuritySection />)
 
-    const changePasswordButton = screen.getByText('Change password')
+    const changePasswordButton = screen.getByRole('button', { name: /Change password/i })
     await user.click(changePasswordButton)
+
+    expect(useChangePasswordDialogStore.getState().isChangePasswordDialogOpen).toBe(true)
+  })
+
+  it('opens change password dialog with Space key', async () => {
+    const user = userEvent.setup()
+    render(<SecuritySection />)
+
+    const changePasswordButton = screen.getByRole('button', { name: /Change password/i })
+    changePasswordButton.focus()
+    await user.keyboard(' ')
 
     expect(useChangePasswordDialogStore.getState().isChangePasswordDialogOpen).toBe(true)
   })
