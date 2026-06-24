@@ -9,6 +9,7 @@ import { MobileNav } from './MobileNav'
 import { ResizeHandle } from '@/shared/ui/nav/ResizeHandle'
 import { VaultIndicator } from '@/features/vault/ui/VaultIndicator'
 import { VaultUnlockDialog } from '@/features/vault/ui/VaultUnlockDialog'
+import { ChangePasswordDialog } from '@/features/auth/ui/ChangePasswordDialog'
 import { OfflineBanner } from '@/shared/ui/OfflineBanner'
 import { useLayoutStore } from './layout-store'
 import { useResizable } from '@/shared/lib/use-resizable'
@@ -79,8 +80,9 @@ function ProtectedLayout() {
       {/* Mobile bottom navigation */}
       <MobileNav />
 
-      {/* Vault unlock dialog */}
+      {/* Dialogs */}
       <VaultUnlockDialog />
+      <ChangePasswordDialog />
     </div>
   )
 }

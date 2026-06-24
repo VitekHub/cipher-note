@@ -5,8 +5,29 @@ import { cn } from '@/shared/lib/utils'
 import { Button } from '@/shared/ui/button'
 import { XIcon } from 'lucide-react'
 
-function Dialog({ ...props }: DialogPrimitive.Root.Props) {
-  return <DialogPrimitive.Root data-slot="dialog" {...props} />
+/**
+ * Context that signals whether the dialog should prevent user-initiated close
+ * actions (overlay click, Escape key, close button). When true, onOpenChange(false)
+ * is blocked and the close button is hidden.
+ */
+const PreventCloseContext = React.createContext(false)
+
+function Dialog({ preventClose, onOpenChange, ...props }: DialogPrimitive.Root.Props & { preventClose?: boolean }) {
+  return (
+    <PreventCloseContext.Provider value={preventClose ?? false}>
+      <DialogPrimitive.Root
+        data-slot="dialog"
+        onOpenChange={
+          preventClose
+            ? (open: boolean, eventDetails: DialogPrimitive.Root.ChangeEventDetails) => {
+                if (open) onOpenChange?.(open, eventDetails)
+              }
+            : onOpenChange
+        }
+        {...props}
+      />
+    </PreventCloseContext.Provider>
+  )
 }
 
 function DialogTrigger({ ...props }: DialogPrimitive.Trigger.Props) {
@@ -42,6 +63,7 @@ function DialogContent({
 }: DialogPrimitive.Popup.Props & {
   showCloseButton?: boolean
 }) {
+  const preventClose = React.useContext(PreventCloseContext)
   return (
     <DialogPortal>
       <DialogOverlay />
@@ -54,7 +76,7 @@ function DialogContent({
         {...props}
       >
         {children}
-        {showCloseButton && (
+        {showCloseButton && !preventClose && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
             render={<Button variant="ghost" className="absolute top-2 right-2" size="icon-sm" />}
@@ -80,6 +102,7 @@ function DialogFooter({
 }: React.ComponentProps<'div'> & {
   showCloseButton?: boolean
 }) {
+  const preventClose = React.useContext(PreventCloseContext)
   return (
     <div
       data-slot="dialog-footer"
@@ -90,7 +113,9 @@ function DialogFooter({
       {...props}
     >
       {children}
-      {showCloseButton && <DialogPrimitive.Close render={<Button variant="outline" />}>Close</DialogPrimitive.Close>}
+      {showCloseButton && !preventClose && (
+        <DialogPrimitive.Close render={<Button variant="outline" />}>Close</DialogPrimitive.Close>
+      )}
     </div>
   )
 }

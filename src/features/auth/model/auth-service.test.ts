@@ -56,6 +56,16 @@ vi.mock('@/shared/api/supabase-registration', () => ({
 }))
 
 // Mock Supabase keys
+const { mockFetchedEnvelope } = vi.hoisted(() => ({
+  mockFetchedEnvelope: {
+    authSalt: 'f1e2d3c4'.repeat(4),
+    keySalt: 'b5a6g7h8'.repeat(4),
+    wrappedMasterKey: 'ff'.repeat(48),
+    masterKeyIV: 'ee'.repeat(12),
+    fieldKeys: [] as import('@/shared/types/api.types').ServerFieldKey[],
+  },
+}))
+
 vi.mock('@/shared/api/supabase-keys', () => ({
   fetchLoginSalts: vi.fn().mockResolvedValue({
     authSalt: '01'.repeat(16),
@@ -63,6 +73,8 @@ vi.mock('@/shared/api/supabase-keys', () => ({
   }),
   fetchMasterKeyEnvelope: vi.fn(),
   fetchFieldKeys: vi.fn(),
+  fetchFreshEnvelope: vi.fn().mockResolvedValue(mockFetchedEnvelope),
+  updateMasterKeyEnvelope: vi.fn().mockResolvedValue(undefined),
 }))
 
 // Mock Argon2id
@@ -95,6 +107,7 @@ vi.mock('@/shared/auth/supabase-adapter', () => ({
     logout: vi.fn().mockResolvedValue(undefined),
     getSession: vi.fn().mockResolvedValue(null),
     onAuthStateChange: vi.fn().mockReturnValue(vi.fn()),
+    updatePassword: vi.fn().mockResolvedValue(undefined),
   },
 }))
 
@@ -135,22 +148,39 @@ vi.mock('@/shared/crypto/key-vault-service', () => ({
   populateKeyVault: vi.fn().mockResolvedValue(undefined),
 }))
 
+// Mock split-kdf changePassword (hoisted mock — factory must not reference external variables)
+vi.mock('@/shared/crypto/split-kdf', async () => {
+  const actual = await vi.importActual<typeof import('@/shared/crypto/split-kdf')>('@/shared/crypto/split-kdf')
+  return {
+    ...actual,
+    changePassword: vi.fn().mockResolvedValue({
+      newAuthHash: 'newhash'.padEnd(64, '0'),
+      newAuthSalt: new Uint8Array(16).fill(0x11),
+      newKeySalt: new Uint8Array(16).fill(0x22),
+      newWrappedMasterKey: new Uint8Array(48).fill(0x33),
+      newMasterKeyIV: new Uint8Array(12).fill(0x44),
+    }),
+  }
+})
+
 import {
   signUpUser,
   loginUser,
   logoutUser,
   restoreSession,
   subscribeToAuthChanges,
+  changeUserPassword,
 } from '@/features/auth/model/auth-service'
 import { deriveRegistrationKeys } from '@/features/auth/model/registration-crypto'
 import { authAdapter } from '@/shared/auth/supabase-adapter'
 import { uploadRegistrationData } from '@/shared/api/supabase-registration'
-import { fetchLoginSalts } from '@/shared/api/supabase-keys'
+import { fetchLoginSalts, updateMasterKeyEnvelope, fetchFreshEnvelope } from '@/shared/api/supabase-keys'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { AuthError, AuthErrorCode } from '@/shared/auth/auth-errors'
 import type { AuthResult } from '@/shared/auth/auth.types'
 import { keyVault } from '@/shared/crypto/key-vault'
 import { terminateWorker } from '@/shared/crypto/argon2id'
+import { changePassword } from '@/shared/crypto/split-kdf'
 
 describe('signUpUser', () => {
   beforeEach(() => {
@@ -477,5 +507,158 @@ describe('subscribeToAuthChanges', () => {
     expect(mockClearVault).toHaveBeenCalled()
     expect(mockReset).toHaveBeenCalled()
     expect(terminateWorker).toHaveBeenCalled()
+  })
+})
+
+describe('changeUserPassword', () => {
+  const mockEnvelope = {
+    authSalt: 'a1b2c3d4'.repeat(4),
+    keySalt: 'e5f6g7h8'.repeat(4),
+    wrappedMasterKey: 'aa'.repeat(48),
+    masterKeyIV: 'bb'.repeat(12),
+    fieldKeys: [],
+  }
+
+  const mockChangeResult = {
+    newAuthHash: 'newhash'.padEnd(64, '0'),
+    newAuthSalt: new Uint8Array(16).fill(0x11) as Uint8Array<ArrayBuffer>,
+    newKeySalt: new Uint8Array(16).fill(0x22) as Uint8Array<ArrayBuffer>,
+    newWrappedMasterKey: new Uint8Array(48).fill(0x33) as Uint8Array<ArrayBuffer>,
+    newMasterKeyIV: new Uint8Array(12).fill(0x44) as Uint8Array<ArrayBuffer>,
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    // Reset crypto store mock with envelope
+    cryptoStoreState.cachedEnvelope = mockEnvelope as unknown as import('@/shared/types/api.types').CachedVaultEnvelope
+    // Reset auth store mock with user
+    vi.mocked(useAuthStore.getState).mockReturnValue({
+      setLoading: mockSetLoading,
+      setAuth: mockSetAuth,
+      setRestoringSession: mockSetRestoringSession,
+      reset: mockReset,
+      isRestoringSession: false,
+      user: { id: 'user-1', username: 'testuser', createdAt: '2024-01-01' },
+      session: { accessToken: 'tok', expiresAt: 0 },
+      setUser: vi.fn(),
+      setSession: vi.fn(),
+      isLoading: false,
+    })
+  })
+
+  it('calls changePassword with envelope and passwords', async () => {
+    vi.mocked(changePassword).mockResolvedValueOnce(mockChangeResult)
+    vi.mocked(updateMasterKeyEnvelope).mockResolvedValueOnce(undefined)
+    vi.mocked(authAdapter.updatePassword).mockResolvedValueOnce(undefined)
+
+    await changeUserPassword('oldPassword', 'newPassword')
+
+    expect(changePassword).toHaveBeenCalledWith('oldPassword', 'newPassword', mockEnvelope)
+  })
+
+  it('uploads new key envelope to DB', async () => {
+    vi.mocked(changePassword).mockResolvedValueOnce(mockChangeResult)
+    vi.mocked(updateMasterKeyEnvelope).mockResolvedValueOnce(undefined)
+    vi.mocked(authAdapter.updatePassword).mockResolvedValueOnce(undefined)
+
+    await changeUserPassword('oldPassword', 'newPassword')
+
+    expect(updateMasterKeyEnvelope).toHaveBeenCalledWith('user-1', {
+      authSalt: '11111111111111111111111111111111',
+      keySalt: '22222222222222222222222222222222',
+      wrappedMasterKey: '33'.repeat(48),
+      masterKeyIV: '44'.repeat(12),
+    })
+  })
+
+  it('updates Supabase Auth password with new auth hash', async () => {
+    vi.mocked(changePassword).mockResolvedValueOnce(mockChangeResult)
+    vi.mocked(updateMasterKeyEnvelope).mockResolvedValueOnce(undefined)
+    vi.mocked(authAdapter.updatePassword).mockResolvedValueOnce(undefined)
+
+    await changeUserPassword('oldPassword', 'newPassword')
+
+    expect(authAdapter.updatePassword).toHaveBeenCalledWith(mockChangeResult.newAuthHash)
+  })
+
+  it('updates cached envelope after success', async () => {
+    vi.mocked(changePassword).mockResolvedValueOnce(mockChangeResult)
+    vi.mocked(updateMasterKeyEnvelope).mockResolvedValueOnce(undefined)
+    vi.mocked(authAdapter.updatePassword).mockResolvedValueOnce(undefined)
+
+    await changeUserPassword('oldPassword', 'newPassword')
+
+    expect(mockSetEnvelope).toHaveBeenCalledWith(
+      expect.objectContaining({
+        authSalt: '11111111111111111111111111111111',
+        keySalt: '22222222222222222222222222222222',
+        wrappedMasterKey: '33'.repeat(48),
+        masterKeyIV: '44'.repeat(12),
+      }),
+    )
+  })
+
+  it('throws when no user is authenticated', async () => {
+    vi.mocked(useAuthStore.getState).mockReturnValue({
+      setLoading: mockSetLoading,
+      setAuth: mockSetAuth,
+      setRestoringSession: mockSetRestoringSession,
+      reset: mockReset,
+      isRestoringSession: false,
+      user: null,
+      session: null,
+      isLoading: false,
+      setUser: vi.fn(),
+      setSession: vi.fn(),
+    })
+
+    await expect(changeUserPassword('oldPassword', 'newPassword')).rejects.toThrow('No authenticated user')
+  })
+
+  it('fetches vault envelope when cache is empty', async () => {
+    cryptoStoreState.cachedEnvelope = null
+    vi.mocked(changePassword).mockResolvedValueOnce(mockChangeResult)
+    vi.mocked(updateMasterKeyEnvelope).mockResolvedValueOnce(undefined)
+    vi.mocked(authAdapter.updatePassword).mockResolvedValueOnce(undefined)
+
+    await changeUserPassword('oldPassword', 'newPassword')
+
+    expect(fetchFreshEnvelope).toHaveBeenCalledWith('user-1')
+    expect(changePassword).toHaveBeenCalledWith('oldPassword', 'newPassword', mockFetchedEnvelope)
+  })
+
+  it('throws when fetchFreshEnvelope fails and no cache exists', async () => {
+    cryptoStoreState.cachedEnvelope = null
+    vi.mocked(fetchFreshEnvelope).mockRejectedValueOnce(new Error('Network error'))
+
+    await expect(changeUserPassword('oldPassword', 'newPassword')).rejects.toThrow('Network error')
+  })
+
+  it('rolls back DB on auth update failure', async () => {
+    vi.mocked(changePassword).mockResolvedValueOnce(mockChangeResult)
+    vi.mocked(updateMasterKeyEnvelope).mockResolvedValueOnce(undefined)
+    vi.mocked(authAdapter.updatePassword).mockRejectedValueOnce(new AuthError(AuthErrorCode.NETWORK_ERROR))
+    // Rollback call
+    vi.mocked(updateMasterKeyEnvelope).mockResolvedValueOnce(undefined)
+
+    await expect(changeUserPassword('oldPassword', 'newPassword')).rejects.toThrow()
+
+    // First call: upload new data; second call: rollback with old data
+    expect(updateMasterKeyEnvelope).toHaveBeenCalledTimes(2)
+    expect(updateMasterKeyEnvelope).toHaveBeenNthCalledWith(2, 'user-1', {
+      authSalt: mockEnvelope.authSalt,
+      keySalt: mockEnvelope.keySalt,
+      wrappedMasterKey: mockEnvelope.wrappedMasterKey,
+      masterKeyIV: mockEnvelope.masterKeyIV,
+    })
+  })
+
+  it('throws DB error when DB update fails', async () => {
+    vi.mocked(changePassword).mockResolvedValueOnce(mockChangeResult)
+    const dbError = new Error('DB update failed')
+    vi.mocked(updateMasterKeyEnvelope).mockRejectedValueOnce(dbError)
+
+    await expect(changeUserPassword('oldPassword', 'newPassword')).rejects.toThrow('DB update failed')
+    expect(authAdapter.updatePassword).not.toHaveBeenCalled()
   })
 })

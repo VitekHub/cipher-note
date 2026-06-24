@@ -2,7 +2,13 @@ import { getSupabase } from '@/shared/api/supabase-client'
 import { USERNAME_PATTERN } from '@/shared/auth/username-utils'
 import { AuthError, AuthErrorCode, wrapAuthError } from '@/shared/auth/auth-errors'
 import { ApiError, ApiErrorCode, wrapApiError } from '@/shared/api/api-errors'
-import type { ServerMasterKeyEnvelope, ServerFieldKey, SaveWrappedKeyData } from '@/shared/types/api.types'
+import type {
+  ServerMasterKeyEnvelope,
+  ServerFieldKey,
+  CachedVaultEnvelope,
+  SaveWrappedKeyData,
+  UpdateMasterKeyEnvelopeData,
+} from '@/shared/types/api.types'
 import { FIELD_KEYS_TABLE } from '@/shared/types/supabase-schema'
 
 export interface LoginSalts {
@@ -79,6 +85,17 @@ export async function fetchFieldKeys(userId: string): Promise<ServerFieldKey[]> 
 }
 
 /**
+ * Fetch fresh master key envelope + field keys.
+ */
+export async function fetchFreshEnvelope(userId: string): Promise<CachedVaultEnvelope> {
+  // Sequential: both calls require an active auth session;
+  // parallel requests can race on session initialization
+  const masterKeyEnvelope = await fetchMasterKeyEnvelope(userId)
+  const fieldKeys = await fetchFieldKeys(userId)
+  return { ...masterKeyEnvelope, fieldKeys }
+}
+
+/**
  * Upsert a wrapped field key for a user.
  * Uses onConflict to handle the unique (user_id, field_name, version) constraint.
  */
@@ -94,6 +111,25 @@ export async function saveWrappedKey(userId: string, data: SaveWrappedKeyData): 
     },
     { onConflict: 'user_id,field_name,version' },
   )
+
+  if (error) throw wrapApiError(error)
+}
+
+/**
+ * Update the user's key envelope (auth_salt, key_salt, wrapped_master_key, master_key_iv).
+ * Used after a password change to store the re-wrapped master key.
+ */
+export async function updateMasterKeyEnvelope(userId: string, data: UpdateMasterKeyEnvelopeData): Promise<void> {
+  const supabase = getSupabase()
+  const { error } = await supabase
+    .from('keys')
+    .update({
+      auth_salt: data.authSalt,
+      key_salt: data.keySalt,
+      wrapped_master_key: data.wrappedMasterKey,
+      master_key_iv: data.masterKeyIV,
+    })
+    .eq('user_id', userId)
 
   if (error) throw wrapApiError(error)
 }

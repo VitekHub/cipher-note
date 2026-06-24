@@ -183,6 +183,7 @@ See `IMPLEMENTATION-PLAN.md` for the full 36-step plan.
 - Step 26 (Auto-Save + Sync Flow) — complete
 - Step 27 (Supabase Realtime Adapter) — complete
 - Step 28 (Multi-Device Session Handling) — complete
+- Step 29 (Change Password Flow + UI) — complete
 
 ### Implementation Notes
 
@@ -212,5 +213,6 @@ Non-obvious decisions not visible from code alone:
 - **Auth error codes fold username format into invalid credentials**: `AuthErrorCode.INVALID_USERNAME_FORMAT` doesn't exist — `supabase-keys.ts` throws `INVALID_CREDENTIALS` for invalid username format. This is deliberate: showing a different error for "wrong format" vs "wrong password" would leak whether a username exists. Missing key data is `ApiError(NOT_FOUND)`, not an auth error — `KEYS_NOT_FOUND` was removed from `AuthErrorCode` because "data not found" is a data-layer concern, not an auth concern.
 - **`AuthError` vs `ApiError` domain boundary**: `AuthError` (in `shared/auth/auth-errors.ts`) covers authentication errors (`INVALID_CREDENTIALS`, `USERNAME_TAKEN`, `NETWORK_ERROR`, `UNEXPECTED`). `ApiError` (in `shared/api/api-errors.ts`) covers data-layer errors (`NETWORK_ERROR`, `NOT_FOUND`, `UNEXPECTED`). `fetchLoginSalts` throws `AuthError` because it's a pre-auth RPC that's part of the login flow; all other data queries throw `ApiError`. Each domain has its own `wrapXxxError` that classifies raw errors using the shared `isNetworkError` helper.
 - **Network errors can bypass the adapter boundary**: `isNetworkError` (in `shared/lib/network-errors.ts`) is shared by both `wrapAuthError` and `wrapApiError`. Raw `TypeError('Failed to fetch')` from the browser can reach the UI without being wrapped by any adapter, so `getAuthErrorMessage` in `auth-error-messages.ts` also calls `isNetworkError` as a final fallback.
+- **Change password rollback**: `changeUserPassword` in `auth-service.ts` is a 4-step flow (derive → upload envelope → update auth → update store). If step 3 (Supabase Auth update) fails after step 2 (DB envelope upload) succeeds, it attempts to roll back the DB write with the old envelope values. If rollback also fails, it forces logout to prevent inconsistent state.
 - **Stale KEK detection**: Stale KEK from a password change on another device is detected in two places: (1) `use-realtime-sync.ts` `onKeyRotation` — when a key rotation event arrives, `syncFieldKeys` tries to unwrap with the current KEK; a `DecryptionError` means the KEK is stale, so `clearVault()` forces re-auth. (2) `key-vault.ts` `unlockVault` — if the cached envelope is stale, `clearVault` + retry from server. The save path (`useSaveField`) cannot produce a `DecryptionError` — `encryptField` only encrypts, and `getFieldKey` throws a generic `Error` when the vault is locked, not `DecryptionError`.
 

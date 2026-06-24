@@ -10,9 +10,10 @@
 
 import { deriveAuthHash, derivePasswordKey } from '@/shared/crypto/argon2id'
 import { importKey, encrypt, decrypt } from '@/shared/crypto/aes-gcm'
-import { generateSalt, generateIV, zeroFill } from '@/shared/crypto/crypto-utils'
+import { generateSalt, generateIV, hexDecode, zeroFill } from '@/shared/crypto/crypto-utils'
 import { MASTER_KEY_PASSWORD_AAD } from '@/shared/types/crypto.types'
 import type { AuthCredentials, PasswordChangeResult } from '@/shared/types/crypto.types'
+import type { ServerMasterKeyEnvelope } from '@/shared/types/api.types'
 
 /**
  * Derive authentication credentials for a new registration.
@@ -36,14 +37,20 @@ export async function deriveAuthCredentials(password: string): Promise<AuthCrede
  *
  * The master key itself is never changed - only its wrapping.
  * Field keys encrypted with the KEK are completely unaffected.
+ *
+ * @param oldPassword - The user's current password
+ * @param newPassword - The desired new password
+ * @param envelope - The current key envelope (hex strings from the server)
  */
 export async function changePassword(
   oldPassword: string,
   newPassword: string,
-  keySalt: Uint8Array<ArrayBuffer>,
-  wrappedMasterKey: Uint8Array<ArrayBuffer>,
-  masterKeyIV: Uint8Array<ArrayBuffer>,
+  envelope: ServerMasterKeyEnvelope,
 ): Promise<PasswordChangeResult> {
+  const keySalt = hexDecode(envelope.keySalt)
+  const wrappedMasterKey = hexDecode(envelope.wrappedMasterKey)
+  const masterKeyIV = hexDecode(envelope.masterKeyIV)
+
   // Derive old password key and unwrap master key
   const oldPasswordKey = await derivePasswordKey(oldPassword, keySalt)
   const oldWrappingKey = await importKey(oldPasswordKey)

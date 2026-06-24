@@ -97,6 +97,7 @@ const mockSignInWithPassword = vi.fn()
 const mockSignOut = vi.fn()
 const mockGetSession = vi.fn()
 const mockOnAuthStateChange = vi.fn()
+const mockUpdateUser = vi.fn()
 
 vi.mock('@/shared/api/supabase-client', () => ({
   getSupabase: () => ({
@@ -106,6 +107,7 @@ vi.mock('@/shared/api/supabase-client', () => ({
       signOut: mockSignOut,
       getSession: mockGetSession,
       onAuthStateChange: mockOnAuthStateChange,
+      updateUser: mockUpdateUser,
     },
   }),
 }))
@@ -248,5 +250,40 @@ describe('SupabaseAuthAdapter — onAuthStateChange', () => {
 
     expect(receivedResults).toHaveLength(1)
     expect(receivedResults[0]).toBeNull()
+  })
+})
+
+describe('SupabaseAuthAdapter — updatePassword', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('calls updateUser with new auth hash', async () => {
+    const { authAdapter } = await import('./supabase-adapter')
+
+    mockUpdateUser.mockResolvedValueOnce({ data: { user: {} }, error: null })
+
+    await authAdapter.updatePassword('newauthhash12345678901234567890123456789012345678901234567890123456')
+
+    expect(mockUpdateUser).toHaveBeenCalledWith({
+      password: 'newauthhash12345678901234567890123456789012345678901234567890123456',
+    })
+  })
+
+  it('throws AuthError on update failure', async () => {
+    const { authAdapter } = await import('./supabase-adapter')
+
+    mockUpdateUser.mockResolvedValueOnce({
+      data: null,
+      error: { status: 400, code: 'invalid_credentials', message: 'Invalid credentials' },
+    })
+
+    try {
+      await authAdapter.updatePassword('newauthhash')
+      expect.unreachable('should have thrown')
+    } catch (e) {
+      expect(e).toBeInstanceOf(AuthError)
+      expect((e as AuthError).code).toBe(AuthErrorCode.INVALID_CREDENTIALS)
+    }
   })
 })

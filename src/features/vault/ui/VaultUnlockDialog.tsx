@@ -70,7 +70,7 @@ function VaultUnlockDialog() {
   }
 
   return (
-    <Dialog open={isUnlockDialogOpen} onOpenChange={handleOpenChange}>
+    <Dialog open={isUnlockDialogOpen} preventClose={isSubmitting} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>{t('vaultUnlockDialog.title')}</DialogTitle>

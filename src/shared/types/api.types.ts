@@ -51,3 +51,10 @@ export interface SaveRecoveryData {
   wrappedMasterKey: string
   recoveryIV: string
 }
+
+export interface UpdateMasterKeyEnvelopeData {
+  authSalt: string
+  keySalt: string
+  wrappedMasterKey: string
+  masterKeyIV: string
+}

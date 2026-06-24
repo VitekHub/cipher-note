@@ -3,9 +3,10 @@ import { useAuthStore } from '@/features/auth/model/auth-store'
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
 import { authAdapter } from '@/shared/auth/supabase-adapter'
 import { uploadRegistrationData } from '@/shared/api/supabase-registration'
-import { fetchLoginSalts } from '@/shared/api/supabase-keys'
+import { fetchLoginSalts, updateMasterKeyEnvelope, fetchFreshEnvelope } from '@/shared/api/supabase-keys'
 import { hexDecode, hexEncode } from '@/shared/crypto/crypto-utils'
 import { deriveAuthHash, terminateWorker } from '@/shared/crypto/argon2id'
+import { changePassword } from '@/shared/crypto/split-kdf'
 import { keyVault } from '@/shared/crypto/key-vault'
 
 /**
@@ -80,6 +81,72 @@ export async function loginUser(username: string, password: string) {
   } finally {
     authStore.setLoading(false)
   }
+}
+
+/**
+ * Changes the user's password by re-wrapping the master key.
+ *
+ * The master key itself never changes — only its wrapping with the new
+ * password-derived key. Field keys (encrypted with KEK) are unaffected.
+ *
+ * Flow:
+ * 1. Pure crypto: unwrap master key with old password, re-wrap with new
+ * 2. Upload new key envelope to DB
+ * 3. Update Supabase Auth password (new auth hash)
+ * 4. Update cached envelope in crypto store
+ *
+ * If step 3 fails after step 2 succeeds, attempts to roll back the DB update
+ * with the old envelope values. If rollback also fails, forces logout.
+ */
+export async function changeUserPassword(currentPassword: string, newPassword: string): Promise<void> {
+  const { user } = useAuthStore.getState()
+
+  if (!user) throw new Error('No authenticated user')
+
+  const envelope = useCryptoStore.getState().cachedEnvelope ?? (await fetchFreshEnvelope(user.id))
+
+  // Step 1: Pure crypto — derive new credentials and re-wrap master key
+  const result = await changePassword(currentPassword, newPassword, envelope)
+
+  // Step 2: Upload new key envelope to DB
+  const updateData = {
+    authSalt: hexEncode(result.newAuthSalt),
+    keySalt: hexEncode(result.newKeySalt),
+    wrappedMasterKey: hexEncode(result.newWrappedMasterKey),
+    masterKeyIV: hexEncode(result.newMasterKeyIV),
+  }
+
+  await updateMasterKeyEnvelope(user.id, updateData)
+
+  // Step 3: Update Supabase Auth password
+  try {
+    await authAdapter.updatePassword(result.newAuthHash)
+  } catch (authError) {
+    // Auth update failed — DB has new keys but auth still uses old hash.
+    // Attempt rollback of DB update.
+    try {
+      await updateMasterKeyEnvelope(user.id, {
+        authSalt: envelope.authSalt,
+        keySalt: envelope.keySalt,
+        wrappedMasterKey: envelope.wrappedMasterKey,
+        masterKeyIV: envelope.masterKeyIV,
+      })
+    } catch {
+      // Rollback failed — force logout to prevent inconsistent state
+      await logoutUser()
+      throw new Error('Password update partially failed. Please log in again.')
+    }
+    throw authError
+  }
+
+  // Step 4: Update cached envelope with new values
+  useCryptoStore.getState().setCachedEnvelope({
+    ...envelope,
+    authSalt: updateData.authSalt,
+    keySalt: updateData.keySalt,
+    wrappedMasterKey: updateData.wrappedMasterKey,
+    masterKeyIV: updateData.masterKeyIV,
+  })
 }
 
 function logoutCleanup() {
