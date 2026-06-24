@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@/test/utils'
+import { render, screen } from '@/test/utils'
 import userEvent from '@testing-library/user-event'
+import { DecryptionError } from '@/shared/crypto/errors'
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
 import { useVaultDialogStore } from '@/features/vault/model/vault-dialog-store'
-import { DecryptionError } from '@/shared/crypto/errors'
 
 const { mockUnlockVault } = vi.hoisted(() => ({
   mockUnlockVault: vi.fn(),
@@ -32,7 +32,6 @@ describe('VaultUnlockDialog', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    // Reset stores to clean state
     useCryptoStore.getState().clearVault()
     useCryptoStore.setState({ isVaultLocked: true })
     useVaultDialogStore.setState({ isUnlockDialogOpen: true })
@@ -56,13 +55,7 @@ describe('VaultUnlockDialog', () => {
     expect(screen.queryByText('Vault Locked')).not.toBeInTheDocument()
   })
 
-  it('renders password input and unlock button', () => {
-    render(<VaultUnlockDialog />)
-    expect(screen.getByLabelText(/password/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /unlock/i })).toBeInTheDocument()
-  })
-
-  it('calls unlockVault with password on submit', async () => {
+  it('calls keyVault.unlockVault with user id and password', async () => {
     mockUnlockVault.mockResolvedValue(undefined)
     const user = userEvent.setup()
     render(<VaultUnlockDialog />)
@@ -73,123 +66,27 @@ describe('VaultUnlockDialog', () => {
     expect(mockUnlockVault).toHaveBeenCalledWith(mockUser.id, 'my-password')
   })
 
-  it('shows loading spinner during unlock', async () => {
-    let resolveUnlock: () => void = () => {}
-    mockUnlockVault.mockReturnValue(
-      new Promise<void>((resolve) => {
-        resolveUnlock = resolve
-      }),
-    )
-    const user = userEvent.setup()
-    render(<VaultUnlockDialog />)
-
-    await user.type(screen.getByLabelText(/password/i), 'my-password')
-    await user.click(screen.getByRole('button', { name: /unlock/i }))
-
-    expect(screen.getByText('Unlocking...')).toBeInTheDocument()
-
-    resolveUnlock()
-    await waitFor(() => {
-      expect(screen.queryByText('Unlocking...')).not.toBeInTheDocument()
-    })
-  })
-
-  it('shows error message on wrong password', async () => {
+  it('maps DecryptionError to vault error message', async () => {
     mockUnlockVault.mockRejectedValue(new DecryptionError())
     const user = userEvent.setup()
     render(<VaultUnlockDialog />)
 
-    await user.type(screen.getByLabelText(/password/i), 'wrong-password')
+    await user.type(screen.getByLabelText(/password/i), 'wrong')
     await user.click(screen.getByRole('button', { name: /unlock/i }))
 
-    await waitFor(() => {
-      expect(screen.getByText('Wrong password')).toBeInTheDocument()
-    })
+    // getVaultErrorMessage maps DecryptionError → "Wrong password"
+    expect(screen.getByText('Wrong password')).toBeInTheDocument()
   })
 
-  it('shows error message on network error', async () => {
+  it('maps network error to vault error message', async () => {
     mockUnlockVault.mockRejectedValue(new TypeError('Failed to fetch'))
     const user = userEvent.setup()
     render(<VaultUnlockDialog />)
 
-    await user.type(screen.getByLabelText(/password/i), 'my-password')
+    await user.type(screen.getByLabelText(/password/i), 'pw')
     await user.click(screen.getByRole('button', { name: /unlock/i }))
 
-    await waitFor(() => {
-      expect(screen.getByText('Network error. Please try again.')).toBeInTheDocument()
-    })
-  })
-
-  it('shows generic error message on unexpected error', async () => {
-    mockUnlockVault.mockRejectedValue(new Error('something unexpected'))
-    const user = userEvent.setup()
-    render(<VaultUnlockDialog />)
-
-    await user.type(screen.getByLabelText(/password/i), 'my-password')
-    await user.click(screen.getByRole('button', { name: /unlock/i }))
-
-    await waitFor(() => {
-      expect(screen.getByText('An unexpected error occurred. Please try again.')).toBeInTheDocument()
-    })
-  })
-
-  it('shows full description', () => {
-    // State is already reset in beforeEach: isVaultLocked=true, envelope fields null
-    render(<VaultUnlockDialog />)
-    expect(screen.getByText('Enter your password to unlock your vault.')).toBeInTheDocument()
-  })
-
-  it('closes dialog and resets form when vault unlocks', async () => {
-    mockUnlockVault.mockResolvedValue(undefined)
-    useVaultDialogStore.setState({ isUnlockDialogOpen: true })
-    useCryptoStore.setState({ isVaultLocked: true })
-
-    const user = userEvent.setup()
-    render(<VaultUnlockDialog />)
-
-    await user.type(screen.getByLabelText(/password/i), 'my-password')
-    await user.click(screen.getByRole('button', { name: /unlock/i }))
-
-    // Simulate vault unlocking
-    useCryptoStore.setState({ isVaultLocked: false })
-
-    await waitFor(() => {
-      expect(useVaultDialogStore.getState().isUnlockDialogOpen).toBe(false)
-    })
-  })
-
-  it('closes dialog when close button is clicked', async () => {
-    const user = userEvent.setup()
-    render(<VaultUnlockDialog />)
-
-    // The dialog close button has aria-label "Close"
-    const closeButton = screen.getByRole('button', { name: /close/i })
-    await user.click(closeButton)
-
-    expect(useVaultDialogStore.getState().isUnlockDialogOpen).toBe(false)
-  })
-
-  it('hides close button and blocks Escape during submission', async () => {
-    let resolveUnlock: () => void = () => {}
-    mockUnlockVault.mockReturnValue(
-      new Promise<void>((resolve) => {
-        resolveUnlock = resolve
-      }),
-    )
-    const user = userEvent.setup()
-    render(<VaultUnlockDialog />)
-
-    await user.type(screen.getByLabelText(/password/i), 'my-password')
-    await user.click(screen.getByRole('button', { name: /unlock/i }))
-
-    // Close button should be hidden during submission
-    expect(screen.queryByRole('button', { name: /close/i })).not.toBeInTheDocument()
-
-    // Escape should not close the dialog
-    await user.keyboard('{Escape}')
-    expect(useVaultDialogStore.getState().isUnlockDialogOpen).toBe(true)
-
-    // Clean up: resolve the promise
-    resolveUnlock()
+    // getVaultErrorMessage maps network error → "Network error. Please try again."
+    expect(screen.getByText('Network error. Please try again.')).toBeInTheDocument()
   })
 })

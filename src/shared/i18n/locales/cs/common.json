@@ -18,6 +18,7 @@
     "offline": "Jste offline",
     "backOnline": "Zpět online"
   },
+  "password": "Heslo",
   "errors": {
     "networkError": "Chyba sítě. Zkuste to prosím znovu.",
     "unexpectedError": "Došlo k neočekávané chybě. Zkuste to prosím znovu."
