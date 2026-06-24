@@ -1,14 +1,12 @@
-import { useRef, useState } from 'react'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useForm, useWatch } from 'react-hook-form'
+import { FormProvider, useForm, useWatch } from 'react-hook-form'
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema'
-import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/shared/ui/dialog'
-import { Button } from '@/shared/ui/button'
-import { Input } from '@/shared/ui/input'
-import { FormField } from '@/shared/ui/form/FormField'
+import { SubmitButton } from '@/shared/ui/form/SubmitButton'
+import { PasswordField } from '@/features/auth/ui/PasswordField'
 import { PasswordStrength } from '@/features/auth/ui/PasswordStrength'
 import { changePasswordSchema, type ChangePasswordFormData } from '@/features/auth/model/change-password-schema'
 import { changeUserPassword } from '@/features/auth/model/auth-service'
@@ -19,16 +17,9 @@ function ChangePasswordDialog() {
   const { t } = useTranslation('auth')
   const isChangePasswordDialogOpen = useChangePasswordDialogStore((s) => s.isChangePasswordDialogOpen)
   const closeChangePasswordDialog = useChangePasswordDialogStore((s) => s.closeChangePasswordDialog)
-  const [passwordFocused, setPasswordFocused] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
 
-  const {
-    register,
-    handleSubmit,
-    control,
-    formState: { errors, isSubmitting },
-    reset,
-  } = useForm<ChangePasswordFormData>({
+  const methods = useForm<ChangePasswordFormData>({
     resolver: standardSchemaResolver(changePasswordSchema),
     defaultValues: {
       currentPassword: '',
@@ -36,6 +27,13 @@ function ChangePasswordDialog() {
       confirmPassword: '',
     },
   })
+
+  const {
+    handleSubmit,
+    control,
+    formState: { isSubmitting },
+    reset,
+  } = methods
 
   const watchedNewPassword = useWatch({ control, name: 'newPassword' })
 
@@ -50,8 +48,6 @@ function ChangePasswordDialog() {
     }
   }
 
-  const { ref: passwordRef, ...passwordRest } = register('newPassword')
-
   return (
     <Dialog
       open={isChangePasswordDialogOpen}
@@ -59,7 +55,6 @@ function ChangePasswordDialog() {
       onOpenChange={(open) => {
         if (!open) {
           reset()
-          setPasswordFocused(false)
           closeChangePasswordDialog()
         }
       }}
@@ -70,68 +65,31 @@ function ChangePasswordDialog() {
           <DialogDescription>{t('changePassword.description')}</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
-          <FormField
-            id="current-password"
-            label={t('changePassword.currentPassword')}
-            error={errors.currentPassword?.message ? t(errors.currentPassword.message) : undefined}
-          >
-            <Input
-              id="current-password"
-              type="password"
+        <FormProvider {...methods}>
+          <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
+            <PasswordField
+              name="currentPassword"
+              label={t('changePassword.currentPassword')}
               autoComplete="current-password"
-              disabled={isSubmitting}
               autoFocus
-              {...register('currentPassword')}
             />
-          </FormField>
 
-          <FormField
-            id="new-password"
-            label={t('changePassword.newPassword')}
-            error={errors.newPassword?.message ? t(errors.newPassword.message) : undefined}
-          >
-            <Input
-              id="new-password"
-              type="password"
+            <PasswordField name="newPassword" label={t('changePassword.newPassword')} autoComplete="new-password" />
+            <PasswordStrength password={watchedNewPassword ?? ''} anchorRef={cardRef} container={cardRef} />
+
+            <PasswordField
+              name="confirmPassword"
+              label={t('changePassword.confirmPassword')}
               autoComplete="new-password"
-              disabled={isSubmitting}
-              {...passwordRest}
-              ref={passwordRef}
-              onFocus={() => setPasswordFocused(true)}
-              onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
-                passwordRest.onBlur(e)
-                setPasswordFocused(false)
-              }}
             />
-          </FormField>
-          <PasswordStrength
-            password={watchedNewPassword ?? ''}
-            open={passwordFocused}
-            onOpenChange={setPasswordFocused}
-            anchorRef={cardRef}
-            container={cardRef}
-          />
 
-          <FormField
-            id="confirm-password"
-            label={t('changePassword.confirmPassword')}
-            error={errors.confirmPassword?.message ? t(errors.confirmPassword.message) : undefined}
-          >
-            <Input
-              id="confirm-password"
-              type="password"
-              autoComplete="new-password"
-              disabled={isSubmitting}
-              {...register('confirmPassword')}
+            <SubmitButton
+              isSubmitting={isSubmitting}
+              submitLabel={t('changePassword.submit')}
+              submittingLabel={t('changePassword.submitting')}
             />
-          </FormField>
-
-          <Button type="submit" className="w-full" disabled={isSubmitting}>
-            {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : null}
-            {isSubmitting ? t('changePassword.submitting') : t('changePassword.submit')}
-          </Button>
-        </form>
+          </form>
+        </FormProvider>
       </DialogContent>
     </Dialog>
   )

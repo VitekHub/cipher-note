@@ -18,7 +18,6 @@
     "offline": "You are offline",
     "backOnline": "Back online"
   },
-  "password": "Password",
   "errors": {
     "networkError": "Network error. Please try again.",
     "unexpectedError": "An unexpected error occurred. Please try again."

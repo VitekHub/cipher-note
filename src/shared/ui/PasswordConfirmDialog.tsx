@@ -1,14 +1,13 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Loader2 } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema'
 import { z } from 'zod'
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/shared/ui/dialog'
-import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { FormField } from '@/shared/ui/form/FormField'
+import { SubmitButton } from '@/shared/ui/form/SubmitButton'
 
 const passwordConfirmSchema = z.object({
   password: z.string().min(1),
@@ -37,7 +36,7 @@ function PasswordConfirmDialog({
   submitLabel,
   isSubmittingLabel,
 }: PasswordConfirmDialogProps) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation()
   const [error, setError] = useState<string | null>(null)
 
   const {
@@ -77,20 +76,18 @@ function PasswordConfirmDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <FormField id="password-confirm" label={t('password')} error={error ?? undefined}>
+          <FormField id="password-confirm" label={t('auth:password')} error={error ?? undefined}>
             <Input
               id="password-confirm"
               type="password"
               autoComplete="current-password"
               disabled={isSubmitting}
+              aria-invalid={!!error}
               autoFocus
               {...register('password')}
             />
           </FormField>
-          <Button type="submit" className="w-full" disabled={isSubmitting}>
-            {isSubmitting && <Loader2 className="size-4 animate-spin" />}
-            {isSubmitting ? isSubmittingLabel : submitLabel}
-          </Button>
+          <SubmitButton isSubmitting={isSubmitting} submitLabel={submitLabel} submittingLabel={isSubmittingLabel} />
         </form>
       </DialogContent>
     </Dialog>

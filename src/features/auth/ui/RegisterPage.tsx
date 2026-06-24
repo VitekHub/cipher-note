@@ -1,17 +1,16 @@
 import { useRef, useState } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { useForm, useWatch } from 'react-hook-form'
+import { FormProvider, useForm, useWatch } from 'react-hook-form'
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema'
 import { useTranslation } from 'react-i18next'
-import { Loader2 } from 'lucide-react'
 import { registerSchema, type RegisterFormData } from '@/features/auth/model/register-schema'
 import { useUsernameAvailability } from '@/features/auth/model/use-username-availability'
 import { AuthLayout } from '@/features/auth/ui/AuthLayout'
-import { FormField } from '@/shared/ui/form/FormField'
-import { Input } from '@/shared/ui/input'
-import { Button } from '@/shared/ui/button'
+import { SubmitButton } from '@/shared/ui/form/SubmitButton'
 import { MnemonicDialog } from '@/features/auth/ui/MnemonicDialog'
+import { PasswordField } from '@/features/auth/ui/PasswordField'
 import { PasswordStrength } from '@/features/auth/ui/PasswordStrength'
+import { UsernameField } from '@/features/auth/ui/UsernameField'
 import { UsernameAvailability } from '@/features/auth/ui/UsernameAvailability'
 import { getAuthErrorMessage } from '@/features/auth/model/auth-error-messages'
 import { toast } from 'sonner'
@@ -24,15 +23,16 @@ function RegisterPage({ onSubmit }: RegisterPageProps) {
   const { t } = useTranslation('auth')
   const navigate = useNavigate()
 
-  const {
-    register,
-    handleSubmit,
-    control,
-    formState: { errors, isSubmitting },
-  } = useForm<RegisterFormData>({
+  const methods = useForm<RegisterFormData>({
     resolver: standardSchemaResolver(registerSchema),
     defaultValues: { username: '', password: '', confirmPassword: '' },
   })
+
+  const {
+    handleSubmit,
+    control,
+    formState: { isSubmitting },
+  } = methods
 
   const watchedUsername = useWatch({ control, name: 'username' })
   const watchedPassword = useWatch({ control, name: 'password' })
@@ -40,12 +40,9 @@ function RegisterPage({ onSubmit }: RegisterPageProps) {
 
   const [mnemonic, setMnemonic] = useState<string | null>(null)
   const [showMnemonic, setShowMnemonic] = useState(false)
-  const [passwordFocused, setPasswordFocused] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
 
   const isSubmitDisabled = isSubmitting || availabilityStatus === 'checking' || availabilityStatus === 'taken'
-
-  const { ref: passwordRef, ...passwordRest } = register('password')
 
   async function onFormSubmit(data: RegisterFormData) {
     try {
@@ -78,70 +75,24 @@ function RegisterPage({ onSubmit }: RegisterPageProps) {
           </>
         }
       >
-        <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4" noValidate>
-          <FormField
-            id="username"
-            label={t('register.username')}
-            error={errors.username?.message ? t(errors.username.message) : undefined}
-          >
-            <Input
-              id="username"
-              type="text"
-              autoComplete="username"
-              disabled={isSubmitting}
-              aria-invalid={!!errors.username}
-              {...register('username')}
-            />
-          </FormField>
-          <UsernameAvailability status={availabilityStatus} />
+        <FormProvider {...methods}>
+          <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4" noValidate>
+            <UsernameField />
+            <UsernameAvailability status={availabilityStatus} />
 
-          <FormField
-            id="password"
-            label={t('register.password')}
-            error={errors.password?.message ? t(errors.password.message) : undefined}
-          >
-            <Input
-              id="password"
-              type="password"
-              autoComplete="new-password"
-              disabled={isSubmitting}
-              aria-invalid={!!errors.password}
-              {...passwordRest}
-              ref={passwordRef}
-              onFocus={() => setPasswordFocused(true)}
-              onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
-                passwordRest.onBlur(e)
-                setPasswordFocused(false)
-              }}
-            />
-          </FormField>
-          <PasswordStrength
-            password={watchedPassword ?? ''}
-            open={passwordFocused}
-            onOpenChange={setPasswordFocused}
-            anchorRef={cardRef}
-          />
+            <PasswordField name="password" label={t('password')} autoComplete="new-password" />
+            <PasswordStrength password={watchedPassword ?? ''} anchorRef={cardRef} />
 
-          <FormField
-            id="confirm-password"
-            label={t('register.confirmPassword')}
-            error={errors.confirmPassword?.message ? t(errors.confirmPassword.message) : undefined}
-          >
-            <Input
-              id="confirm-password"
-              type="password"
-              autoComplete="new-password"
-              disabled={isSubmitting}
-              aria-invalid={!!errors.confirmPassword}
-              {...register('confirmPassword')}
-            />
-          </FormField>
+            <PasswordField name="confirmPassword" label={t('register.confirmPassword')} autoComplete="new-password" />
 
-          <Button type="submit" className="w-full" disabled={isSubmitDisabled}>
-            {isSubmitting && <Loader2 className="size-4 animate-spin" />}
-            {isSubmitting ? t('register.submitting') : t('register.submit')}
-          </Button>
-        </form>
+            <SubmitButton
+              isSubmitting={isSubmitting}
+              submitLabel={t('register.submit')}
+              submittingLabel={t('register.submitting')}
+              disabled={isSubmitDisabled}
+            />
+          </form>
+        </FormProvider>
       </AuthLayout>
       <MnemonicDialog open={showMnemonic} mnemonic={mnemonic ?? ''} onContinue={handleMnemonicContinue} />
     </>

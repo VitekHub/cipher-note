@@ -1,14 +1,13 @@
 import { Link, useNavigate } from '@tanstack/react-router'
-import { useForm } from 'react-hook-form'
+import { FormProvider, useForm } from 'react-hook-form'
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema'
 import { useTranslation } from 'react-i18next'
-import { Loader2 } from 'lucide-react'
 import { loginSchema, type LoginFormData } from '@/features/auth/model/login-schema'
 import { loginUser } from '@/features/auth/model/auth-service'
 import { AuthLayout } from '@/features/auth/ui/AuthLayout'
-import { FormField } from '@/shared/ui/form/FormField'
-import { Input } from '@/shared/ui/input'
-import { Button } from '@/shared/ui/button'
+import { SubmitButton } from '@/shared/ui/form/SubmitButton'
+import { PasswordField } from '@/features/auth/ui/PasswordField'
+import { UsernameField } from '@/features/auth/ui/UsernameField'
 import { getAuthErrorMessage } from '@/features/auth/model/auth-error-messages'
 import { isSafeRedirect } from '@/features/auth/ui/url-utils'
 import { toast } from 'sonner'
@@ -21,14 +20,15 @@ function LoginPage({ redirectUrl }: LoginPageProps) {
   const { t } = useTranslation('auth')
   const navigate = useNavigate()
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<LoginFormData>({
+  const methods = useForm<LoginFormData>({
     resolver: standardSchemaResolver(loginSchema),
     defaultValues: { username: '', password: '' },
   })
+
+  const {
+    handleSubmit,
+    formState: { isSubmitting },
+  } = methods
 
   async function onFormSubmit(data: LoginFormData) {
     try {
@@ -53,40 +53,17 @@ function LoginPage({ redirectUrl }: LoginPageProps) {
         </>
       }
     >
-      <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4" noValidate>
-        <FormField
-          id="username"
-          label={t('login.username')}
-          error={errors.username?.message ? t(errors.username.message) : undefined}
-        >
-          <Input
-            id="username"
-            type="text"
-            autoComplete="username"
-            disabled={isSubmitting}
-            aria-invalid={!!errors.username}
-            {...register('username')}
+      <FormProvider {...methods}>
+        <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4" noValidate>
+          <UsernameField />
+          <PasswordField name="password" label={t('password')} autoComplete="current-password" />
+          <SubmitButton
+            isSubmitting={isSubmitting}
+            submitLabel={t('login.submit')}
+            submittingLabel={t('login.submitting')}
           />
-        </FormField>
-        <FormField
-          id="password"
-          label={t('login.password')}
-          error={errors.password?.message ? t(errors.password.message) : undefined}
-        >
-          <Input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            disabled={isSubmitting}
-            aria-invalid={!!errors.password}
-            {...register('password')}
-          />
-        </FormField>
-        <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting && <Loader2 className="size-4 animate-spin" />}
-          {isSubmitting ? t('login.submitting') : t('login.submit')}
-        </Button>
-      </form>
+        </form>
+      </FormProvider>
     </AuthLayout>
   )
 }

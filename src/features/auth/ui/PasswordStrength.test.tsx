@@ -1,14 +1,14 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { render, screen } from '@/test/utils'
 import { useRef } from 'react'
 import { PasswordStrength } from './PasswordStrength'
 
-function TestWrapper({ password, open = true }: { password: string; open?: boolean }) {
+function TestWrapper({ password }: { password: string }) {
   const anchorRef = useRef<HTMLDivElement>(null)
   return (
     <>
       <div ref={anchorRef} data-testid="anchor" />
-      <PasswordStrength password={password} open={open} onOpenChange={vi.fn()} anchorRef={anchorRef} />
+      <PasswordStrength password={password} anchorRef={anchorRef} />
     </>
   )
 }
@@ -16,11 +16,6 @@ function TestWrapper({ password, open = true }: { password: string; open?: boole
 describe('PasswordStrength', () => {
   it('renders nothing visible for empty password', () => {
     render(<TestWrapper password="" />)
-    expect(screen.queryByText('Weak')).not.toBeInTheDocument()
-  })
-
-  it('renders nothing visible when open is false', () => {
-    render(<TestWrapper password="a" open={false} />)
     expect(screen.queryByText('Weak')).not.toBeInTheDocument()
   })
 
