@@ -101,4 +101,32 @@ describe('ChangePasswordDialog', () => {
       expect(mockChangeUserPassword).toHaveBeenCalled()
     })
   })
+
+  it('hides close button and blocks Escape during submission', async () => {
+    let resolveChange: () => void = () => {}
+    mockChangeUserPassword.mockReturnValue(
+      new Promise<void>((resolve) => {
+        resolveChange = resolve
+      }),
+    )
+    const user = userEvent.setup()
+    render(<ChangePasswordDialog />)
+
+    await user.type(screen.getByLabelText('Current password'), 'oldPassword123')
+    await user.type(screen.getByLabelText('New password'), 'newPassword456')
+    await user.type(screen.getByLabelText('Confirm new password'), 'newPassword456')
+
+    const submitButton = screen.getByRole('button', { name: 'Change password' })
+    await user.click(submitButton)
+
+    // Close button should be hidden during submission
+    expect(screen.queryByRole('button', { name: /close/i })).not.toBeInTheDocument()
+
+    // Escape should not close the dialog
+    await user.keyboard('{Escape}')
+    expect(useChangePasswordDialogStore.getState().isChangePasswordDialogOpen).toBe(true)
+
+    // Clean up: resolve the promise
+    resolveChange()
+  })
 })

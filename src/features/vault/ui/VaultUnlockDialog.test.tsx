@@ -168,4 +168,28 @@ describe('VaultUnlockDialog', () => {
 
     expect(useVaultDialogStore.getState().isUnlockDialogOpen).toBe(false)
   })
+
+  it('hides close button and blocks Escape during submission', async () => {
+    let resolveUnlock: () => void = () => {}
+    mockUnlockVault.mockReturnValue(
+      new Promise<void>((resolve) => {
+        resolveUnlock = resolve
+      }),
+    )
+    const user = userEvent.setup()
+    render(<VaultUnlockDialog />)
+
+    await user.type(screen.getByLabelText(/password/i), 'my-password')
+    await user.click(screen.getByRole('button', { name: /unlock/i }))
+
+    // Close button should be hidden during submission
+    expect(screen.queryByRole('button', { name: /close/i })).not.toBeInTheDocument()
+
+    // Escape should not close the dialog
+    await user.keyboard('{Escape}')
+    expect(useVaultDialogStore.getState().isUnlockDialogOpen).toBe(true)
+
+    // Clean up: resolve the promise
+    resolveUnlock()
+  })
 })

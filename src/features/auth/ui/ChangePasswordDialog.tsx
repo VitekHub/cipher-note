@@ -55,6 +55,7 @@ function ChangePasswordDialog() {
   return (
     <Dialog
       open={isChangePasswordDialogOpen}
+      preventClose={isSubmitting}
       onOpenChange={(open) => {
         if (!open) {
           reset()
