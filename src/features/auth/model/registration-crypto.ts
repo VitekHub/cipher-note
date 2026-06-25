@@ -1,5 +1,5 @@
-import { generateIV, generateSalt, zeroFill } from '@/shared/crypto/crypto-utils'
-import { generateMnemonic, wrapMasterKeyWithRecovery } from '@/shared/crypto/mnemonic'
+import { zeroFill } from '@/shared/crypto/crypto-utils'
+import { createRecoveryData } from '@/shared/crypto/mnemonic'
 import {
   generateMasterKey,
   generateFieldKeys,
@@ -21,32 +21,35 @@ export async function deriveRegistrationKeys(password: string): Promise<Registra
   // Derive auth credentials + master key + key hierarchy
   const { authHash, passwordKey, authSalt, keySalt } = await deriveAuthCredentials(password)
   const masterKey = generateMasterKey()
-  const hierarchy = await deriveFullKeyHierarchy(masterKey)
 
-  // Generate and wrap field keys (AAD = fieldName + version)
-  const { rawFieldKeys, cryptoFieldKeys } = await generateFieldKeys()
-  const versions = new Map(Array.from(rawFieldKeys.keys()).map((name) => [name, FIELD_KEY_VERSION] as const))
-  const wrappedFieldKeys = await wrapFieldKeys(rawFieldKeys, hierarchy.kek, versions)
-  zeroFill(rawFieldKeys.values())
+  try {
+    const hierarchy = await deriveFullKeyHierarchy(masterKey)
 
-  // Wrap master key with password key (AAD prevents cross-context decryption)
-  const { wrappedMasterKey, masterKeyIV } = await wrapMasterKeyWithPassword(masterKey, passwordKey)
+    // Generate and wrap field keys (AAD = fieldName + version)
+    const { rawFieldKeys, cryptoFieldKeys } = await generateFieldKeys()
+    const versions = new Map(Array.from(rawFieldKeys.keys()).map((name) => [name, FIELD_KEY_VERSION] as const))
+    const wrappedFieldKeys = await wrapFieldKeys(rawFieldKeys, hierarchy.kek, versions)
+    zeroFill(rawFieldKeys.values())
 
-  // Recovery: generate mnemonic and wrap master key with recovery KEK
-  const mnemonic = await generateMnemonic()
-  const recoveryData = await wrapMasterKeyWithRecovery(masterKey, mnemonic, { iv: generateIV(), salt: generateSalt() })
-  zeroFill(masterKey)
+    // Wrap master key with password key (AAD prevents cross-context decryption)
+    const { wrappedMasterKey, masterKeyIV } = await wrapMasterKeyWithPassword(masterKey, passwordKey)
 
-  return {
-    authHash,
-    authSalt,
-    keySalt,
-    kek: hierarchy.kek,
-    fieldKeys: cryptoFieldKeys,
-    wrappedMasterKey,
-    masterKeyIV,
-    wrappedFieldKeys,
-    recoveryData,
-    mnemonic,
+    // Recovery: generate mnemonic and wrap master key with recovery KEK
+    const { mnemonic, recoveryData } = await createRecoveryData(masterKey)
+
+    return {
+      authHash,
+      authSalt,
+      keySalt,
+      kek: hierarchy.kek,
+      fieldKeys: cryptoFieldKeys,
+      wrappedMasterKey,
+      masterKeyIV,
+      wrappedFieldKeys,
+      recoveryData,
+      mnemonic,
+    }
+  } finally {
+    zeroFill(masterKey)
   }
 }

@@ -1,11 +1,9 @@
 import { deriveKey } from '@/shared/crypto/argon2id'
 import { importKey, encrypt, decrypt } from '@/shared/crypto/aes-gcm'
-import { generateIV, generateSalt, zeroFill } from '@/shared/crypto/crypto-utils'
+import { generateIV, generateSalt } from '@/shared/crypto/crypto-utils'
 import { CRYPTO_KEY_LENGTH, MASTER_KEY_RECOVERY_AAD } from '@/shared/types/crypto.types'
-import { unwrapMasterKeyWithPassword } from '@/shared/crypto/master-key'
 import { MnemonicError } from '@/shared/crypto/errors'
 import type { RecoveryData, RecoveryWrapOptions } from '@/shared/types/crypto.types'
-import type { ServerMasterKeyEnvelope } from '@/shared/types/api.types'
 
 // --- Lazy-load @scure/bip39 ---
 
@@ -117,30 +115,18 @@ export async function unwrapMasterKeyWithRecovery(
 }
 
 /**
- * Regenerate recovery data: unwrap the master key with the password-derived
- * key, then re-wrap it with a new recovery KEK derived from a fresh mnemonic.
- *
- * The master key itself is never changed — only its recovery wrapping.
- * Password-based wrapping and field keys are completely unaffected.
+ * Create fresh recovery data for a master key: generate a new BIP-39 mnemonic
+ * and wrap the master key with a recovery KEK derived from it.
  *
  * @returns The new mnemonic (to show the user) and the RecoveryData
  *          (to save on the server).
  */
-export async function regenerateRecoveryData(
-  password: string,
-  envelope: ServerMasterKeyEnvelope,
+export async function createRecoveryData(
+  masterKey: Uint8Array<ArrayBuffer>,
 ): Promise<{ mnemonic: string; recoveryData: RecoveryData }> {
-  // Unwrap master key with password-derived key
-  const masterKey = await unwrapMasterKeyWithPassword(password, envelope)
-
-  try {
-    // Generate new mnemonic and wrap master key with new recovery KEK
-    const mnemonic = await generateMnemonic()
-    const recoveryIV = generateIV()
-    const recoverySalt = generateSalt()
-    const recoveryData = await wrapMasterKeyWithRecovery(masterKey, mnemonic, { iv: recoveryIV, salt: recoverySalt })
-    return { mnemonic, recoveryData }
-  } finally {
-    zeroFill(masterKey)
-  }
+  const mnemonic = await generateMnemonic()
+  const recoveryIV = generateIV()
+  const recoverySalt = generateSalt()
+  const recoveryData = await wrapMasterKeyWithRecovery(masterKey, mnemonic, { iv: recoveryIV, salt: recoverySalt })
+  return { mnemonic, recoveryData }
 }
