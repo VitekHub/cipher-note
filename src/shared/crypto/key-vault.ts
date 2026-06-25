@@ -1,11 +1,10 @@
 import { useCryptoStore } from '@/shared/crypto/crypto-store'
 import { fetchFieldKeys, fetchFreshEnvelope } from '@/shared/api/supabase-keys'
-import { hexDecode, zeroFill } from '@/shared/crypto/crypto-utils'
-import { decrypt, importKey } from '@/shared/crypto/aes-gcm'
+import { zeroFill } from '@/shared/crypto/crypto-utils'
+import { importKey } from '@/shared/crypto/aes-gcm'
 import { unwrapFieldKeys } from '@/shared/crypto/key-hierarchy'
 import { deriveKEK } from '@/shared/crypto/hkdf'
-import { MASTER_KEY_PASSWORD_AAD } from '@/shared/types/crypto.types'
-import { derivePasswordKey } from '@/shared/crypto/argon2id'
+import { unwrapMasterKeyWithPassword } from '@/shared/crypto/master-key'
 import { DecryptionError } from '@/shared/crypto/errors'
 import type { CachedVaultEnvelope } from '@/shared/types/api.types'
 
@@ -136,17 +135,7 @@ class KeyVault {
   }
 
   private async deriveKekFromEnvelope(password: string, envelope: CachedVaultEnvelope): Promise<CryptoKey> {
-    // Derive password key
-    const passwordKey = await derivePasswordKey(password, hexDecode(envelope.keySalt))
-    const cryptoPasswordKey = await importKey(passwordKey)
-    zeroFill(passwordKey)
-
-    // Unwrap master key → derive KEK
-    const wrappedMasterKey = hexDecode(envelope.wrappedMasterKey)
-    const masterKey = await decrypt(wrappedMasterKey, cryptoPasswordKey, {
-      iv: hexDecode(envelope.masterKeyIV),
-      aad: MASTER_KEY_PASSWORD_AAD,
-    })
+    const masterKey = await unwrapMasterKeyWithPassword(password, envelope)
     const kekBytes = await deriveKEK(masterKey)
     const kek = await importKey(kekBytes)
     zeroFill(kekBytes)

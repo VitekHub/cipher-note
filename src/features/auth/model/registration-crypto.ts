@@ -1,4 +1,3 @@
-import { importKey, encrypt } from '@/shared/crypto/aes-gcm'
 import { generateIV, generateSalt, zeroFill } from '@/shared/crypto/crypto-utils'
 import { generateMnemonic, wrapMasterKeyWithRecovery } from '@/shared/crypto/mnemonic'
 import {
@@ -8,7 +7,8 @@ import {
   wrapFieldKeys,
 } from '@/shared/crypto/key-hierarchy'
 import { deriveAuthCredentials } from '@/shared/crypto/split-kdf'
-import { FIELD_KEY_VERSION, MASTER_KEY_PASSWORD_AAD } from '@/shared/types/crypto.types'
+import { wrapMasterKeyWithPassword } from '@/shared/crypto/master-key'
+import { FIELD_KEY_VERSION } from '@/shared/types/crypto.types'
 import type { RegistrationResult } from '@/shared/types/crypto.types'
 
 /**
@@ -30,13 +30,7 @@ export async function deriveRegistrationKeys(password: string): Promise<Registra
   zeroFill(rawFieldKeys.values())
 
   // Wrap master key with password key (AAD prevents cross-context decryption)
-  const passwordCryptoKey = await importKey(passwordKey)
-  const masterKeyIV = generateIV()
-  const wrappedMasterKey = await encrypt(masterKey, passwordCryptoKey, {
-    iv: masterKeyIV,
-    aad: MASTER_KEY_PASSWORD_AAD,
-  })
-  zeroFill(passwordKey)
+  const { wrappedMasterKey, masterKeyIV } = await wrapMasterKeyWithPassword(masterKey, passwordKey)
 
   // Recovery: generate mnemonic and wrap master key with recovery KEK
   const mnemonic = await generateMnemonic()

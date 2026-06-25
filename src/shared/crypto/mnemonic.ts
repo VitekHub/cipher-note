@@ -1,7 +1,8 @@
-import { deriveKey, derivePasswordKey } from '@/shared/crypto/argon2id'
+import { deriveKey } from '@/shared/crypto/argon2id'
 import { importKey, encrypt, decrypt } from '@/shared/crypto/aes-gcm'
-import { generateIV, generateSalt, hexDecode, zeroFill } from '@/shared/crypto/crypto-utils'
-import { CRYPTO_KEY_LENGTH, MASTER_KEY_PASSWORD_AAD, MASTER_KEY_RECOVERY_AAD } from '@/shared/types/crypto.types'
+import { generateIV, generateSalt, zeroFill } from '@/shared/crypto/crypto-utils'
+import { CRYPTO_KEY_LENGTH, MASTER_KEY_RECOVERY_AAD } from '@/shared/types/crypto.types'
+import { unwrapMasterKeyWithPassword } from '@/shared/crypto/master-key'
 import { MnemonicError } from '@/shared/crypto/errors'
 import type { RecoveryData, RecoveryWrapOptions } from '@/shared/types/crypto.types'
 import type { ServerMasterKeyEnvelope } from '@/shared/types/api.types'
@@ -129,20 +130,8 @@ export async function regenerateRecoveryData(
   password: string,
   envelope: ServerMasterKeyEnvelope,
 ): Promise<{ mnemonic: string; recoveryData: RecoveryData }> {
-  // Decode envelope fields from hex
-  const keySalt = hexDecode(envelope.keySalt)
-  const wrappedMasterKey = hexDecode(envelope.wrappedMasterKey)
-  const masterKeyIV = hexDecode(envelope.masterKeyIV)
-
-  // Derive password key and unwrap master key
-  const passwordKey = await derivePasswordKey(password, keySalt)
-  const passwordCryptoKey = await importKey(passwordKey)
-  zeroFill(passwordKey)
-
-  const masterKey = await decrypt(wrappedMasterKey, passwordCryptoKey, {
-    iv: masterKeyIV,
-    aad: MASTER_KEY_PASSWORD_AAD,
-  })
+  // Unwrap master key with password-derived key
+  const masterKey = await unwrapMasterKeyWithPassword(password, envelope)
 
   // Generate new mnemonic and wrap master key with new recovery KEK
   const mnemonic = await generateMnemonic()

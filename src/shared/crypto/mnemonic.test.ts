@@ -7,18 +7,12 @@ import type { RecoveryData } from '@/shared/types/crypto.types'
 // Mock Argon2id module to avoid WASM/worker dependency in tests
 vi.mock('@/shared/crypto/argon2id', () => ({
   deriveKey: vi.fn(),
-  derivePasswordKey: vi.fn(),
 }))
 
-// Mock decrypt in aes-gcm so regenerateRecoveryData tests can control the password-unwrap step.
-// importKey and encrypt remain real — wrapMasterKeyWithRecovery needs real Web Crypto.
-vi.mock('@/shared/crypto/aes-gcm', async () => {
-  const actual = await vi.importActual<typeof import('@/shared/crypto/aes-gcm')>('@/shared/crypto/aes-gcm')
-  return {
-    ...actual,
-    decrypt: vi.fn(actual.decrypt),
-  }
-})
+// Mock master-key module for the password-unwrap step in regenerateRecoveryData
+vi.mock('@/shared/crypto/master-key', () => ({
+  unwrapMasterKeyWithPassword: vi.fn(),
+}))
 
 // Mock @scure/bip39 to avoid loading 2048-word dictionary in tests
 const MOCK_WORDLIST = Array.from({ length: 2048 }, (_, i) => `word${i}`)
@@ -34,8 +28,8 @@ vi.mock('@scure/bip39/wordlists/english.js', () => ({
   wordlist: MOCK_WORDLIST,
 }))
 
-import { deriveKey, derivePasswordKey } from '@/shared/crypto/argon2id'
-import { decrypt } from '@/shared/crypto/aes-gcm'
+import { deriveKey } from '@/shared/crypto/argon2id'
+import { unwrapMasterKeyWithPassword } from '@/shared/crypto/master-key'
 import {
   generateMnemonic,
   validateMnemonic,
@@ -45,7 +39,6 @@ import {
   unwrapMasterKeyWithRecovery,
   regenerateRecoveryData,
 } from '@/shared/crypto/mnemonic'
-import { hexEncode } from '@/shared/crypto/crypto-utils'
 
 function mockBytes(length: number, fill: number): Uint8Array<ArrayBuffer> {
   return new Uint8Array(length).fill(fill) as Uint8Array<ArrayBuffer>
@@ -254,32 +247,22 @@ describe('mnemonic', () => {
   })
 
   describe('regenerateRecoveryData', () => {
-    const PASSWORD_KEY_FILL = 0x07
     const RECOVERY_KEK_FILL = 0x11
 
-    function makeEnvelope(opts?: { keySalt?: Uint8Array<ArrayBuffer>; masterKey?: Uint8Array<ArrayBuffer> }) {
-      const keySalt = opts?.keySalt ?? mockBytes(16, 0xaa)
-      const authSalt = mockBytes(16, 0xbb)
-      const masterKey = opts?.masterKey ?? generateMasterKey()
-      const masterKeyIV = generateIV()
-
-      return { keySalt, authSalt, masterKey, masterKeyIV }
+    /** Minimal envelope — values are irrelevant since unwrapMasterKeyWithPassword is mocked. */
+    const stubEnvelope = {
+      authSalt: 'bb'.repeat(16),
+      keySalt: 'aa'.repeat(16),
+      wrappedMasterKey: 'ff'.repeat(48),
+      masterKeyIV: 'dd'.repeat(12),
     }
 
     it('returns a mnemonic and recovery data', async () => {
-      const { keySalt, authSalt, masterKey, masterKeyIV } = makeEnvelope()
-      const passwordKey = mockBytes(32, PASSWORD_KEY_FILL)
-
-      vi.mocked(derivePasswordKey).mockResolvedValueOnce(passwordKey)
+      const masterKey = generateMasterKey()
+      vi.mocked(unwrapMasterKeyWithPassword).mockResolvedValueOnce(masterKey)
       vi.mocked(deriveKey).mockResolvedValueOnce(mockBytes(32, RECOVERY_KEK_FILL))
-      vi.mocked(decrypt).mockResolvedValueOnce(masterKey)
 
-      const result = await regenerateRecoveryData('test-password', {
-        authSalt: hexEncode(authSalt),
-        keySalt: hexEncode(keySalt),
-        wrappedMasterKey: hexEncode(mockBytes(48, 0xff)),
-        masterKeyIV: hexEncode(masterKeyIV),
-      })
+      const result = await regenerateRecoveryData('test-password', stubEnvelope)
 
       expect(result.mnemonic).toBeDefined()
       expect(result.mnemonic.split(' ')).toHaveLength(12)
@@ -290,66 +273,31 @@ describe('mnemonic', () => {
     })
 
     it('uses fresh recovery salt and IV', async () => {
-      const { keySalt, authSalt, masterKey, masterKeyIV } = makeEnvelope()
-      const passwordKey = mockBytes(32, PASSWORD_KEY_FILL)
-
-      vi.mocked(derivePasswordKey).mockResolvedValue(passwordKey)
+      const masterKey = generateMasterKey()
+      vi.mocked(unwrapMasterKeyWithPassword).mockResolvedValue(masterKey)
       vi.mocked(deriveKey).mockResolvedValue(mockBytes(32, RECOVERY_KEK_FILL))
-      vi.mocked(decrypt).mockResolvedValue(masterKey)
 
-      const result1 = await regenerateRecoveryData('test-password', {
-        authSalt: hexEncode(authSalt),
-        keySalt: hexEncode(keySalt),
-        wrappedMasterKey: hexEncode(mockBytes(48, 0xff)),
-        masterKeyIV: hexEncode(masterKeyIV),
-      })
-
-      vi.mocked(derivePasswordKey).mockResolvedValue(passwordKey)
-
-      const result2 = await regenerateRecoveryData('test-password', {
-        authSalt: hexEncode(authSalt),
-        keySalt: hexEncode(keySalt),
-        wrappedMasterKey: hexEncode(mockBytes(48, 0xff)),
-        masterKeyIV: hexEncode(masterKeyIV),
-      })
+      const result1 = await regenerateRecoveryData('test-password', stubEnvelope)
+      const result2 = await regenerateRecoveryData('test-password', stubEnvelope)
 
       expect(result1.recoveryData.recoverySalt).not.toEqual(result2.recoveryData.recoverySalt)
       expect(result1.recoveryData.recoveryIV).not.toEqual(result2.recoveryData.recoveryIV)
     })
 
     it('throws DecryptionError when password unwrap fails', async () => {
-      const { keySalt, authSalt, masterKeyIV } = makeEnvelope()
-      const passwordKey = mockBytes(32, PASSWORD_KEY_FILL)
+      vi.mocked(unwrapMasterKeyWithPassword).mockRejectedValueOnce(new DecryptionError())
 
-      vi.mocked(derivePasswordKey).mockResolvedValueOnce(passwordKey)
-      vi.mocked(decrypt).mockRejectedValueOnce(new DecryptionError())
-
-      await expect(
-        regenerateRecoveryData('wrong-password', {
-          authSalt: hexEncode(authSalt),
-          keySalt: hexEncode(keySalt),
-          wrappedMasterKey: hexEncode(mockBytes(48, 0xff)),
-          masterKeyIV: hexEncode(masterKeyIV),
-        }),
-      ).rejects.toThrow(DecryptionError)
+      await expect(regenerateRecoveryData('wrong-password', stubEnvelope)).rejects.toThrow(DecryptionError)
     })
 
-    it('calls derivePasswordKey with the password and keySalt from envelope', async () => {
-      const { keySalt, authSalt, masterKey, masterKeyIV } = makeEnvelope()
-      const passwordKey = mockBytes(32, PASSWORD_KEY_FILL)
-
-      vi.mocked(derivePasswordKey).mockResolvedValueOnce(passwordKey)
+    it('calls unwrapMasterKeyWithPassword with the password and envelope', async () => {
+      const masterKey = generateMasterKey()
+      vi.mocked(unwrapMasterKeyWithPassword).mockResolvedValueOnce(masterKey)
       vi.mocked(deriveKey).mockResolvedValueOnce(mockBytes(32, RECOVERY_KEK_FILL))
-      vi.mocked(decrypt).mockResolvedValueOnce(masterKey)
 
-      await regenerateRecoveryData('my-password', {
-        authSalt: hexEncode(authSalt),
-        keySalt: hexEncode(keySalt),
-        wrappedMasterKey: hexEncode(mockBytes(48, 0xff)),
-        masterKeyIV: hexEncode(masterKeyIV),
-      })
+      await regenerateRecoveryData('my-password', stubEnvelope)
 
-      expect(derivePasswordKey).toHaveBeenCalledWith('my-password', keySalt)
+      expect(unwrapMasterKeyWithPassword).toHaveBeenCalledWith('my-password', stubEnvelope)
     })
   })
 })

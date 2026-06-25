@@ -9,9 +9,8 @@
  */
 
 import { deriveAuthHash, derivePasswordKey } from '@/shared/crypto/argon2id'
-import { importKey, encrypt, decrypt } from '@/shared/crypto/aes-gcm'
-import { generateSalt, generateIV, hexDecode, zeroFill } from '@/shared/crypto/crypto-utils'
-import { MASTER_KEY_PASSWORD_AAD } from '@/shared/types/crypto.types'
+import { generateSalt, zeroFill } from '@/shared/crypto/crypto-utils'
+import { unwrapMasterKeyWithPassword, wrapMasterKeyWithPassword } from '@/shared/crypto/master-key'
 import type { AuthCredentials, PasswordChangeResult } from '@/shared/types/crypto.types'
 import type { ServerMasterKeyEnvelope } from '@/shared/types/api.types'
 
@@ -47,27 +46,16 @@ export async function changePassword(
   newPassword: string,
   envelope: ServerMasterKeyEnvelope,
 ): Promise<PasswordChangeResult> {
-  const keySalt = hexDecode(envelope.keySalt)
-  const wrappedMasterKey = hexDecode(envelope.wrappedMasterKey)
-  const masterKeyIV = hexDecode(envelope.masterKeyIV)
-
-  // Derive old password key and unwrap master key
-  const oldPasswordKey = await derivePasswordKey(oldPassword, keySalt)
-  const oldWrappingKey = await importKey(oldPasswordKey)
-  zeroFill(oldPasswordKey)
-  const masterKey = await decrypt(wrappedMasterKey, oldWrappingKey, { iv: masterKeyIV, aad: MASTER_KEY_PASSWORD_AAD })
+  const masterKey = await unwrapMasterKeyWithPassword(oldPassword, envelope)
 
   // Generate new salts and derive new credentials
   const newCredentials = await deriveAuthCredentials(newPassword)
 
   // Re-wrap master key with new password key
-  const newWrappingKey = await importKey(newCredentials.passwordKey)
-  zeroFill(newCredentials.passwordKey)
-  const newMasterKeyIV = generateIV()
-  const newWrappedMasterKey = await encrypt(masterKey, newWrappingKey, {
-    iv: newMasterKeyIV,
-    aad: MASTER_KEY_PASSWORD_AAD,
-  })
+  const { wrappedMasterKey: newWrappedMasterKey, masterKeyIV: newMasterKeyIV } = await wrapMasterKeyWithPassword(
+    masterKey,
+    newCredentials.passwordKey,
+  )
   zeroFill(masterKey)
 
   return {
