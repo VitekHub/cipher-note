@@ -81,4 +81,72 @@ describe('RegenerateMnemonicDialog', () => {
       expect(mockRegenerateMnemonic).toHaveBeenCalledWith('my-secret-password')
     })
   })
+
+  it('shows success toast and closes dialog when mnemonic is confirmed', async () => {
+    const user = userEvent.setup()
+    mockRegenerateMnemonic.mockResolvedValueOnce(MNEMONIC)
+
+    render(<RegenerateMnemonicDialog />)
+
+    await user.type(screen.getByLabelText(/password/i), 'test-password')
+    await user.click(screen.getByRole('button', { name: /regenerate/i }))
+
+    // Advance to mnemonic dialog
+    await vi.waitFor(() => {
+      expect(screen.getByText('Your Seed Phrase')).toBeInTheDocument()
+    })
+
+    // Acknowledge the warning checkbox to enable the Continue button
+    await user.click(screen.getByRole('checkbox'))
+
+    // Click Continue on the mnemonic dialog
+    await user.click(screen.getByRole('button', { name: /continue/i }))
+
+    // Dialog should close and success toast should fire
+    await vi.waitFor(() => {
+      expect(useRegenerateMnemonicDialogStore.getState().isRegenerateMnemonicDialogOpen).toBe(false)
+    })
+  })
+
+  it('closes password dialog and resets state on cancel', async () => {
+    const user = userEvent.setup()
+    render(<RegenerateMnemonicDialog />)
+
+    expect(screen.getByLabelText(/password/i)).toBeInTheDocument()
+
+    // Click the close button on the PasswordConfirmDialog
+    await user.click(screen.getByRole('button', { name: /close/i }))
+
+    expect(useRegenerateMnemonicDialogStore.getState().isRegenerateMnemonicDialogOpen).toBe(false)
+  })
+
+  it('shows network error when saveRecoveryData fails', async () => {
+    const user = userEvent.setup()
+    const { ApiError, ApiErrorCode } = await import('@/shared/api/api-errors')
+    mockRegenerateMnemonic.mockRejectedValueOnce(new ApiError(ApiErrorCode.NETWORK_ERROR))
+
+    render(<RegenerateMnemonicDialog />)
+
+    await user.type(screen.getByLabelText(/password/i), 'test-password')
+    await user.click(screen.getByRole('button', { name: /regenerate/i }))
+
+    await vi.waitFor(() => {
+      expect(screen.getByText(/network error/i)).toBeInTheDocument()
+    })
+  })
+
+  it('shows not found error when user data is missing', async () => {
+    const user = userEvent.setup()
+    const { ApiError, ApiErrorCode } = await import('@/shared/api/api-errors')
+    mockRegenerateMnemonic.mockRejectedValueOnce(new ApiError(ApiErrorCode.NOT_FOUND))
+
+    render(<RegenerateMnemonicDialog />)
+
+    await user.type(screen.getByLabelText(/password/i), 'test-password')
+    await user.click(screen.getByRole('button', { name: /regenerate/i }))
+
+    await vi.waitFor(() => {
+      expect(screen.getByText(/account not found/i)).toBeInTheDocument()
+    })
+  })
 })

@@ -133,12 +133,14 @@ export async function regenerateRecoveryData(
   // Unwrap master key with password-derived key
   const masterKey = await unwrapMasterKeyWithPassword(password, envelope)
 
-  // Generate new mnemonic and wrap master key with new recovery KEK
-  const mnemonic = await generateMnemonic()
-  const recoveryIV = generateIV()
-  const recoverySalt = generateSalt()
-  const recoveryData = await wrapMasterKeyWithRecovery(masterKey, mnemonic, { iv: recoveryIV, salt: recoverySalt })
-  zeroFill(masterKey)
-
-  return { mnemonic, recoveryData }
+  try {
+    // Generate new mnemonic and wrap master key with new recovery KEK
+    const mnemonic = await generateMnemonic()
+    const recoveryIV = generateIV()
+    const recoverySalt = generateSalt()
+    const recoveryData = await wrapMasterKeyWithRecovery(masterKey, mnemonic, { iv: recoveryIV, salt: recoverySalt })
+    return { mnemonic, recoveryData }
+  } finally {
+    zeroFill(masterKey)
+  }
 }

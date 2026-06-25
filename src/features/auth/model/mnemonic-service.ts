@@ -16,7 +16,11 @@ export async function regenerateMnemonic(password: string): Promise<string> {
 
   if (!user) throw new Error('No authenticated user')
 
-  const envelope = useCryptoStore.getState().cachedEnvelope ?? (await fetchFreshEnvelope(user.id))
+  let envelope = useCryptoStore.getState().cachedEnvelope
+  if (!envelope) {
+    envelope = await fetchFreshEnvelope(user.id)
+    useCryptoStore.getState().setCachedEnvelope(envelope)
+  }
 
   const { mnemonic, recoveryData } = await regenerateRecoveryData(password, envelope)
 
