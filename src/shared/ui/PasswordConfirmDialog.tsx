@@ -36,7 +36,7 @@ function PasswordConfirmDialog({
   submitLabel,
   isSubmittingLabel,
 }: PasswordConfirmDialogProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation('auth')
   const [error, setError] = useState<string | null>(null)
 
   const {
@@ -76,7 +76,7 @@ function PasswordConfirmDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <FormField id="password-confirm" label={t('auth:password')} error={error ?? undefined}>
+          <FormField id="password-confirm" label={t('password')} error={error ?? undefined}>
             <Input
               id="password-confirm"
               type="password"

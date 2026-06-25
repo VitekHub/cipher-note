@@ -1,4 +1,4 @@
-import { useFormContext } from 'react-hook-form'
+import { useFormContext, type FieldValues } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { FormField } from '@/shared/ui/form/FormField'
 import { Input } from '@/shared/ui/input'
@@ -15,11 +15,11 @@ function UsernameField() {
   const {
     register,
     formState: { errors, isSubmitting },
-  } = useFormContext()
+  } = useFormContext<FieldValues>()
   const { t } = useTranslation('auth')
 
   const errorMessage = errors.username?.message
-  const error = errorMessage ? t(errorMessage as string) : undefined
+  const error = errorMessage ? t(String(errorMessage)) : undefined
 
   return (
     <FormField id="username" label={t('username')} error={error}>

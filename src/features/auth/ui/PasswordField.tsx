@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { useFormContext } from 'react-hook-form'
+import { useFormContext, type FieldValues } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { FormField } from '@/shared/ui/form/FormField'
 import { Input } from '@/shared/ui/input'
@@ -28,11 +28,11 @@ function PasswordField({ name, label, autoComplete, autoFocus }: PasswordFieldPr
   const {
     register,
     formState: { errors, isSubmitting },
-  } = useFormContext()
+  } = useFormContext<FieldValues>()
   const { t } = useTranslation('auth')
 
   const errorMessage = errors[name]?.message
-  const error = errorMessage ? t(errorMessage as string) : undefined
+  const error = errorMessage ? t(String(errorMessage)) : undefined
   const id = toHtmlId(name)
 
   return (
