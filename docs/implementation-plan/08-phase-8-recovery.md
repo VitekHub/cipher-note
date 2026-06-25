@@ -30,26 +30,36 @@
 
 ---
 
-## Step 30 — Seed Phrase Backup View
+## Step 30 — Regenerate Seed Phrase ✅
 
-**Goal:** Display stored seed phrase for backup (requires vault unlock).
+**Goal:** Regenerate seed phrase (requires the user to enter the password again).
 
 **Code:**
-- `src/features/settings/ui/SeedPhraseView.tsx`:
-  - Requires vault to be unlocked
-  - On "View Seed Phrase" click: fetch recovery data from server
-  - Derive recovery KEK from stored mnemonic (or require user to re-enter password to access)
-  - Display 12-word mnemonic in a `<Dialog>`
-  - "Copy to clipboard" and "Download as text" buttons
-  - Warning text about seed phrase security
-  - Masked by default: click each word to reveal (or "Reveal all" button)
-- `src/features/settings/ui/SeedPhraseWarning.tsx` — reusable warning component
+- `src/features/settings/ui/SecuritySection.tsx`:
+  - Change "Seed phrase" item from static text to clickable → opens `RegenerateMnemonicDialog`
+- `src/features/auth/ui/RegenerateMnemonicDialog.tsx`:
+  - Reuse `PasswordConfirmDialog` component for password entry
+  - On password confirm → call orchestration service, then display mnemonic in `<MnemonicDialog>` (reuse from registration)
+  - On MnemonicDialog continue → show success toast and close
+  - Error mapping delegated to a dedicated error-mapping module
+- Pure crypto function in `mnemonic.ts`: `regenerateRecoveryData(password, envelope)`:
+  - Derive passwordKey from password + envelope keySalt, unwrap master key
+  - Generate fresh mnemonic, recoverySalt, recoveryIV
+  - Wrap master key with new recovery KEK via `wrapMasterKeyWithRecovery`
+  - Zero out passwordKey and masterKey after use
+  - Returns `{ mnemonic, recoveryData }`
+- Orchestration service in `features/auth/model/`: calls `regenerateRecoveryData`, then `saveRecoveryData` to server
+  - Uses cached envelope from crypto store, falls back to fresh fetch
+  - No rollback needed — if save fails, old recovery data remains valid
+- Dialog store in `shared/auth/` — Zustand store for dialog open/close state (with devtools, no sensitive data)
+- Dedicated error-mapping module: maps `DecryptionError`, `AuthError`, `ApiError`, and network errors to i18n strings
+- Add i18n strings to `auth.json`
 
 **Tests:**
-- Component test: seed phrase view requires vault unlock
-- Component test: 12 words displayed correctly
-- Component test: copy to clipboard works
-- Component test: words are masked by default
+- Integration: regenerate mnemonic → old mnemonic can no longer unwrap master key, new mnemonic can
+- Component: RegenerateMnemonicDialog rejects wrong password, shows MnemonicDialog on success
+- Unit: `regenerateRecoveryData` with new salt/IV produces different wrapped key than original
+- Unit: error-mapping module covers all error types
 
 ---
 
@@ -58,29 +68,35 @@
 **Goal:** Recover account using seed phrase when password is lost.
 
 **Code:**
-- `src/app/routes/_public.recover.tsx`:
-  - Username input + mnemonic input (12-word input with word-by-word validation)
+- `src/app/routes/_public.recover.tsx` — replace placeholder with full recovery form:
+  - Username input + `MnemonicInput` (12-word input with BIP-39 validation)
   - On submit:
-    1. Fetch recovery data (recovery_salt, wrapped_master_key, recovery_iv) from server for this username
-    2. Derive recovery_KEK from mnemonic + recovery_salt
-    3. Unwrap master key with recovery_KEK
-    4. If successful: derive key hierarchy, unlock vault
-    5. Prompt user to set a new password (required after recovery)
-  - Error states: invalid mnemonic, wrong mnemonic for this account, network error
+    1. Fetch recovery salts via `get_recovery_salts(p_username)` RPC (pre-auth, rate-limited)
+    2. Derive recovery KEK from mnemonic + recovery salt via `deriveRecoveryKEK`
+    3. Unwrap master key with `unwrapMasterKeyWithRecovery`
+    4. Derive full key hierarchy, unlock vault
+    5. Prompt user to set a new password (required — old auth hash is invalid after recovery)
+  - Error states: invalid mnemonic (BIP-39 validation), wrong mnemonic (DecryptionError), network error
 - `src/features/auth/ui/MnemonicInput.tsx`:
-  - 12-word input with BIP-39 word validation
-  - Auto-advance to next word on space/tab
-  - Paste support (split pasted text into words)
-  - Word validation against BIP-39 wordlist (highlight invalid words)
-- After successful recovery, redirect to "Set New Password" flow (reuse ChangePasswordDialog logic)
+  - 12 individual word inputs with BIP-39 word validation
+  - Auto-advance to next word on space/tab; paste support (split pasted text into words)
+  - Highlight invalid words in red; disable submit until all 12 words are valid BIP-39 words
+- `src/features/auth/ui/VerifyMnemonicDialog.tsx`:
+  - From SecuritySection, let user verify their stored mnemonic can unwrap the master key
+  - Uses `MnemonicInput` → derive recovery KEK → `unwrapMasterKeyWithRecovery` with cached envelope
+  - Success: "Your recovery phrase is valid" / Failure: "Recovery phrase does not match"
+- `src/features/auth/model/recovery-service.ts`:
+  - Orchestrates: fetch salts → derive KEK → unwrap master key → derive key hierarchy → set new password
+  - Reuses `deriveFullKeyHierarchy` and password-setting logic from `changeUserPassword`
+- `src/shared/api/supabase-recovery.ts` — add `get_recovery_salts(p_username)` RPC call for pre-auth salt fetch
 - Add i18n strings to `auth.json` for recovery flow
 
 **Tests:**
 - Integration: register → write down mnemonic → recover with mnemonic → set new password → login with new password
-- Component test: MnemonicInput validates BIP-39 words
-- Component test: paste support splits text into 12 words
-- Unit: wrong mnemonic → unwrap fails → error message
+- Component: MnemonicInput validates BIP-39 words, highlights invalid, supports paste
+- Unit: wrong mnemonic → `unwrapMasterKeyWithRecovery` throws `DecryptionError`
 - Unit: recovery + new password → vault unlocks with new credentials
+- Component: VerifyMnemonicDialog shows success/failure based on mnemonic validity
 
 ---
 

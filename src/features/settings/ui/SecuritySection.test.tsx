@@ -3,11 +3,13 @@ import { render, screen } from '@/test/utils'
 import userEvent from '@testing-library/user-event'
 
 import { useChangePasswordDialogStore } from '@/shared/auth/change-password-dialog-store'
+import { useRegenerateMnemonicDialogStore } from '@/shared/auth/regenerate-mnemonic-dialog-store'
 import { SecuritySection } from './SecuritySection'
 
 describe('SecuritySection', () => {
   beforeEach(() => {
     useChangePasswordDialogStore.setState({ isChangePasswordDialogOpen: false })
+    useRegenerateMnemonicDialogStore.setState({ isRegenerateMnemonicDialogOpen: false })
   })
 
   it('renders section title and description', () => {
@@ -19,7 +21,7 @@ describe('SecuritySection', () => {
   it('renders three action items', () => {
     render(<SecuritySection />)
     expect(screen.getByText('Change password')).toBeInTheDocument()
-    expect(screen.getByText('View seed phrase')).toBeInTheDocument()
+    expect(screen.getByText('Regenerate seed phrase')).toBeInTheDocument()
     expect(screen.getByText('Key versions')).toBeInTheDocument()
   })
 
@@ -48,5 +50,15 @@ describe('SecuritySection', () => {
     await user.keyboard(' ')
 
     expect(useChangePasswordDialogStore.getState().isChangePasswordDialogOpen).toBe(true)
+  })
+
+  it('opens regenerate mnemonic dialog when clicking "Regenerate seed phrase"', async () => {
+    const user = userEvent.setup()
+    render(<SecuritySection />)
+
+    const seedPhraseButton = screen.getByRole('button', { name: /Regenerate seed phrase/i })
+    await user.click(seedPhraseButton)
+
+    expect(useRegenerateMnemonicDialogStore.getState().isRegenerateMnemonicDialogOpen).toBe(true)
   })
 })

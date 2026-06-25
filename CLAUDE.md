@@ -184,6 +184,7 @@ See `IMPLEMENTATION-PLAN.md` for the full 36-step plan.
 - Step 27 (Supabase Realtime Adapter) — complete
 - Step 28 (Multi-Device Session Handling) — complete
 - Step 29 (Change Password Flow + UI) — complete
+- Step 30 (Regenerate Seed Phrase) — complete
 
 ### Implementation Notes
 
