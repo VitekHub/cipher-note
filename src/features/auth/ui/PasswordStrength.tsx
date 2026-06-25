@@ -21,13 +21,11 @@ function getLabelColor(level: 'weak' | 'fair' | 'strong') {
 
 interface PasswordStrengthProps {
   password: string
-  open: boolean
-  onOpenChange: (open: boolean) => void
   anchorRef: RefObject<Element | null>
   container?: RefObject<HTMLElement | null>
 }
 
-function PasswordStrength({ password, open, onOpenChange, anchorRef, container }: PasswordStrengthProps) {
+function PasswordStrength({ password, anchorRef, container }: PasswordStrengthProps) {
   const { t } = useTranslation('auth')
 
   const { score, criteria } = useMemo(() => calculateStrength(password), [password])
@@ -35,7 +33,7 @@ function PasswordStrength({ password, open, onOpenChange, anchorRef, container }
   const level = getStrengthLevel(score, minLengthMet)
 
   return (
-    <Popover open={open && password.length > 0} onOpenChange={onOpenChange}>
+    <Popover open={password.length > 0}>
       <PopoverPortal container={container}>
         <PopoverPositioner anchor={anchorRef} side="right" sideOffset={12} align="center">
           <PopoverArrow />

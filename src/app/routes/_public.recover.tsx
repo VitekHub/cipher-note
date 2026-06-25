@@ -16,7 +16,7 @@ function RecoverPage() {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="username">{t('login.username')}</Label>
+          <Label htmlFor="username">{t('username')}</Label>
           <Input id="username" type="text" autoComplete="username" />
         </div>
         <Button className="w-full">{t('recover.submit', 'Recover Account')}</Button>
