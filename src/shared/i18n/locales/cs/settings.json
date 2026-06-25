@@ -4,7 +4,7 @@
     "title": "Zabezpečení",
     "description": "Správa hesla a nastavení zabezpečení.",
     "changePassword": "Změnit heslo",
-    "seedPhrase": "Zobrazit seed frázi",
+    "seedPhrase": "Znovu vygenerovat seed frázi",
     "keyVersions": "Verze klíčů"
   },
   "preferences": {

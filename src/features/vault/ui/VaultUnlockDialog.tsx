@@ -15,6 +15,7 @@ function VaultUnlockDialog() {
   async function unlockVault(password: string) {
     if (!user) throw new Error('No authenticated user')
     await keyVault.unlockVault(user.id, password)
+    closeUnlockDialog()
   }
 
   function mapError(error: unknown) {

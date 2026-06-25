@@ -84,7 +84,7 @@ describe('PasswordConfirmDialog', () => {
     expect(mapError).toHaveBeenCalled()
   })
 
-  it('calls onClose and resets form when submission succeeds', async () => {
+  it('resets form when submission succeeds and does not call onClose', async () => {
     const onClose = vi.fn()
     const onConfirm = vi.fn().mockResolvedValue(undefined)
     renderDialog({ onClose, onConfirm })
@@ -94,8 +94,9 @@ describe('PasswordConfirmDialog', () => {
     await user.click(screen.getByRole('button', { name: 'Confirm' }))
 
     await waitFor(() => {
-      expect(onClose).toHaveBeenCalled()
+      expect(onConfirm).toHaveBeenCalledWith('pw')
     })
+    expect(onClose).not.toHaveBeenCalled()
   })
 
   it('calls onClose when close button is clicked', async () => {

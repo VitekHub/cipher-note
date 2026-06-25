@@ -5,6 +5,7 @@ import { ChevronRight, KeyRound, ShieldCheck, Fingerprint, type LucideIcon } fro
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/ui/card'
 import { Separator } from '@/shared/ui/separator'
 import { useChangePasswordDialogStore } from '@/shared/auth/change-password-dialog-store'
+import { useRegenerateMnemonicDialogStore } from '@/shared/auth/regenerate-mnemonic-dialog-store'
 
 const ITEMS: { icon: LucideIcon; labelKey: string; onClick?: () => void }[] = [
   {
@@ -12,7 +13,11 @@ const ITEMS: { icon: LucideIcon; labelKey: string; onClick?: () => void }[] = [
     labelKey: 'security.changePassword',
     onClick: () => useChangePasswordDialogStore.getState().openChangePasswordDialog(),
   },
-  { icon: ShieldCheck, labelKey: 'security.seedPhrase' },
+  {
+    icon: ShieldCheck,
+    labelKey: 'security.seedPhrase',
+    onClick: () => useRegenerateMnemonicDialogStore.getState().openRegenerateMnemonicDialog(),
+  },
   { icon: Fingerprint, labelKey: 'security.keyVersions' },
 ]
 

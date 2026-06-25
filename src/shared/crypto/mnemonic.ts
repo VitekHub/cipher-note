@@ -1,5 +1,6 @@
 import { deriveKey } from '@/shared/crypto/argon2id'
 import { importKey, encrypt, decrypt } from '@/shared/crypto/aes-gcm'
+import { generateIV, generateSalt } from '@/shared/crypto/crypto-utils'
 import { CRYPTO_KEY_LENGTH, MASTER_KEY_RECOVERY_AAD } from '@/shared/types/crypto.types'
 import { MnemonicError } from '@/shared/crypto/errors'
 import type { RecoveryData, RecoveryWrapOptions } from '@/shared/types/crypto.types'
@@ -111,4 +112,21 @@ export async function unwrapMasterKeyWithRecovery(
   const recoveryKEK = await deriveRecoveryKEK(mnemonic, salt)
   const cryptoKey = await importKey(recoveryKEK)
   return decrypt(wrappedMasterKey, cryptoKey, { iv, aad: MASTER_KEY_RECOVERY_AAD })
+}
+
+/**
+ * Create fresh recovery data for a master key: generate a new BIP-39 mnemonic
+ * and wrap the master key with a recovery KEK derived from it.
+ *
+ * @returns The new mnemonic (to show the user) and the RecoveryData
+ *          (to save on the server).
+ */
+export async function createRecoveryData(
+  masterKey: Uint8Array<ArrayBuffer>,
+): Promise<{ mnemonic: string; recoveryData: RecoveryData }> {
+  const mnemonic = await generateMnemonic()
+  const recoveryIV = generateIV()
+  const recoverySalt = generateSalt()
+  const recoveryData = await wrapMasterKeyWithRecovery(masterKey, mnemonic, { iv: recoveryIV, salt: recoverySalt })
+  return { mnemonic, recoveryData }
 }

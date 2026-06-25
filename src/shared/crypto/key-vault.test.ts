@@ -3,12 +3,10 @@ import type { FieldName } from '@/shared/types/entities/field.types'
 import type { ServerFieldKey } from '@/shared/types/api.types'
 
 import { keyVault } from '@/shared/crypto/key-vault'
-import { decrypt } from '@/shared/crypto/aes-gcm'
-import { importKey } from '@/shared/crypto/aes-gcm'
 import { deriveKEK } from '@/shared/crypto/hkdf'
 import { unwrapFieldKeys } from '@/shared/crypto/key-hierarchy'
 import { DecryptionError } from '@/shared/crypto/errors'
-import { derivePasswordKey } from '@/shared/crypto/argon2id'
+import { unwrapMasterKeyWithPassword } from '@/shared/crypto/master-key'
 import { fetchFreshEnvelope, fetchFieldKeys } from '@/shared/api/supabase-keys'
 
 // Shared mock data used across legacy key vault tests
@@ -45,20 +43,19 @@ const cryptoStoreState = {
 }
 
 // Mocks for modules used by the key vault service
-vi.mock('@/shared/crypto/argon2id', () => ({
-  derivePasswordKey: vi.fn().mockResolvedValue(new Uint8Array(32).fill(0x07)),
-  terminateWorker: vi.fn(),
+vi.mock('@/shared/crypto/master-key', () => ({
+  unwrapMasterKeyWithPassword: vi.fn().mockResolvedValue(new Uint8Array(32).fill(0x03)),
 }))
 
 vi.mock('@/shared/crypto/crypto-utils', async () => ({
   ...(await vi.importActual('@/shared/crypto/crypto-utils')),
-  hexDecode: vi.fn((data: string) => new Uint8Array(data.length / 2).fill(0x05)),
   zeroFill: vi.fn(),
 }))
 
 vi.mock('@/shared/crypto/aes-gcm', () => ({
   importKey: vi.fn().mockResolvedValue({} as CryptoKey),
-  decrypt: vi.fn().mockResolvedValue(new Uint8Array(32).fill(0x03)),
+  encrypt: vi.fn(),
+  decrypt: vi.fn(),
 }))
 
 vi.mock('@/shared/crypto/key-hierarchy', () => ({
@@ -212,9 +209,7 @@ describe('unlockVault', () => {
   it('derives KEK from password and envelope, then stores field keys', async () => {
     await keyVault.unlockVault('1', 'testpass123')
 
-    expect(derivePasswordKey).toHaveBeenCalledWith('testpass123', expect.any(Uint8Array))
-    expect(importKey).toHaveBeenCalled()
-    expect(decrypt).toHaveBeenCalled()
+    expect(unwrapMasterKeyWithPassword).toHaveBeenCalledWith('testpass123', expect.any(Object))
     expect(deriveKEK).toHaveBeenCalled()
     expect(unwrapFieldKeys).toHaveBeenCalledWith(mockFieldKeysData, expect.any(Object))
     expect(mockMarkKeysLoaded).toHaveBeenCalledWith(['note', 'website', 'email'])
@@ -243,7 +238,7 @@ describe('unlockVault', () => {
 
     expect(fetchFreshEnvelope).not.toHaveBeenCalled()
     expect(mockSetEnvelope).not.toHaveBeenCalled()
-    expect(derivePasswordKey).toHaveBeenCalled()
+    expect(unwrapMasterKeyWithPassword).toHaveBeenCalled()
     expect(mockMarkKeysLoaded).toHaveBeenCalled()
   })
 
@@ -270,8 +265,7 @@ describe('unlockVault', () => {
       fieldKeys: mockFieldKeysData,
     }
     cryptoStoreState.cachedEnvelope = cachedEnvelope
-    vi.mocked(deriveKEK).mockRejectedValueOnce(new DecryptionError())
-    vi.mocked(deriveKEK).mockResolvedValueOnce(new Uint8Array(32).fill(0x08))
+    vi.mocked(unwrapMasterKeyWithPassword).mockRejectedValueOnce(new DecryptionError())
     await keyVault.unlockVault('1', 'testpass123')
     expect(mockClearVault).toHaveBeenCalled()
     expect(fetchFreshEnvelope).toHaveBeenCalledWith('1')
@@ -288,7 +282,7 @@ describe('unlockVault', () => {
       fieldKeys: mockFieldKeysData,
     }
     cryptoStoreState.cachedEnvelope = cachedEnvelope
-    vi.mocked(deriveKEK).mockRejectedValue(new DecryptionError())
+    vi.mocked(unwrapMasterKeyWithPassword).mockRejectedValue(new DecryptionError())
     await expect(keyVault.unlockVault('1', 'testpass123')).rejects.toThrow(DecryptionError)
     expect(mockClearVault).toHaveBeenCalled()
     expect(fetchFreshEnvelope).toHaveBeenCalled()
@@ -303,7 +297,7 @@ describe('unlockVault', () => {
       fieldKeys: mockFieldKeysData,
     }
     cryptoStoreState.cachedEnvelope = cachedEnvelope
-    vi.mocked(derivePasswordKey).mockRejectedValueOnce(new Error('Some other error'))
+    vi.mocked(unwrapMasterKeyWithPassword).mockRejectedValueOnce(new Error('Some other error'))
     await expect(keyVault.unlockVault('1', 'testpass123')).rejects.toThrow('Some other error')
     expect(mockClearVault).not.toHaveBeenCalled()
     expect(fetchFreshEnvelope).not.toHaveBeenCalled()

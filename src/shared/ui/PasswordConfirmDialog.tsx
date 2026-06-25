@@ -53,7 +53,7 @@ function PasswordConfirmDialog({
     setError(null)
     try {
       await onConfirm(data.password)
-      handleOpenChange(false)
+      reset({ password: '' })
     } catch (err) {
       setError(mapError(err))
     }

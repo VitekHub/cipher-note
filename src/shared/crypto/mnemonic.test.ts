@@ -31,6 +31,7 @@ import {
   deriveRecoveryKEK,
   wrapMasterKeyWithRecovery,
   unwrapMasterKeyWithRecovery,
+  createRecoveryData,
 } from '@/shared/crypto/mnemonic'
 
 function mockBytes(length: number, fill: number): Uint8Array<ArrayBuffer> {
@@ -236,6 +237,48 @@ describe('mnemonic', () => {
           salt: wrapped.recoverySalt,
         }),
       ).rejects.toThrow(DecryptionError)
+    })
+  })
+
+  describe('createRecoveryData', () => {
+    const RECOVERY_KEK_FILL = 0x11
+
+    it('returns a mnemonic and recovery data', async () => {
+      const masterKey = generateMasterKey()
+      vi.mocked(deriveKey).mockResolvedValueOnce(mockBytes(32, RECOVERY_KEK_FILL))
+
+      const result = await createRecoveryData(masterKey)
+
+      expect(result.mnemonic).toBeDefined()
+      expect(result.mnemonic.split(' ')).toHaveLength(12)
+      expect(result.recoveryData).toBeDefined()
+      expect(result.recoveryData.recoverySalt).toBeInstanceOf(Uint8Array)
+      expect(result.recoveryData.recoveryIV).toBeInstanceOf(Uint8Array)
+      expect(result.recoveryData.wrappedMasterKey).toBeInstanceOf(Uint8Array)
+    })
+
+    it('uses fresh recovery salt and IV', async () => {
+      const masterKey = generateMasterKey()
+      vi.mocked(deriveKey).mockResolvedValue(mockBytes(32, RECOVERY_KEK_FILL))
+
+      const result1 = await createRecoveryData(masterKey)
+      const result2 = await createRecoveryData(masterKey)
+
+      expect(result1.recoveryData.recoverySalt).not.toEqual(result2.recoveryData.recoverySalt)
+      expect(result1.recoveryData.recoveryIV).not.toEqual(result2.recoveryData.recoveryIV)
+    })
+
+    it('wraps the master key so it can be unwrapped with the returned mnemonic', async () => {
+      const masterKey = generateMasterKey()
+      vi.mocked(deriveKey).mockResolvedValue(mockBytes(32, RECOVERY_KEK_FILL))
+
+      const { mnemonic, recoveryData } = await createRecoveryData(masterKey)
+      const unwrapped = await unwrapMasterKeyWithRecovery(recoveryData.wrappedMasterKey, mnemonic, {
+        iv: recoveryData.recoveryIV,
+        salt: recoveryData.recoverySalt,
+      })
+
+      expect(unwrapped).toEqual(masterKey)
     })
   })
 })
