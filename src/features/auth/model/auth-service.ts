@@ -1,14 +1,14 @@
 import { deriveRegistrationKeys } from '@/features/auth/model/registration-crypto'
 import { useAuthStore } from '@/features/auth/model/auth-store'
-import { useCryptoStore } from '@/shared/crypto/crypto-store'
+import { useCryptoStore } from '@/shared/crypto/vault/crypto-store'
 import { authAdapter } from '@/shared/auth/supabase-adapter'
 import { uploadRegistrationData } from '@/shared/api/supabase-registration'
 import { fetchLoginSalts, updateMasterKeyEnvelope, fetchFreshEnvelope } from '@/shared/api/supabase-keys'
-import { hexDecode, hexEncode } from '@/shared/crypto/crypto-utils'
-import { deriveAuthHash } from '@/shared/crypto/split-kdf'
-import { rewrapMasterKey } from '@/shared/crypto/master-key'
-import { terminateWorker } from '@/shared/crypto/argon2id'
-import { keyVault } from '@/shared/crypto/key-vault'
+import { hexDecode, hexEncode } from '@/shared/crypto/core/crypto-utils'
+import { deriveAuthHash } from '@/shared/crypto/keys/split-kdf'
+import { rewrapMasterKey } from '@/shared/crypto/keys/master-key'
+import { terminateWorker } from '@/shared/crypto/core/argon2id'
+import { keyVault } from '@/shared/crypto/vault/key-vault'
 
 /**
  * Registers a new user: derives keys, signs up on the server, uploads encrypted

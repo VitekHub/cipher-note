@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { importKey } from '@/shared/crypto/aes-gcm'
+import { importKey } from '@/shared/crypto/core/aes-gcm'
 import { encryptField, toSaveFieldData } from '@/features/fields/model/field-crypto'
 import type { FieldName } from '@/shared/types/entities/field.types'
 import type { ServerEncryptedField } from '@/shared/types/api.types'
@@ -31,7 +31,7 @@ vi.mock('@/shared/api/supabase-fields', () => ({
   fetchAllFields: mockFetchAllFields,
 }))
 
-vi.mock('@/shared/crypto/key-vault', () => ({
+vi.mock('@/shared/crypto/vault/key-vault', () => ({
   keyVault: { getKey: mockGetKey },
 }))
 

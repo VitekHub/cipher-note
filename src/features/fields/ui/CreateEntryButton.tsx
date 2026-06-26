@@ -4,7 +4,7 @@ import { useNavigate } from '@tanstack/react-router'
 
 import { cn } from '@/shared/lib/utils'
 import { Button } from '@/shared/ui/button'
-import { useCryptoStore } from '@/shared/crypto/crypto-store'
+import { useCryptoStore } from '@/shared/crypto/vault/crypto-store'
 import { useCreateEntry } from '@/features/fields/model/use-entry'
 
 interface CreateEntryButtonProps {

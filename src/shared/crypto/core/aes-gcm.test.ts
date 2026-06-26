@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { encrypt, decrypt, importKey, exportKey } from '@/shared/crypto/aes-gcm'
-import { DecryptionError } from '@/shared/crypto/errors'
+import { encrypt, decrypt, importKey, exportKey } from '@/shared/crypto/core/aes-gcm'
+import { DecryptionError } from '@/shared/crypto/core/errors'
 
 const generateKey = async () => await importKey(crypto.getRandomValues(new Uint8Array(32)), true)
 

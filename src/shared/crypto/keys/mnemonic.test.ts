@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { DecryptionError, MnemonicError } from '@/shared/crypto/errors'
-import { generateIV } from '@/shared/crypto/crypto-utils'
-import { generateMasterKey } from '@/shared/crypto/master-key'
+import { DecryptionError, MnemonicError } from '@/shared/crypto/core/errors'
+import { generateIV } from '@/shared/crypto/core/crypto-utils'
+import { generateMasterKey } from '@/shared/crypto/keys/master-key'
 import type { RecoveryData } from '@/shared/types/crypto.types'
 
 // Mock Argon2id module to avoid WASM/worker dependency in tests
-vi.mock('@/shared/crypto/argon2id', () => ({
+vi.mock('@/shared/crypto/core/argon2id', () => ({
   deriveKey: vi.fn(),
 }))
 
@@ -23,7 +23,7 @@ vi.mock('@scure/bip39/wordlists/english.js', () => ({
   wordlist: MOCK_WORDLIST,
 }))
 
-import { deriveKey } from '@/shared/crypto/argon2id'
+import { deriveKey } from '@/shared/crypto/core/argon2id'
 import {
   generateMnemonic,
   validateMnemonic,
@@ -32,7 +32,7 @@ import {
   wrapMasterKeyWithRecovery,
   unwrapMasterKeyWithRecovery,
   createRecoveryData,
-} from '@/shared/crypto/mnemonic'
+} from '@/shared/crypto/keys/mnemonic'
 
 function mockBytes(length: number, fill: number): Uint8Array<ArrayBuffer> {
   return new Uint8Array(length).fill(fill) as Uint8Array<ArrayBuffer>

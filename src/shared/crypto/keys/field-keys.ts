@@ -7,9 +7,9 @@
  * decrypts them during vault unlock.
  */
 
-import { importKey } from '@/shared/crypto/aes-gcm'
-import { generateKey, generateIV, encodeAAD, hexDecode, zeroFill } from '@/shared/crypto/crypto-utils'
-import { encrypt, decrypt } from '@/shared/crypto/aes-gcm'
+import { importKey } from '@/shared/crypto/core/aes-gcm'
+import { generateKey, generateIV, encodeAAD, hexDecode, zeroFill } from '@/shared/crypto/core/crypto-utils'
+import { encrypt, decrypt } from '@/shared/crypto/core/aes-gcm'
 import type { WrappedFieldKey } from '@/shared/types/crypto.types'
 import { FIELD_KEY_VERSION } from '@/shared/types/crypto.types'
 import type { ServerFieldKey } from '@/shared/types/api.types'

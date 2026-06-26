@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 
 import { useAuth } from '@/shared/auth/auth-context'
-import { keyVault } from '@/shared/crypto/key-vault'
+import { keyVault } from '@/shared/crypto/vault/key-vault'
 import { useVaultDialogStore } from '@/features/vault/model/vault-dialog-store'
 import { getVaultErrorMessage } from '@/features/vault/model/vault-error-messages'
 import { PasswordConfirmDialog } from '@/shared/ui/PasswordConfirmDialog'

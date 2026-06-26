@@ -1,10 +1,10 @@
-import { zeroFill } from '@/shared/crypto/crypto-utils'
-import { createRecoveryData } from '@/shared/crypto/mnemonic'
-import { generateAndWrapFieldKeys } from '@/shared/crypto/field-keys'
-import { deriveAuthCredentials } from '@/shared/crypto/split-kdf'
-import { generateMasterKey, wrapMasterKeyWithPassword } from '@/shared/crypto/master-key'
-import { deriveKEK } from '@/shared/crypto/hkdf'
-import { importKey } from '@/shared/crypto/aes-gcm'
+import { zeroFill } from '@/shared/crypto/core/crypto-utils'
+import { createRecoveryData } from '@/shared/crypto/keys/mnemonic'
+import { generateAndWrapFieldKeys } from '@/shared/crypto/keys/field-keys'
+import { deriveAuthCredentials } from '@/shared/crypto/keys/split-kdf'
+import { generateMasterKey, wrapMasterKeyWithPassword } from '@/shared/crypto/keys/master-key'
+import { deriveKEK } from '@/shared/crypto/core/hkdf'
+import { importKey } from '@/shared/crypto/core/aes-gcm'
 import type { RegistrationResult } from '@/shared/types/crypto.types'
 
 /**

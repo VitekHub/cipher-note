@@ -1,5 +1,5 @@
 import type { TFunction } from 'i18next'
-import { DecryptionError } from '@/shared/crypto/errors'
+import { DecryptionError } from '@/shared/crypto/core/errors'
 import { AuthErrorCode } from '@/shared/auth/auth-errors'
 import { ApiErrorCode } from '@/shared/api/api-errors'
 import { mapErrorToMessage, type ErrorKeySpec } from '@/shared/lib/error-messages'

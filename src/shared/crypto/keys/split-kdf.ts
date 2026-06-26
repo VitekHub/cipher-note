@@ -8,8 +8,8 @@
  * derive passwordKey.
  */
 
-import { deriveKey } from '@/shared/crypto/argon2id'
-import { generateSalt, hexEncode } from '@/shared/crypto/crypto-utils'
+import { deriveKey } from '@/shared/crypto/core/argon2id'
+import { generateSalt, hexEncode } from '@/shared/crypto/core/crypto-utils'
 import type { AuthCredentials } from '@/shared/types/crypto.types'
 
 /**

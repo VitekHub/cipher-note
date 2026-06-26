@@ -2,11 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { FieldName } from '@/shared/types/entities/field.types'
 import type { ServerFieldKey } from '@/shared/types/api.types'
 
-import { keyVault } from '@/shared/crypto/key-vault'
-import { deriveKEK } from '@/shared/crypto/hkdf'
-import { unwrapFieldKeys } from '@/shared/crypto/field-keys'
-import { DecryptionError } from '@/shared/crypto/errors'
-import { unwrapMasterKeyWithPassword } from '@/shared/crypto/master-key'
+import { keyVault } from '@/shared/crypto/vault/key-vault'
+import { deriveKEK } from '@/shared/crypto/core/hkdf'
+import { unwrapFieldKeys } from '@/shared/crypto/keys/field-keys'
+import { DecryptionError } from '@/shared/crypto/core/errors'
+import { unwrapMasterKeyWithPassword } from '@/shared/crypto/keys/master-key'
 import { fetchFreshEnvelope, fetchFieldKeys } from '@/shared/api/supabase-keys'
 
 // Shared mock data used across legacy key vault tests
@@ -43,22 +43,22 @@ const cryptoStoreState = {
 }
 
 // Mocks for modules used by the key vault service
-vi.mock('@/shared/crypto/master-key', () => ({
+vi.mock('@/shared/crypto/keys/master-key', () => ({
   unwrapMasterKeyWithPassword: vi.fn().mockResolvedValue(new Uint8Array(32).fill(0x03)),
 }))
 
-vi.mock('@/shared/crypto/crypto-utils', async () => ({
-  ...(await vi.importActual('@/shared/crypto/crypto-utils')),
+vi.mock('@/shared/crypto/core/crypto-utils', async () => ({
+  ...(await vi.importActual('@/shared/crypto/core/crypto-utils')),
   zeroFill: vi.fn(),
 }))
 
-vi.mock('@/shared/crypto/aes-gcm', () => ({
+vi.mock('@/shared/crypto/core/aes-gcm', () => ({
   importKey: vi.fn().mockResolvedValue({} as CryptoKey),
   encrypt: vi.fn(),
   decrypt: vi.fn(),
 }))
 
-vi.mock('@/shared/crypto/field-keys', () => ({
+vi.mock('@/shared/crypto/keys/field-keys', () => ({
   unwrapFieldKeys: vi.fn().mockResolvedValue(
     new Map<string, CryptoKey>([
       ['note', {} as CryptoKey],
@@ -68,7 +68,7 @@ vi.mock('@/shared/crypto/field-keys', () => ({
   ),
 }))
 
-vi.mock('@/shared/crypto/hkdf', () => ({
+vi.mock('@/shared/crypto/core/hkdf', () => ({
   deriveKEK: vi.fn().mockResolvedValue(new Uint8Array(32).fill(0x08)),
 }))
 
@@ -77,7 +77,7 @@ vi.mock('@/shared/api/supabase-keys', () => ({
   fetchFieldKeys: vi.fn().mockResolvedValue(mockFieldKeysData),
 }))
 
-vi.mock('@/shared/crypto/crypto-store', () => ({
+vi.mock('@/shared/crypto/vault/crypto-store', () => ({
   useCryptoStore: {
     getState: vi.fn(() => cryptoStoreState),
     setState: vi.fn(),

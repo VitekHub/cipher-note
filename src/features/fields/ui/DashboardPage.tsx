@@ -2,7 +2,7 @@ import { useEffect, useRef, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus, FileText } from 'lucide-react'
 
-import { useCryptoStore } from '@/shared/crypto/crypto-store'
+import { useCryptoStore } from '@/shared/crypto/vault/crypto-store'
 import { useSyncStatusStore } from '@/features/fields/model/sync-status-store'
 import { useFieldEditor } from '@/features/fields/model/use-field-editor'
 import { useEntries } from '@/features/fields/model/use-entry'

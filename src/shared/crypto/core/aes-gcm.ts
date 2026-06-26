@@ -1,5 +1,5 @@
-import { DecryptionError } from '@/shared/crypto/errors'
-import { copyToUint8Array } from '@/shared/crypto/crypto-utils'
+import { DecryptionError } from '@/shared/crypto/core/errors'
+import { copyToUint8Array } from '@/shared/crypto/core/crypto-utils'
 import { CRYPTO_KEY_LENGTH } from '@/shared/types/crypto.types'
 import type { AesGcmOptions } from '@/shared/types/crypto.types'
 

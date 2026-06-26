@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 
-import { useCryptoStore } from '@/shared/crypto/crypto-store'
-import { keyVault } from '@/shared/crypto/key-vault'
+import { useCryptoStore } from '@/shared/crypto/vault/crypto-store'
+import { keyVault } from '@/shared/crypto/vault/key-vault'
 
 export const DEFAULT_VAULT_TIMEOUT_MS = 15 * 60 * 1000
 

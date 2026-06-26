@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { useCryptoStore } from '@/shared/crypto/crypto-store'
+import { useCryptoStore } from '@/shared/crypto/vault/crypto-store'
 import { createElement, type ReactNode } from 'react'
 import { queryKeys } from '@/shared/lib/query-keys'
 import type { FieldName } from '@/shared/types/entities/field.types'
@@ -114,7 +114,7 @@ describe('useField', () => {
   })
 
   it('sets error state immediately for DecryptionError (no retry)', async () => {
-    const { DecryptionError } = await import('@/shared/crypto/errors')
+    const { DecryptionError } = await import('@/shared/crypto/core/errors')
     mockLoadField.mockRejectedValue(new DecryptionError('Decryption failed'))
 
     const { result } = renderHook(() => useField(TEST_ENTRY_ID, TEST_FIELD_NAME), { wrapper })

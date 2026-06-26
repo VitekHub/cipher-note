@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { DecryptionError } from '@/shared/crypto/errors'
-import { hexEncode } from '@/shared/crypto/crypto-utils'
-import { generateMasterKey } from '@/shared/crypto/master-key'
-import { deriveKEK } from '@/shared/crypto/hkdf'
-import { importKey } from '@/shared/crypto/aes-gcm'
-import { generateAndWrapFieldKeys, unwrapFieldKeys } from '@/shared/crypto/field-keys'
+import { DecryptionError } from '@/shared/crypto/core/errors'
+import { hexEncode } from '@/shared/crypto/core/crypto-utils'
+import { generateMasterKey } from '@/shared/crypto/keys/master-key'
+import { deriveKEK } from '@/shared/crypto/core/hkdf'
+import { importKey } from '@/shared/crypto/core/aes-gcm'
+import { generateAndWrapFieldKeys, unwrapFieldKeys } from '@/shared/crypto/keys/field-keys'
 import type { ServerFieldKey } from '@/shared/types/api.types'
 
 describe('field-keys', () => {

@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import type { ErrorComponentProps } from '@tanstack/react-router'
 import { Button } from '@/shared/ui/button'
-import { Argon2Error, CorruptedDataError, DecryptionError, MnemonicError } from '@/shared/crypto/errors'
+import { Argon2Error, CorruptedDataError, DecryptionError, MnemonicError } from '@/shared/crypto/core/errors'
 import { AuthError, AuthErrorCode } from '@/shared/auth/auth-errors'
 import { ApiError, ApiErrorCode } from '@/shared/api/api-errors'
 

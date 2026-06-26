@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { mapErrorToMessage, type ErrorKeySpec } from '@/shared/lib/error-messages'
 import { AuthError, AuthErrorCode } from '@/shared/auth/auth-errors'
 import { ApiError, ApiErrorCode } from '@/shared/api/api-errors'
-import { DecryptionError, CorruptedDataError, Argon2Error } from '@/shared/crypto/errors'
+import { DecryptionError, CorruptedDataError, Argon2Error } from '@/shared/crypto/core/errors'
 import type { TFunction } from 'i18next'
 
 const mockT = ((key: string) => key) as unknown as TFunction

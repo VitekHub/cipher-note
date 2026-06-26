@@ -1,8 +1,8 @@
-import { deriveKey } from '@/shared/crypto/argon2id'
-import { importKey, encrypt, decrypt } from '@/shared/crypto/aes-gcm'
-import { generateIV, generateSalt } from '@/shared/crypto/crypto-utils'
+import { deriveKey } from '@/shared/crypto/core/argon2id'
+import { importKey, encrypt, decrypt } from '@/shared/crypto/core/aes-gcm'
+import { generateIV, generateSalt } from '@/shared/crypto/core/crypto-utils'
 import { CRYPTO_KEY_LENGTH, MASTER_KEY_RECOVERY_AAD } from '@/shared/types/crypto.types'
-import { MnemonicError } from '@/shared/crypto/errors'
+import { MnemonicError } from '@/shared/crypto/core/errors'
 import type { RecoveryData, RecoveryWrapOptions } from '@/shared/types/crypto.types'
 
 // --- Lazy-load @scure/bip39 ---

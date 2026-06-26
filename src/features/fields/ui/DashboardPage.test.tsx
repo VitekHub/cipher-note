@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@/test/utils'
-import { useCryptoStore } from '@/shared/crypto/crypto-store'
+import { useCryptoStore } from '@/shared/crypto/vault/crypto-store'
 import { useSyncStatusStore, SYNC_STATUS } from '@/features/fields/model/sync-status-store'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { LockedVaultCard } from '@/features/vault/ui/LockedVaultCard'

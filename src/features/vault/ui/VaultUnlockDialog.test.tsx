@@ -1,15 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@/test/utils'
 import userEvent from '@testing-library/user-event'
-import { DecryptionError } from '@/shared/crypto/errors'
-import { useCryptoStore } from '@/shared/crypto/crypto-store'
+import { DecryptionError } from '@/shared/crypto/core/errors'
+import { useCryptoStore } from '@/shared/crypto/vault/crypto-store'
 import { useVaultDialogStore } from '@/features/vault/model/vault-dialog-store'
 
 const { mockUnlockVault } = vi.hoisted(() => ({
   mockUnlockVault: vi.fn(),
 }))
 
-vi.mock('@/shared/crypto/key-vault', () => ({
+vi.mock('@/shared/crypto/vault/key-vault', () => ({
   keyVault: {
     unlockVault: mockUnlockVault,
   },

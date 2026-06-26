@@ -1,22 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { encrypt, decrypt, importKey } from '@/shared/crypto/aes-gcm'
-import { generateMasterKey, rewrapMasterKey } from '@/shared/crypto/master-key'
-import { generateAndWrapFieldKeys, unwrapFieldKeys } from '@/shared/crypto/field-keys'
-import { deriveKEK } from '@/shared/crypto/hkdf'
-import { deriveAuthCredentials, deriveAuthHash, derivePasswordKey } from '@/shared/crypto/split-kdf'
-import { wrapMasterKeyWithRecovery, unwrapMasterKeyWithRecovery } from '@/shared/crypto/mnemonic'
-import { DecryptionError } from '@/shared/crypto/errors'
+import { encrypt, decrypt, importKey } from '@/shared/crypto/core/aes-gcm'
+import { generateMasterKey, rewrapMasterKey } from '@/shared/crypto/keys/master-key'
+import { generateAndWrapFieldKeys, unwrapFieldKeys } from '@/shared/crypto/keys/field-keys'
+import { deriveKEK } from '@/shared/crypto/core/hkdf'
+import { deriveAuthCredentials, deriveAuthHash, derivePasswordKey } from '@/shared/crypto/keys/split-kdf'
+import { wrapMasterKeyWithRecovery, unwrapMasterKeyWithRecovery } from '@/shared/crypto/keys/mnemonic'
+import { DecryptionError } from '@/shared/crypto/core/errors'
 import { MASTER_KEY_PASSWORD_AAD } from '@/shared/types/crypto.types'
-import { hexEncode } from '@/shared/crypto/crypto-utils'
-import type { ServerFieldKey, ServerMasterKeyEnvelope } from '../types/api.types'
+import { hexEncode } from '@/shared/crypto/core/crypto-utils'
+import type { ServerFieldKey, ServerMasterKeyEnvelope } from '@/shared/types/api.types'
 
 // Mock Argon2id module — Web Worker won't run in jsdom
-vi.mock('@/shared/crypto/argon2id', () => ({
+vi.mock('@/shared/crypto/core/argon2id', () => ({
   deriveKey: vi.fn(),
 }))
 
 // Mock split-kdf module — control derived values without Worker dependency
-vi.mock('@/shared/crypto/split-kdf', () => ({
+vi.mock('@/shared/crypto/keys/split-kdf', () => ({
   deriveAuthHash: vi.fn(),
   derivePasswordKey: vi.fn(),
   deriveAuthCredentials: vi.fn(),
@@ -36,18 +36,18 @@ vi.mock('@scure/bip39/wordlists/english.js', () => ({
   wordlist: MOCK_WORDLIST,
 }))
 
-import { deriveKey } from '@/shared/crypto/argon2id'
+import { deriveKey } from '@/shared/crypto/core/argon2id'
 
 function mockBytes(length: number, fill: number): Uint8Array<ArrayBuffer> {
   return new Uint8Array(length).fill(fill) as Uint8Array<ArrayBuffer>
 }
 
 // Mock crypto-utils module — allow generateSalt to be controlled per-test
-vi.mock('@/shared/crypto/crypto-utils', async () => ({
-  ...(await vi.importActual('@/shared/crypto/crypto-utils')),
+vi.mock('@/shared/crypto/core/crypto-utils', async () => ({
+  ...(await vi.importActual('@/shared/crypto/core/crypto-utils')),
   generateSalt: vi.fn(),
 }))
-import { generateKey, generateIV, encodeAAD, zeroFill, generateSalt } from '@/shared/crypto/crypto-utils'
+import { generateKey, generateIV, encodeAAD, zeroFill, generateSalt } from '@/shared/crypto/core/crypto-utils'
 
 const PASSWORD = 'test-password-123'
 const PASSWORD_KEY_FILL = 0x11

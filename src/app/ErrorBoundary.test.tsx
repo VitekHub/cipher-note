@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { CryptoError, DecryptionError, CorruptedDataError } from '@/shared/crypto/errors'
+import { CryptoError, DecryptionError, CorruptedDataError } from '@/shared/crypto/core/errors'
 
 describe('CryptoError classes', () => {
   it('CryptoError has correct name', () => {
