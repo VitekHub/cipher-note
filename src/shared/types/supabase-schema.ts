@@ -7,8 +7,8 @@ export const PUBLIC_SCHEMA = 'public'
 export interface EncryptedFieldRow {
   entry_id: string
   field_name: string
-  encrypted_blob: string
-  iv: string
+  ciphertext: string
+  ciphertext_iv: string
   updated_at: string
 }
 

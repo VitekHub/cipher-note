@@ -10,19 +10,21 @@
 -- authenticated retains table access (needed for supabase.from() queries,
 -- with RLS restricting rows to user_id = auth.uid()).
 REVOKE ALL ON public.users FROM anon;
-REVOKE ALL ON public.keys FROM anon;
+REVOKE ALL ON public.login_salts FROM anon;
+REVOKE ALL ON public.master_keys FROM anon;
 REVOKE ALL ON public.field_keys FROM anon;
 REVOKE ALL ON public.entries FROM anon;
 REVOKE ALL ON public.encrypted_fields FROM anon;
-REVOKE ALL ON public.recovery FROM anon;
+REVOKE ALL ON public.recovery_keys FROM anon;
 
 -- Enable RLS on all tables
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.keys ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.login_salts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.master_keys ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.field_keys ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.entries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.encrypted_fields ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.recovery ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.recovery_keys ENABLE ROW LEVEL SECURITY;
 
 -- ============================================
 -- Users policies
@@ -40,18 +42,34 @@ CREATE POLICY "Users can update own profile"
   WITH CHECK (id = auth.uid());
 
 -- ============================================
--- Keys policies (one-to-one with user)
+-- Login salts policies (one-to-one with user)
 -- ============================================
-CREATE POLICY "Users can view own keys"
-  ON public.keys FOR SELECT
+CREATE POLICY "Users can view own login salts"
+  ON public.login_salts FOR SELECT
   USING (user_id = auth.uid());
 
-CREATE POLICY "Users can insert own keys"
-  ON public.keys FOR INSERT
+CREATE POLICY "Users can insert own login salts"
+  ON public.login_salts FOR INSERT
   WITH CHECK (user_id = auth.uid());
 
-CREATE POLICY "Users can update own keys"
-  ON public.keys FOR UPDATE
+CREATE POLICY "Users can update own login salts"
+  ON public.login_salts FOR UPDATE
+  USING (user_id = auth.uid())
+  WITH CHECK (user_id = auth.uid());
+
+-- ============================================
+-- Master keys policies (one-to-one with user)
+-- ============================================
+CREATE POLICY "Users can view own master keys"
+  ON public.master_keys FOR SELECT
+  USING (user_id = auth.uid());
+
+CREATE POLICY "Users can insert own master keys"
+  ON public.master_keys FOR INSERT
+  WITH CHECK (user_id = auth.uid());
+
+CREATE POLICY "Users can update own master keys"
+  ON public.master_keys FOR UPDATE
   USING (user_id = auth.uid())
   WITH CHECK (user_id = auth.uid());
 
@@ -121,20 +139,20 @@ CREATE POLICY "Users can delete own encrypted fields"
   USING (user_id = auth.uid());
 
 -- ============================================
--- Recovery policies (one-to-one with user)
+-- Recovery keys policies (one-to-one with user)
 -- No DELETE policy: recovery data can be replaced (UPDATE) but never removed.
 -- This ensures users always have a recovery path available.
 -- ============================================
-CREATE POLICY "Users can view own recovery data"
-  ON public.recovery FOR SELECT
+CREATE POLICY "Users can view own recovery keys"
+  ON public.recovery_keys FOR SELECT
   USING (user_id = auth.uid());
 
-CREATE POLICY "Users can insert own recovery data"
-  ON public.recovery FOR INSERT
+CREATE POLICY "Users can insert own recovery keys"
+  ON public.recovery_keys FOR INSERT
   WITH CHECK (user_id = auth.uid());
 
-CREATE POLICY "Users can update own recovery data"
-  ON public.recovery FOR UPDATE
+CREATE POLICY "Users can update own recovery keys"
+  ON public.recovery_keys FOR UPDATE
   USING (user_id = auth.uid())
   WITH CHECK (user_id = auth.uid());
 

@@ -9,9 +9,9 @@ export interface EncryptedField {
   entryId: string
   fieldName: FieldName
   /** Hex-encoded AES-GCM ciphertext. */
-  encryptedBlob: string
+  ciphertext: string
   /** Hex-encoded initialization vector for AES-GCM. */
-  iv: string
+  ciphertextIV: string
   updatedAt: string
 }
 
