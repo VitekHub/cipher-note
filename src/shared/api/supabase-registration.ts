@@ -10,10 +10,10 @@ export async function uploadRegistrationData(data: RegistrationResult, userId: s
   // 1. Insert keys row (auth salts + wrapped master key)
   const { error: keysError } = await supabase.from('keys').insert({
     user_id: userId,
-    auth_salt: hexEncode(data.authSalt),
-    key_salt: hexEncode(data.keySalt),
-    wrapped_master_key: hexEncode(data.wrappedMasterKey),
-    master_key_iv: hexEncode(data.masterKeyIV),
+    auth_salt: hexEncode(data.keyEnvelope.authSalt),
+    key_salt: hexEncode(data.keyEnvelope.keySalt),
+    wrapped_master_key: hexEncode(data.keyEnvelope.wrappedMasterKey),
+    master_key_iv: hexEncode(data.keyEnvelope.masterKeyIV),
   })
   if (keysError) throw wrapApiError(keysError)
 
@@ -37,9 +37,9 @@ export async function uploadRegistrationData(data: RegistrationResult, userId: s
   // 4. Insert recovery row (mnemonic-wrapped master key)
   const { error: recoveryError } = await supabase.from('recovery').insert({
     user_id: userId,
-    recovery_salt: hexEncode(data.recoveryData.recoverySalt),
-    wrapped_master_key: hexEncode(data.recoveryData.wrappedMasterKey),
-    recovery_iv: hexEncode(data.recoveryData.recoveryIV),
+    recovery_salt: hexEncode(data.recovery.recoverySalt),
+    wrapped_master_key: hexEncode(data.recovery.wrappedMasterKey),
+    recovery_iv: hexEncode(data.recovery.recoveryIV),
   })
   if (recoveryError) throw wrapApiError(recoveryError)
 }

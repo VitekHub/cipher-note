@@ -39,14 +39,14 @@ export async function signUpUser(username: string, password: string): Promise<st
     authStore.setAuth(authResult.user, authResult.session)
 
     // Store KEK and field keys in the vault (non-extractable CryptoKeys)
-    keyVault.storeKey('kek', regResult.kek)
-    keyVault.storeFieldKeys(regResult.fieldKeys)
+    keyVault.storeKey('kek', regResult.vault.kek)
+    keyVault.storeFieldKeys(regResult.vault.fieldKeys)
 
     useCryptoStore.getState().setCachedEnvelope({
-      authSalt: hexEncode(regResult.authSalt),
-      keySalt: hexEncode(regResult.keySalt),
-      wrappedMasterKey: hexEncode(regResult.wrappedMasterKey),
-      masterKeyIV: hexEncode(regResult.masterKeyIV),
+      authSalt: hexEncode(regResult.keyEnvelope.authSalt),
+      keySalt: hexEncode(regResult.keyEnvelope.keySalt),
+      wrappedMasterKey: hexEncode(regResult.keyEnvelope.wrappedMasterKey),
+      masterKeyIV: hexEncode(regResult.keyEnvelope.masterKeyIV),
       fieldKeys: regResult.wrappedFieldKeys.map((fk) => ({
         fieldName: fk.fieldName,
         version: fk.version,
@@ -55,7 +55,7 @@ export async function signUpUser(username: string, password: string): Promise<st
       })),
     })
 
-    return regResult.mnemonic
+    return regResult.recovery.mnemonic
   } finally {
     authStore.setLoading(false)
   }

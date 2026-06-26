@@ -1,29 +1,53 @@
 /**
- * This module ties together the lower-level crypto primitives (HKDF, AES-GCM,
- * key wrapping) into the operations needed for registration, login, and vault
- * management:
+ * Field key operations: generation, wrapping, and unwrapping.
  *
- *   Master Key (random 256 bits)
- *     ├── KEK (HKDF info="wrap")  → wraps/unwraps field keys
- *     └── Signing Key Seed (HKDF info="sign")  → integrity verification of wrapped keys
- *
- *   Field Keys (random 256 bits each, per field: title, note, website, email)
- *     → wrapped with KEK + AAD(fieldName, version) for server storage
- *
- * Flow at registration:
- *   generate master key → derive KEK → generate a field key for each field → wrap them with KEK → upload wrapped keys + salts + IVs
- *
- * Flow at login:
- *   password key → unwrap master key → derive KEK → unwrap field keys → unlock vault
+ * Each entry has four encrypted fields (title, note, website, email), each
+ * protected by its own 256-bit field key. Field keys are wrapped (encrypted)
+ * with the KEK and AAD(fieldName, version) for server storage, and unwrapped
+ * during vault unlock.
  */
 
 import { importKey } from '@/shared/crypto/aes-gcm'
-import { generateKey, generateIV, encodeAAD, hexDecode } from '@/shared/crypto/crypto-utils'
+import { generateKey, generateIV, encodeAAD, hexDecode, zeroFill } from '@/shared/crypto/crypto-utils'
 import { encrypt, decrypt } from '@/shared/crypto/aes-gcm'
-import { deriveKEK, deriveSigningKeySeed } from '@/shared/crypto/hkdf'
-import type { KeyHierarchy, WrappedFieldKey } from '@/shared/types/crypto.types'
-import type { ServerFieldKey } from '../types/api.types'
+import type { WrappedFieldKey } from '@/shared/types/crypto.types'
+import { FIELD_KEY_VERSION } from '@/shared/types/crypto.types'
+import type { ServerFieldKey } from '@/shared/types/api.types'
 import { FIELD_NAMES } from '@/shared/types/entities/field.types'
+
+/**
+ * Generate all four field keys, import them as CryptoKeys, and wrap them
+ * with the KEK — all in a single parallel pass.
+ *
+ * This combines what were previously three separate steps (generate → version
+ * → wrap) into one, avoiding multiple iterations over the field key arrays.
+ * Raw keys are zero-filled after wrapping.
+ */
+export async function generateAndWrapFieldKeys(
+  kek: CryptoKey,
+): Promise<{ cryptoFieldKeys: Map<string, CryptoKey>; wrappedFieldKeys: WrappedFieldKey[] }> {
+  const cryptoFieldKeys = new Map<string, CryptoKey>()
+  const wrappedFieldKeys: WrappedFieldKey[] = []
+
+  await Promise.all(
+    FIELD_NAMES.map(async (fieldName) => {
+      const rawKey = generateKey()
+      try {
+        const cryptoKey = await importKey(rawKey)
+        const iv = generateIV()
+        const aad = encodeAAD(fieldName, FIELD_KEY_VERSION)
+        const wrappedKey = await encrypt(rawKey, kek, { iv, aad })
+
+        cryptoFieldKeys.set(fieldName, cryptoKey)
+        wrappedFieldKeys.push({ fieldName, version: FIELD_KEY_VERSION, wrappedKey, iv })
+      } finally {
+        zeroFill(rawKey)
+      }
+    }),
+  )
+
+  return { cryptoFieldKeys, wrappedFieldKeys }
+}
 
 /**
  * Generate all four field keys (title, note, website, email) at once.
@@ -39,29 +63,6 @@ export async function generateFieldKeys(): Promise<{
     await Promise.all(entries.map(async ([name, key]) => [name, await importKey(key)] as const)),
   )
   return { rawFieldKeys: new Map(entries), cryptoFieldKeys }
-}
-
-/** Generate a 256-bit random master key. Used once during registration. */
-export function generateMasterKey(): Uint8Array<ArrayBuffer> {
-  return generateKey()
-}
-
-/**
- * Derive the full key hierarchy from a master key.
- *
- * Derives KEK (for wrapping field keys) and signing key seed (for integrity
- * verification) from the master key using HKDF. Imports the KEK bytes as an
- * AES-GCM CryptoKey for direct use in key wrapping operations.
- *
- * @param masterKey - 256-bit random master key
- * @returns KeyHierarchy containing master key, KEK (CryptoKey), and signing key seed
- */
-export async function deriveFullKeyHierarchy(masterKey: Uint8Array<ArrayBuffer>): Promise<KeyHierarchy> {
-  const [kekBytes, signingKeySeed] = await Promise.all([deriveKEK(masterKey), deriveSigningKeySeed(masterKey)])
-
-  const kek = await importKey(kekBytes, false)
-
-  return { masterKey, kek, signingKeySeed }
 }
 
 /**

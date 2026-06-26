@@ -36,12 +36,6 @@ export interface EncryptedFieldData {
   iv: Uint8Array<ArrayBuffer>
 }
 
-export interface KeyHierarchy {
-  masterKey: Uint8Array<ArrayBuffer>
-  kek: CryptoKey
-  signingKeySeed: Uint8Array<ArrayBuffer>
-}
-
 export interface Argon2Params {
   memory: number
   iterations: number
@@ -79,13 +73,16 @@ export interface RecoveryData {
 
 export interface RegistrationResult {
   authHash: string
-  authSalt: Uint8Array<ArrayBuffer>
-  keySalt: Uint8Array<ArrayBuffer>
-  kek: CryptoKey
-  fieldKeys: Map<string, CryptoKey>
-  wrappedMasterKey: Uint8Array<ArrayBuffer>
-  masterKeyIV: Uint8Array<ArrayBuffer>
+  vault: {
+    kek: CryptoKey
+    fieldKeys: Map<string, CryptoKey>
+  }
+  keyEnvelope: {
+    authSalt: Uint8Array<ArrayBuffer>
+    keySalt: Uint8Array<ArrayBuffer>
+    wrappedMasterKey: Uint8Array<ArrayBuffer>
+    masterKeyIV: Uint8Array<ArrayBuffer>
+  }
   wrappedFieldKeys: WrappedFieldKey[]
-  recoveryData: RecoveryData
-  mnemonic: string
+  recovery: RecoveryData & { mnemonic: string }
 }

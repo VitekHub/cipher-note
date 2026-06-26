@@ -1,12 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { encrypt, decrypt, importKey } from '@/shared/crypto/aes-gcm'
-import {
-  generateMasterKey,
-  generateFieldKeys,
-  deriveFullKeyHierarchy,
-  wrapFieldKeys,
-  unwrapFieldKeys,
-} from '@/shared/crypto/key-hierarchy'
+import { generateMasterKey } from '@/shared/crypto/master-key'
+import { generateFieldKeys, wrapFieldKeys, unwrapFieldKeys } from '@/shared/crypto/field-keys'
+import { deriveKEK } from '@/shared/crypto/hkdf'
 import { deriveAuthCredentials, changePassword } from '@/shared/crypto/split-kdf'
 import { wrapMasterKeyWithRecovery, unwrapMasterKeyWithRecovery } from '@/shared/crypto/mnemonic'
 import { DecryptionError } from '@/shared/crypto/errors'
@@ -64,7 +60,8 @@ async function setupRegistration() {
 
   const masterKey = generateMasterKey()
   const authCreds = await deriveAuthCredentials(PASSWORD)
-  const hierarchy = await deriveFullKeyHierarchy(masterKey)
+  const kekBytes = await deriveKEK(masterKey)
+  const kek = await importKey(kekBytes)
   const { rawFieldKeys, cryptoFieldKeys } = await generateFieldKeys()
   const versions = new Map([
     ['note', 1],
@@ -72,7 +69,7 @@ async function setupRegistration() {
     ['email', 1],
     ['title', 1],
   ])
-  const wrappedFieldKeys = await wrapFieldKeys(rawFieldKeys, hierarchy.kek, versions)
+  const wrappedFieldKeys = await wrapFieldKeys(rawFieldKeys, kek, versions)
   const serverFieldKeys: ServerFieldKey[] = wrappedFieldKeys.map((w) => ({
     fieldName: w.fieldName,
     version: w.version,
@@ -98,7 +95,7 @@ async function setupRegistration() {
   return {
     masterKey,
     authCreds,
-    hierarchy,
+    kek,
     rawFieldKeys,
     cryptoFieldKeys,
     wrappedFieldKeys,
@@ -120,7 +117,7 @@ describe('crypto integration', () => {
     it('generates and wraps all keys consistently', async () => {
       const {
         masterKey,
-        hierarchy,
+        kek,
         rawFieldKeys,
         cryptoFieldKeys,
         serverFieldKeys,
@@ -131,14 +128,13 @@ describe('crypto integration', () => {
       } = await setupRegistration()
 
       expect(masterKey.byteLength).toBe(32)
-      expect(hierarchy.kek.type).toBe('secret')
-      expect(hierarchy.signingKeySeed.byteLength).toBe(32)
+      expect(kek.type).toBe('secret')
       expect(rawFieldKeys.size).toBe(NUMBER_OF_FIELD_KEYS)
       expect(cryptoFieldKeys.size).toBe(NUMBER_OF_FIELD_KEYS)
       expect(serverFieldKeys).toHaveLength(NUMBER_OF_FIELD_KEYS)
 
       // Unwrap field keys - returns Map<string, CryptoKey>, verify via round-trip
-      const unwrappedFieldKeys = await unwrapFieldKeys(serverFieldKeys, hierarchy.kek)
+      const unwrappedFieldKeys = await unwrapFieldKeys(serverFieldKeys, kek)
       for (const name of ['note', 'website', 'email']) {
         const cryptoKey = unwrappedFieldKeys.get(name)!
         const plaintext = new Uint8Array([0x42])
@@ -191,9 +187,10 @@ describe('crypto integration', () => {
       })
       expect(unwrappedMasterKey).toEqual(masterKey)
 
-      const hierarchy = await deriveFullKeyHierarchy(unwrappedMasterKey)
+      const kekBytes = await deriveKEK(unwrappedMasterKey)
+      const kek = await importKey(kekBytes)
       // unwrapFieldKeys now takes ServerFieldKey[], returns Map<string, CryptoKey>
-      const unwrappedFieldKeys = await unwrapFieldKeys(serverFieldKeys, hierarchy.kek)
+      const unwrappedFieldKeys = await unwrapFieldKeys(serverFieldKeys, kek)
       // Compare CryptoKey results via encrypt/decrypt round-trip
       for (const name of ['note', 'website', 'email']) {
         const cryptoKey = unwrappedFieldKeys.get(name)!
@@ -218,8 +215,7 @@ describe('crypto integration', () => {
 
   describe('password change', () => {
     it('re-wraps master key without changing field keys', async () => {
-      const { masterKey, hierarchy, serverFieldKeys, wrappedMasterKey, masterKeyIV, authCreds } =
-        await setupRegistration()
+      const { masterKey, kek, serverFieldKeys, wrappedMasterKey, masterKeyIV, authCreds } = await setupRegistration()
       vi.clearAllMocks()
 
       const newAuthSalt = mockBytes(16, 0xbb)
@@ -247,7 +243,7 @@ describe('crypto integration', () => {
       expect(unwrapped).toEqual(masterKey)
 
       // Field keys still decryptable with same KEK - unwrapFieldKeys returns Map<string, CryptoKey>
-      const unwrappedFieldKeys = await unwrapFieldKeys(serverFieldKeys, hierarchy.kek)
+      const unwrappedFieldKeys = await unwrapFieldKeys(serverFieldKeys, kek)
       for (const name of ['note', 'website', 'email']) {
         const cryptoKey = unwrappedFieldKeys.get(name)!
         const plaintext = new Uint8Array([0x42])
@@ -287,9 +283,10 @@ describe('crypto integration', () => {
       })
       expect(recoveredMasterKey).toEqual(masterKey)
 
-      const recoveredHierarchy = await deriveFullKeyHierarchy(recoveredMasterKey)
+      const recoveredKekBytes = await deriveKEK(recoveredMasterKey)
+      const recoveredKek = await importKey(recoveredKekBytes)
       // unwrapFieldKeys returns Map<string, CryptoKey> — verify via encrypt/decrypt round-trip
-      const recoveredFieldKeys = await unwrapFieldKeys(serverFieldKeys, recoveredHierarchy.kek)
+      const recoveredFieldKeys = await unwrapFieldKeys(serverFieldKeys, recoveredKek)
       for (const name of ['note', 'website', 'email']) {
         const cryptoKey = recoveredFieldKeys.get(name)!
         const plaintext = new Uint8Array([0x42])
@@ -324,7 +321,7 @@ describe('crypto integration', () => {
 
   describe('key rotation', () => {
     it('rotates one field key without affecting others', async () => {
-      const { hierarchy, rawFieldKeys } = await setupRegistration()
+      const { kek, rawFieldKeys } = await setupRegistration()
       vi.clearAllMocks()
 
       // Import original v1 key for later comparison
@@ -344,7 +341,7 @@ describe('crypto integration', () => {
         ['email', 1],
         ['title', 1],
       ])
-      const rotatedWrapped = await wrapFieldKeys(rotatedFieldKeys, hierarchy.kek, newVersions)
+      const rotatedWrapped = await wrapFieldKeys(rotatedFieldKeys, kek, newVersions)
       const rotatedServerFieldKeys: ServerFieldKey[] = rotatedWrapped.map((w) => ({
         fieldName: w.fieldName,
         version: w.version,
@@ -368,7 +365,7 @@ describe('crypto integration', () => {
       expect(new TextDecoder().decode(decrypted)).toBe('Sensitive note content')
 
       // Website/email keys unaffected - unwrapFieldKeys returns Map<string, CryptoKey>
-      const unwrapped = await unwrapFieldKeys(rotatedServerFieldKeys, hierarchy.kek)
+      const unwrapped = await unwrapFieldKeys(rotatedServerFieldKeys, kek)
       // Verify via round-trip since we can't compare CryptoKey directly
       const websiteCryptoKey = unwrapped.get('website')!
       const emailCryptoKey = unwrapped.get('email')!
@@ -390,7 +387,7 @@ describe('crypto integration', () => {
         wrappedKey: hexEncode(tampered.wrappedKey),
         keyIV: hexEncode(tampered.iv),
       }
-      await expect(unwrapFieldKeys([tamperedServer], hierarchy.kek)).rejects.toThrow(DecryptionError)
+      await expect(unwrapFieldKeys([tamperedServer], kek)).rejects.toThrow(DecryptionError)
     })
   })
 
@@ -416,8 +413,9 @@ describe('crypto integration', () => {
         iv: masterKeyIV,
         aad: MASTER_KEY_PASSWORD_AAD,
       })
-      const hierarchy = await deriveFullKeyHierarchy(masterKey)
-      await unwrapFieldKeys(serverFieldKeys, hierarchy.kek)
+      const kekBytes = await deriveKEK(masterKey)
+      const kek = await importKey(kekBytes)
+      await unwrapFieldKeys(serverFieldKeys, kek)
       const elapsed = Date.now() - start
 
       expect(elapsed).toBeLessThan(5000)

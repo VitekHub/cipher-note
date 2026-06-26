@@ -1,8 +1,13 @@
 import { derivePasswordKey } from '@/shared/crypto/argon2id'
 import { importKey, encrypt, decrypt } from '@/shared/crypto/aes-gcm'
-import { hexDecode, generateIV, zeroFill } from '@/shared/crypto/crypto-utils'
+import { hexDecode, generateIV, generateKey, zeroFill } from '@/shared/crypto/crypto-utils'
 import { MASTER_KEY_PASSWORD_AAD } from '@/shared/types/crypto.types'
 import type { ServerMasterKeyEnvelope } from '@/shared/types/api.types'
+
+/** Generate a 256-bit random master key. Used once during registration. */
+export function generateMasterKey(): Uint8Array<ArrayBuffer> {
+  return generateKey()
+}
 
 /**
  * Unwrap the master key from its password-protected envelope.

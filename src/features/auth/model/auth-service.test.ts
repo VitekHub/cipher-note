@@ -16,23 +16,27 @@ const mockSetEnvelope = vi.fn<(envelope: import('@/shared/types/api.types').Cach
 vi.mock('@/features/auth/model/registration-crypto', () => ({
   deriveRegistrationKeys: vi.fn().mockResolvedValue({
     authHash: 'a'.repeat(64),
-    authSalt: new Uint8Array(16).fill(0x01),
-    keySalt: new Uint8Array(16).fill(0x02),
-    kek: {} as CryptoKey,
-    fieldKeys: new Map<string, CryptoKey>([
-      ['note', {} as CryptoKey],
-      ['website', {} as CryptoKey],
-      ['email', {} as CryptoKey],
-    ]),
-    wrappedMasterKey: new Uint8Array(48).fill(0x05),
-    masterKeyIV: new Uint8Array(12).fill(0x06),
+    vault: {
+      kek: {} as CryptoKey,
+      fieldKeys: new Map<string, CryptoKey>([
+        ['note', {} as CryptoKey],
+        ['website', {} as CryptoKey],
+        ['email', {} as CryptoKey],
+      ]),
+    },
+    keyEnvelope: {
+      authSalt: new Uint8Array(16).fill(0x01),
+      keySalt: new Uint8Array(16).fill(0x02),
+      wrappedMasterKey: new Uint8Array(48).fill(0x05),
+      masterKeyIV: new Uint8Array(12).fill(0x06),
+    },
     wrappedFieldKeys: [],
-    recoveryData: {
+    recovery: {
       recoverySalt: new Uint8Array(16).fill(0xaa),
       wrappedMasterKey: new Uint8Array(48).fill(0xbb),
       recoveryIV: new Uint8Array(12).fill(0xcc),
+      mnemonic: 'word0 word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11',
     },
-    mnemonic: 'word0 word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11',
   }),
 }))
 
@@ -209,8 +213,8 @@ describe('signUpUser', () => {
   it('stores field keys via keyVault.storeFieldKeys', async () => {
     await signUpUser('testuser', 'testpass123')
     const regResult = await (deriveRegistrationKeys as ReturnType<typeof vi.fn>).mock.results[0].value
-    expect(keyVault.storeKey).toHaveBeenCalledWith('kek', regResult.kek)
-    expect(keyVault.storeFieldKeys).toHaveBeenCalledWith(regResult.fieldKeys)
+    expect(keyVault.storeKey).toHaveBeenCalledWith('kek', regResult.vault.kek)
+    expect(keyVault.storeFieldKeys).toHaveBeenCalledWith(regResult.vault.fieldKeys)
   })
 
   it('caches envelope data after signup', async () => {

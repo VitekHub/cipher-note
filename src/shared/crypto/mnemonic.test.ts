@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { DecryptionError, MnemonicError } from '@/shared/crypto/errors'
 import { generateIV } from '@/shared/crypto/crypto-utils'
-import { generateMasterKey } from '@/shared/crypto/key-hierarchy'
+import { generateMasterKey } from '@/shared/crypto/master-key'
 import type { RecoveryData } from '@/shared/types/crypto.types'
 
 // Mock Argon2id module to avoid WASM/worker dependency in tests

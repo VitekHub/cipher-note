@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest'
 import { FIELD_KEY_VERSION } from '@/shared/types/crypto.types'
-import type { RegistrationResult, RecoveryData } from '@/shared/types/crypto.types'
+import type { RegistrationResult } from '@/shared/types/crypto.types'
 import { ApiError, ApiErrorCode } from '@/shared/api/api-errors'
 import { FIELD_KEYS_TABLE } from '@/shared/types/supabase-schema'
 
@@ -22,31 +22,33 @@ function mockBytes(length: number, fill: number): Uint8Array<ArrayBuffer> {
 const USER_ID = 'user-123'
 
 function makeRegistrationResult(): RegistrationResult {
-  const recoveryData: RecoveryData = {
-    recoverySalt: mockBytes(16, 0xaa),
-    wrappedMasterKey: mockBytes(48, 0xbb),
-    recoveryIV: mockBytes(12, 0xcc),
-  }
-
   return {
     authHash: 'a'.repeat(64),
-    authSalt: mockBytes(16, 0x01),
-    keySalt: mockBytes(16, 0x02),
-    kek: {} as CryptoKey,
-    fieldKeys: new Map([
-      ['note', {} as CryptoKey],
-      ['website', {} as CryptoKey],
-      ['email', {} as CryptoKey],
-    ]),
-    wrappedMasterKey: mockBytes(48, 0x05),
-    masterKeyIV: mockBytes(12, 0x06),
+    vault: {
+      kek: {} as CryptoKey,
+      fieldKeys: new Map([
+        ['note', {} as CryptoKey],
+        ['website', {} as CryptoKey],
+        ['email', {} as CryptoKey],
+      ]),
+    },
+    keyEnvelope: {
+      authSalt: mockBytes(16, 0x01),
+      keySalt: mockBytes(16, 0x02),
+      wrappedMasterKey: mockBytes(48, 0x05),
+      masterKeyIV: mockBytes(12, 0x06),
+    },
     wrappedFieldKeys: [
       { fieldName: 'note', version: FIELD_KEY_VERSION, wrappedKey: mockBytes(48, 0x10), iv: mockBytes(12, 0x11) },
       { fieldName: 'website', version: FIELD_KEY_VERSION, wrappedKey: mockBytes(48, 0x20), iv: mockBytes(12, 0x21) },
       { fieldName: 'email', version: FIELD_KEY_VERSION, wrappedKey: mockBytes(48, 0x30), iv: mockBytes(12, 0x31) },
     ],
-    recoveryData,
-    mnemonic: 'word0 word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11',
+    recovery: {
+      recoverySalt: mockBytes(16, 0xaa),
+      wrappedMasterKey: mockBytes(48, 0xbb),
+      recoveryIV: mockBytes(12, 0xcc),
+      mnemonic: 'word0 word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11',
+    },
   }
 }
 

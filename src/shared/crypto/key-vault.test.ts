@@ -4,7 +4,7 @@ import type { ServerFieldKey } from '@/shared/types/api.types'
 
 import { keyVault } from '@/shared/crypto/key-vault'
 import { deriveKEK } from '@/shared/crypto/hkdf'
-import { unwrapFieldKeys } from '@/shared/crypto/key-hierarchy'
+import { unwrapFieldKeys } from '@/shared/crypto/field-keys'
 import { DecryptionError } from '@/shared/crypto/errors'
 import { unwrapMasterKeyWithPassword } from '@/shared/crypto/master-key'
 import { fetchFreshEnvelope, fetchFieldKeys } from '@/shared/api/supabase-keys'
@@ -58,7 +58,7 @@ vi.mock('@/shared/crypto/aes-gcm', () => ({
   decrypt: vi.fn(),
 }))
 
-vi.mock('@/shared/crypto/key-hierarchy', () => ({
+vi.mock('@/shared/crypto/field-keys', () => ({
   unwrapFieldKeys: vi.fn().mockResolvedValue(
     new Map<string, CryptoKey>([
       ['note', {} as CryptoKey],
