@@ -13,7 +13,7 @@ export async function fetchAllFields(entryId: string): Promise<ServerEncryptedFi
   const supabase = getSupabase()
   const { data, error } = await supabase
     .from(ENCRYPTED_FIELDS_TABLE)
-    .select('entry_id, field_name, encrypted_blob, iv, updated_at')
+    .select('entry_id, field_name, ciphertext, ciphertext_iv, updated_at')
     .eq('entry_id', entryId)
 
   if (error) throw wrapApiError(error)
@@ -28,7 +28,7 @@ export async function fetchField(entryId: string, fieldName: FieldName): Promise
   const supabase = getSupabase()
   const { data, error } = await supabase
     .from(ENCRYPTED_FIELDS_TABLE)
-    .select('entry_id, field_name, encrypted_blob, iv, updated_at')
+    .select('entry_id, field_name, ciphertext, ciphertext_iv, updated_at')
     .eq('entry_id', entryId)
     .eq('field_name', fieldName)
     .maybeSingle()
@@ -52,8 +52,8 @@ export async function saveField(userId: string, data: SaveFieldData): Promise<st
         user_id: userId,
         entry_id: data.entryId,
         field_name: data.fieldName,
-        encrypted_blob: data.encryptedBlob,
-        iv: data.iv,
+        ciphertext: data.ciphertext,
+        ciphertext_iv: data.ciphertextIV,
       },
       { onConflict: 'entry_id,field_name' },
     )
@@ -69,8 +69,8 @@ function mapServerField(row: EncryptedFieldRow): ServerEncryptedField {
   return {
     entryId: row.entry_id,
     fieldName: row.field_name as FieldName,
-    encryptedBlob: row.encrypted_blob,
-    iv: row.iv,
+    ciphertext: row.ciphertext,
+    ciphertextIV: row.ciphertext_iv,
     updatedAt: row.updated_at,
   }
 }

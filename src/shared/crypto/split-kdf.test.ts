@@ -40,22 +40,22 @@ describe('split-kdf', () => {
 
   describe('deriveAuthCredentials', () => {
     it('generates two salts and derives authHash and passwordKey in parallel', async () => {
-      const authSalt = mockBytes(16, 0x01)
-      const keySalt = mockBytes(16, 0x02)
-      vi.mocked(generateSalt).mockReturnValueOnce(authSalt).mockReturnValueOnce(keySalt)
+      const authHashSalt = mockBytes(16, 0x01)
+      const passwordKeySalt = mockBytes(16, 0x02)
+      vi.mocked(generateSalt).mockReturnValueOnce(authHashSalt).mockReturnValueOnce(passwordKeySalt)
       vi.mocked(deriveAuthHash).mockResolvedValue('a'.repeat(64))
       vi.mocked(derivePasswordKey).mockResolvedValue(mockBytes(32, 0xab))
 
       const result = await deriveAuthCredentials('password123')
 
       expect(generateSalt).toHaveBeenCalledTimes(2)
-      expect(deriveAuthHash).toHaveBeenCalledWith('password123', authSalt)
-      expect(derivePasswordKey).toHaveBeenCalledWith('password123', keySalt)
+      expect(deriveAuthHash).toHaveBeenCalledWith('password123', authHashSalt)
+      expect(derivePasswordKey).toHaveBeenCalledWith('password123', passwordKeySalt)
       expect(result).toEqual({
         authHash: 'a'.repeat(64),
         passwordKey: mockBytes(32, 0xab),
-        authSalt,
-        keySalt,
+        authHashSalt,
+        passwordKeySalt,
       })
     })
 
@@ -70,10 +70,10 @@ describe('split-kdf', () => {
       expect(result.authHash).toHaveLength(64)
       expect(result.passwordKey).toBeInstanceOf(Uint8Array)
       expect(result.passwordKey.byteLength).toBe(32)
-      expect(result.authSalt).toBeInstanceOf(Uint8Array)
-      expect(result.authSalt.byteLength).toBe(16)
-      expect(result.keySalt).toBeInstanceOf(Uint8Array)
-      expect(result.keySalt.byteLength).toBe(16)
+      expect(result.authHashSalt).toBeInstanceOf(Uint8Array)
+      expect(result.authHashSalt.byteLength).toBe(16)
+      expect(result.passwordKeySalt).toBeInstanceOf(Uint8Array)
+      expect(result.passwordKeySalt.byteLength).toBe(16)
     })
   })
 
@@ -82,8 +82,8 @@ describe('split-kdf', () => {
 
     /** Minimal envelope — values are irrelevant since unwrapMasterKeyWithPassword is mocked. */
     const stubEnvelope: ServerMasterKeyEnvelope = {
-      authSalt: 'aa'.repeat(16),
-      keySalt: 'bb'.repeat(16),
+      authHashSalt: 'aa'.repeat(16),
+      passwordKeySalt: 'bb'.repeat(16),
       wrappedMasterKey: 'cc'.repeat(48),
       masterKeyIV: 'dd'.repeat(12),
     }
@@ -112,14 +112,14 @@ describe('split-kdf', () => {
       vi.mocked(derivePasswordKey).mockResolvedValue(mockBytes(32, NEW_KEY_FILL))
       vi.mocked(deriveAuthHash).mockResolvedValue('a'.repeat(64))
 
-      const newAuthSalt = mockBytes(16, 0xbb)
-      const newKeySalt = mockBytes(16, 0xcc)
-      vi.mocked(generateSalt).mockReturnValueOnce(newAuthSalt).mockReturnValueOnce(newKeySalt)
+      const newAuthHashSalt = mockBytes(16, 0xbb)
+      const newPasswordKeySalt = mockBytes(16, 0xcc)
+      vi.mocked(generateSalt).mockReturnValueOnce(newAuthHashSalt).mockReturnValueOnce(newPasswordKeySalt)
 
       const result = await changePassword('oldPw', 'newPw', stubEnvelope)
 
-      expect(result.newAuthSalt).toEqual(newAuthSalt)
-      expect(result.newKeySalt).toEqual(newKeySalt)
+      expect(result.newAuthHashSalt).toEqual(newAuthHashSalt)
+      expect(result.newPasswordKeySalt).toEqual(newPasswordKeySalt)
     })
 
     it('returns newAuthHash from deriveAuthHash', async () => {

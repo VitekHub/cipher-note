@@ -12,15 +12,15 @@ import { fetchFreshEnvelope, fetchFieldKeys } from '@/shared/api/supabase-keys'
 // Shared mock data used across legacy key vault tests
 const { mockEnvelopeData, mockFieldKeysData } = vi.hoisted(() => ({
   mockEnvelopeData: {
-    authSalt: '01'.repeat(16),
-    keySalt: '02'.repeat(16),
+    authHashSalt: '01'.repeat(16),
+    passwordKeySalt: '02'.repeat(16),
     wrappedMasterKey: '05'.repeat(48),
     masterKeyIV: '06'.repeat(12),
   },
   mockFieldKeysData: [
-    { fieldName: 'note', version: 1, wrappedKey: 'aa'.repeat(48), keyIV: 'bb'.repeat(12) },
-    { fieldName: 'website', version: 1, wrappedKey: 'cc'.repeat(48), keyIV: 'dd'.repeat(12) },
-    { fieldName: 'email', version: 1, wrappedKey: 'ee'.repeat(48), keyIV: 'ff'.repeat(12) },
+    { fieldName: 'note', version: 1, wrappedFieldKey: 'aa'.repeat(48), fieldKeyIV: 'bb'.repeat(12) },
+    { fieldName: 'website', version: 1, wrappedFieldKey: 'cc'.repeat(48), fieldKeyIV: 'dd'.repeat(12) },
+    { fieldName: 'email', version: 1, wrappedFieldKey: 'ee'.repeat(48), fieldKeyIV: 'ff'.repeat(12) },
   ],
 }))
 
@@ -226,8 +226,8 @@ describe('unlockVault', () => {
 
   it('uses cached envelope when available instead of fetching from server', async () => {
     const cachedEnvelope = {
-      authSalt: 'aa'.repeat(16),
-      keySalt: 'bb'.repeat(16),
+      authHashSalt: 'aa'.repeat(16),
+      passwordKeySalt: 'bb'.repeat(16),
       wrappedMasterKey: 'cc'.repeat(48),
       masterKeyIV: 'dd'.repeat(12),
       fieldKeys: mockFieldKeysData,
@@ -244,8 +244,8 @@ describe('unlockVault', () => {
 
   it('does not call setCachedEnvelope when envelope is already cached', async () => {
     const cachedEnvelope = {
-      authSalt: 'aa'.repeat(16),
-      keySalt: 'bb'.repeat(16),
+      authHashSalt: 'aa'.repeat(16),
+      passwordKeySalt: 'bb'.repeat(16),
       wrappedMasterKey: 'cc'.repeat(48),
       masterKeyIV: 'dd'.repeat(12),
       fieldKeys: mockFieldKeysData,
@@ -258,8 +258,8 @@ describe('unlockVault', () => {
   it('clears cache and retries from server on DecryptionError', async () => {
     const storeFieldKeysSpy = vi.spyOn(keyVault, 'storeFieldKeys')
     const cachedEnvelope = {
-      authSalt: 'aa'.repeat(16),
-      keySalt: 'bb'.repeat(16),
+      authHashSalt: 'aa'.repeat(16),
+      passwordKeySalt: 'bb'.repeat(16),
       wrappedMasterKey: 'cc'.repeat(48),
       masterKeyIV: 'dd'.repeat(12),
       fieldKeys: mockFieldKeysData,
@@ -275,8 +275,8 @@ describe('unlockVault', () => {
 
   it('re-throws if retry also fails', async () => {
     const cachedEnvelope = {
-      authSalt: 'aa'.repeat(16),
-      keySalt: 'bb'.repeat(16),
+      authHashSalt: 'aa'.repeat(16),
+      passwordKeySalt: 'bb'.repeat(16),
       wrappedMasterKey: 'cc'.repeat(48),
       masterKeyIV: 'dd'.repeat(12),
       fieldKeys: mockFieldKeysData,
@@ -290,8 +290,8 @@ describe('unlockVault', () => {
 
   it('does not retry on non-DecryptionError', async () => {
     const cachedEnvelope = {
-      authSalt: 'aa'.repeat(16),
-      keySalt: 'bb'.repeat(16),
+      authHashSalt: 'aa'.repeat(16),
+      passwordKeySalt: 'bb'.repeat(16),
       wrappedMasterKey: 'cc'.repeat(48),
       masterKeyIV: 'dd'.repeat(12),
       fieldKeys: mockFieldKeysData,
@@ -307,16 +307,16 @@ describe('unlockVault', () => {
 describe('syncFieldKeys', () => {
   const FAKE_KEK = {} as CryptoKey
   const FIELD_KEYS_RESPONSE: ServerFieldKey[] = [
-    { fieldName: 'note', version: 2, wrappedKey: 'new-wrapped-note-key', keyIV: 'new-note-iv' },
-    { fieldName: 'title', version: 1, wrappedKey: 'wrapped-title-key', keyIV: 'title-iv' },
+    { fieldName: 'note', version: 2, wrappedFieldKey: 'new-wrapped-note-key', fieldKeyIV: 'new-note-iv' },
+    { fieldName: 'title', version: 1, wrappedFieldKey: 'wrapped-title-key', fieldKeyIV: 'title-iv' },
   ]
 
   const cachedEnvelope = {
-    authSalt: 'aabb',
-    keySalt: 'ccdd',
+    authHashSalt: 'aabb',
+    passwordKeySalt: 'ccdd',
     wrappedMasterKey: 'eeff',
     masterKeyIV: '1122',
-    fieldKeys: [{ fieldName: 'note', version: 1, wrappedKey: 'old-note-key', keyIV: 'note-iv' }],
+    fieldKeys: [{ fieldName: 'note', version: 1, wrappedFieldKey: 'old-note-key', fieldKeyIV: 'note-iv' }],
   }
 
   function makeUnwrappedKeys(names: FieldName[]): Map<string, CryptoKey> {

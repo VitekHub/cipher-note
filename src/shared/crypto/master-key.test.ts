@@ -28,8 +28,8 @@ function mockBytes(length: number, fill: number): Uint8Array<ArrayBuffer> {
 }
 
 const MOCK_ENVELOPE = {
-  authSalt: '01'.repeat(16),
-  keySalt: '02'.repeat(16),
+  authHashSalt: '01'.repeat(16),
+  passwordKeySalt: '02'.repeat(16),
   wrappedMasterKey: '05'.repeat(48),
   masterKeyIV: '06'.repeat(12),
 }

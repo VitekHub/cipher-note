@@ -88,8 +88,8 @@ describe('field-keys', () => {
       const { kek } = await setupKEK()
       const { wrappedFieldKeys } = await generateAndWrapFieldKeys(kek)
       for (const w of wrappedFieldKeys) {
-        expect(w.wrappedKey.length).toBe(48) // 32 bytes + 16 byte GCM tag
-        expect(w.iv.length).toBe(12)
+        expect(w.wrappedFieldKey.length).toBe(48) // 32 bytes + 16 byte GCM tag
+        expect(w.fieldKeyIV.length).toBe(12)
         expect(w.version).toBe(1) // FIELD_KEY_VERSION
       }
     })
@@ -101,8 +101,8 @@ describe('field-keys', () => {
       const serverFieldKeys: ServerFieldKey[] = wrappedFieldKeys.map((w) => ({
         fieldName: w.fieldName,
         version: w.version,
-        wrappedKey: hexEncode(w.wrappedKey),
-        keyIV: hexEncode(w.iv),
+        wrappedFieldKey: hexEncode(w.wrappedFieldKey),
+        fieldKeyIV: hexEncode(w.fieldKeyIV),
       }))
 
       const unwrapped = await unwrapFieldKeys(serverFieldKeys, kek)
@@ -133,15 +133,15 @@ describe('field-keys', () => {
       wrapped: {
         fieldName: string
         version: number
-        wrappedKey: Uint8Array<ArrayBuffer>
-        iv: Uint8Array<ArrayBuffer>
+        wrappedFieldKey: Uint8Array<ArrayBuffer>
+        fieldKeyIV: Uint8Array<ArrayBuffer>
       }[],
     ): ServerFieldKey[] {
       return wrapped.map((w) => ({
         fieldName: w.fieldName,
         version: w.version,
-        wrappedKey: hexEncode(w.wrappedKey),
-        keyIV: hexEncode(w.iv),
+        wrappedFieldKey: hexEncode(w.wrappedFieldKey),
+        fieldKeyIV: hexEncode(w.fieldKeyIV),
       }))
     }
 
@@ -209,7 +209,7 @@ describe('field-keys', () => {
       const wrapped = await wrapFieldKeys(rawFieldKeys, kek, versions)
 
       for (const w of wrapped) {
-        expect(w.wrappedKey).not.toEqual(rawFieldKeys.get(w.fieldName))
+        expect(w.wrappedFieldKey).not.toEqual(rawFieldKeys.get(w.fieldName))
       }
     })
 
@@ -336,8 +336,8 @@ describe('field-keys', () => {
       const serverFieldKeys = wrapped.map((w) => ({
         fieldName: w.fieldName,
         version: w.version,
-        wrappedKey: hexEncode(w.wrappedKey),
-        keyIV: hexEncode(w.iv),
+        wrappedFieldKey: hexEncode(w.wrappedFieldKey),
+        fieldKeyIV: hexEncode(w.fieldKeyIV),
       }))
       const unwrapped = await unwrapFieldKeys(serverFieldKeys, kek)
 

@@ -1,7 +1,7 @@
 /**
  * Implements Split Key Derivation Function (Split KDF):
- *   - authHash = Argon2id(password, authSalt) → hex string for Supabase Auth
- *   - passwordKey = Argon2id(password, keySalt) → Uint8Array for key wrapping
+ *   - authHash = Argon2id(password, authHashSalt) → hex string for Supabase Auth
+ *   - passwordKey = Argon2id(password, passwordKeySalt) → Uint8Array for key wrapping
  *
  * The two salts are independent, so compromising authHash reveals nothing
  * about passwordKey, and the server (which stores authHash) cannot
@@ -17,18 +17,18 @@ import type { ServerMasterKeyEnvelope } from '@/shared/types/api.types'
 /**
  * Derive authentication credentials for a new registration.
  *
- * Generates random authSalt and keySalt. The caller must persist both
+ * Generates random authHashSalt and passwordKeySalt. The caller must persist both
  * salts on the server so they can be retrieved at login time.
  */
 export async function deriveAuthCredentials(password: string): Promise<AuthCredentials> {
-  const authSalt = generateSalt()
-  const keySalt = generateSalt()
+  const authHashSalt = generateSalt()
+  const passwordKeySalt = generateSalt()
   const [authHash, passwordKey] = await Promise.all([
-    deriveAuthHash(password, authSalt),
-    derivePasswordKey(password, keySalt),
+    deriveAuthHash(password, authHashSalt),
+    derivePasswordKey(password, passwordKeySalt),
   ])
 
-  return { authHash, passwordKey, authSalt, keySalt }
+  return { authHash, passwordKey, authHashSalt, passwordKeySalt }
 }
 
 /**
@@ -60,8 +60,8 @@ export async function changePassword(
 
   return {
     newAuthHash: newCredentials.authHash,
-    newAuthSalt: newCredentials.authSalt,
-    newKeySalt: newCredentials.keySalt,
+    newAuthHashSalt: newCredentials.authHashSalt,
+    newPasswordKeySalt: newCredentials.passwordKeySalt,
     newWrappedMasterKey,
     newMasterKeyIV,
   }

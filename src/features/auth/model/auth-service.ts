@@ -43,15 +43,15 @@ export async function signUpUser(username: string, password: string): Promise<st
     keyVault.storeFieldKeys(regResult.vault.fieldKeys)
 
     useCryptoStore.getState().setCachedEnvelope({
-      authSalt: hexEncode(regResult.keyEnvelope.authSalt),
-      keySalt: hexEncode(regResult.keyEnvelope.keySalt),
+      authHashSalt: hexEncode(regResult.keyEnvelope.authHashSalt),
+      passwordKeySalt: hexEncode(regResult.keyEnvelope.passwordKeySalt),
       wrappedMasterKey: hexEncode(regResult.keyEnvelope.wrappedMasterKey),
       masterKeyIV: hexEncode(regResult.keyEnvelope.masterKeyIV),
       fieldKeys: regResult.wrappedFieldKeys.map((fk) => ({
         fieldName: fk.fieldName,
         version: fk.version,
-        wrappedKey: hexEncode(fk.wrappedKey),
-        keyIV: hexEncode(fk.iv),
+        wrappedFieldKey: hexEncode(fk.wrappedFieldKey),
+        fieldKeyIV: hexEncode(fk.fieldKeyIV),
       })),
     })
 
@@ -70,8 +70,8 @@ export async function loginUser(username: string, password: string) {
 
   try {
     // Fetch salts (pre-auth) → derive credentials → authenticate
-    const { authSalt } = await fetchLoginSalts(username)
-    const authHash = await deriveAuthHash(password, hexDecode(authSalt))
+    const { authHashSalt } = await fetchLoginSalts(username)
+    const authHash = await deriveAuthHash(password, hexDecode(authHashSalt))
     const authResult = await authAdapter.login(username, authHash)
 
     // Fetch wrapped keys (post-auth) → derive KEK → unwrap and store field keys
@@ -110,8 +110,8 @@ export async function changeUserPassword(currentPassword: string, newPassword: s
 
   // Step 2: Upload new key envelope to DB
   const updateData = {
-    authSalt: hexEncode(result.newAuthSalt),
-    keySalt: hexEncode(result.newKeySalt),
+    authHashSalt: hexEncode(result.newAuthHashSalt),
+    passwordKeySalt: hexEncode(result.newPasswordKeySalt),
     wrappedMasterKey: hexEncode(result.newWrappedMasterKey),
     masterKeyIV: hexEncode(result.newMasterKeyIV),
   }
@@ -126,8 +126,8 @@ export async function changeUserPassword(currentPassword: string, newPassword: s
     // Attempt rollback of DB update.
     try {
       await updateMasterKeyEnvelope(user.id, {
-        authSalt: envelope.authSalt,
-        keySalt: envelope.keySalt,
+        authHashSalt: envelope.authHashSalt,
+        passwordKeySalt: envelope.passwordKeySalt,
         wrappedMasterKey: envelope.wrappedMasterKey,
         masterKeyIV: envelope.masterKeyIV,
       })
@@ -142,8 +142,8 @@ export async function changeUserPassword(currentPassword: string, newPassword: s
   // Step 4: Update cached envelope with new values
   useCryptoStore.getState().setCachedEnvelope({
     ...envelope,
-    authSalt: updateData.authSalt,
-    keySalt: updateData.keySalt,
+    authHashSalt: updateData.authHashSalt,
+    passwordKeySalt: updateData.passwordKeySalt,
     wrappedMasterKey: updateData.wrappedMasterKey,
     masterKeyIV: updateData.masterKeyIV,
   })

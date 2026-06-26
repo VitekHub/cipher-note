@@ -1,5 +1,6 @@
 import { getSupabase } from '@/shared/api/supabase-client'
 import { wrapApiError } from '@/shared/api/api-errors'
+import { RECOVERY_KEYS_TABLE } from '@/shared/types/supabase-schema'
 import type { ServerRecoveryData, SaveRecoveryData } from '@/shared/types/api.types'
 
 /**
@@ -9,8 +10,8 @@ import type { ServerRecoveryData, SaveRecoveryData } from '@/shared/types/api.ty
 export async function fetchRecoveryData(userId: string): Promise<ServerRecoveryData | null> {
   const supabase = getSupabase()
   const { data, error } = await supabase
-    .from('recovery')
-    .select('recovery_salt, wrapped_master_key, recovery_iv')
+    .from(RECOVERY_KEYS_TABLE)
+    .select('recovery_key_salt, recovery_wrapped_master_key, recovery_key_iv')
     .eq('user_id', userId)
     .maybeSingle()
 
@@ -18,9 +19,9 @@ export async function fetchRecoveryData(userId: string): Promise<ServerRecoveryD
   if (!data) return null
 
   return {
-    recoverySalt: data.recovery_salt,
-    wrappedMasterKey: data.wrapped_master_key,
-    recoveryIV: data.recovery_iv,
+    recoveryKeySalt: data.recovery_key_salt,
+    recoveryWrappedMasterKey: data.recovery_wrapped_master_key,
+    recoveryKeyIV: data.recovery_key_iv,
   }
 }
 
@@ -30,12 +31,12 @@ export async function fetchRecoveryData(userId: string): Promise<ServerRecoveryD
  */
 export async function saveRecoveryData(userId: string, data: SaveRecoveryData): Promise<void> {
   const supabase = getSupabase()
-  const { error } = await supabase.from('recovery').upsert(
+  const { error } = await supabase.from(RECOVERY_KEYS_TABLE).upsert(
     {
       user_id: userId,
-      recovery_salt: data.recoverySalt,
-      wrapped_master_key: data.wrappedMasterKey,
-      recovery_iv: data.recoveryIV,
+      recovery_key_salt: data.recoveryKeySalt,
+      recovery_wrapped_master_key: data.recoveryWrappedMasterKey,
+      recovery_key_iv: data.recoveryKeyIV,
     },
     { onConflict: 'user_id' },
   )

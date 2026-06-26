@@ -34,12 +34,12 @@ export async function generateAndWrapFieldKeys(
       const rawKey = generateKey()
       try {
         const cryptoKey = await importKey(rawKey)
-        const iv = generateIV()
+        const fieldKeyIV = generateIV()
         const aad = encodeAAD(fieldName, FIELD_KEY_VERSION)
-        const wrappedKey = await encrypt(rawKey, kek, { iv, aad })
+        const wrappedFieldKey = await encrypt(rawKey, kek, { iv: fieldKeyIV, aad })
 
         cryptoFieldKeys.set(fieldName, cryptoKey)
-        wrappedFieldKeys.push({ fieldName, version: FIELD_KEY_VERSION, wrappedKey, iv })
+        wrappedFieldKeys.push({ fieldName, version: FIELD_KEY_VERSION, wrappedFieldKey, fieldKeyIV })
       } finally {
         zeroFill(rawKey)
       }
@@ -91,10 +91,10 @@ export async function wrapFieldKeys(
       }
 
       const aad = encodeAAD(fieldName, version)
-      const iv = generateIV()
-      const wrappedKey = await encrypt(key, kek, { iv, aad })
+      const fieldKeyIV = generateIV()
+      const wrappedFieldKey = await encrypt(key, kek, { iv: fieldKeyIV, aad })
 
-      return { fieldName, version, wrappedKey, iv } as WrappedFieldKey
+      return { fieldName, version, wrappedFieldKey, fieldKeyIV } as WrappedFieldKey
     }),
   )
 }
@@ -112,10 +112,10 @@ export async function wrapFieldKeys(
  */
 export async function unwrapFieldKeys(fieldKeys: ServerFieldKey[], kek: CryptoKey): Promise<Map<string, CryptoKey>> {
   const entries = await Promise.all(
-    fieldKeys.map(async ({ fieldName, version, wrappedKey, keyIV }) => {
+    fieldKeys.map(async ({ fieldName, version, wrappedFieldKey, fieldKeyIV }) => {
       const aad = encodeAAD(fieldName, version)
-      const iv = hexDecode(keyIV)
-      const unwrappedKey = await decrypt(hexDecode(wrappedKey), kek, { iv, aad })
+      const iv = hexDecode(fieldKeyIV)
+      const unwrappedKey = await decrypt(hexDecode(wrappedFieldKey), kek, { iv, aad })
       const key = await importKey(unwrappedKey)
       return [fieldName, key] as [string, CryptoKey]
     }),

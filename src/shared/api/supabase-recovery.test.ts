@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ApiError, ApiErrorCode } from '@/shared/api/api-errors'
+import { RECOVERY_KEYS_TABLE } from '@/shared/types/supabase-schema'
 import { createSupabaseQueryMocks, createQueryBuilder } from '@/test/supabase-mock'
 
 const { maybeSingle, single } = createSupabaseQueryMocks()
@@ -33,9 +34,9 @@ describe('fetchRecoveryData', () => {
   it('maps snake_case row to camelCase ServerRecoveryData', async () => {
     maybeSingle.mockResolvedValueOnce({
       data: {
-        recovery_salt: 'aa'.repeat(16),
-        wrapped_master_key: 'bb'.repeat(48),
-        recovery_iv: 'cc'.repeat(12),
+        recovery_key_salt: 'aa'.repeat(16),
+        recovery_wrapped_master_key: 'bb'.repeat(48),
+        recovery_key_iv: 'cc'.repeat(12),
       },
       error: null,
     })
@@ -43,9 +44,9 @@ describe('fetchRecoveryData', () => {
     const result = await fetchRecoveryData('user-1')
 
     expect(result).toEqual({
-      recoverySalt: 'aa'.repeat(16),
-      wrappedMasterKey: 'bb'.repeat(48),
-      recoveryIV: 'cc'.repeat(12),
+      recoveryKeySalt: 'aa'.repeat(16),
+      recoveryWrappedMasterKey: 'bb'.repeat(48),
+      recoveryKeyIV: 'cc'.repeat(12),
     })
   })
 
@@ -54,8 +55,8 @@ describe('fetchRecoveryData', () => {
 
     await fetchRecoveryData('user-1')
 
-    expect(mockFrom).toHaveBeenCalledWith('recovery')
-    expect(qb.select).toHaveBeenCalledWith('recovery_salt, wrapped_master_key, recovery_iv')
+    expect(mockFrom).toHaveBeenCalledWith(RECOVERY_KEYS_TABLE)
+    expect(qb.select).toHaveBeenCalledWith('recovery_key_salt, recovery_wrapped_master_key, recovery_key_iv')
     expect(qb.eq).toHaveBeenCalledWith('user_id', 'user-1')
   })
 
@@ -100,18 +101,18 @@ describe('saveRecoveryData', () => {
     })
 
     await saveRecoveryData('user-1', {
-      recoverySalt: 'aa'.repeat(16),
-      wrappedMasterKey: 'bb'.repeat(48),
-      recoveryIV: 'cc'.repeat(12),
+      recoveryKeySalt: 'aa'.repeat(16),
+      recoveryWrappedMasterKey: 'bb'.repeat(48),
+      recoveryKeyIV: 'cc'.repeat(12),
     })
 
-    expect(mockFrom).toHaveBeenCalledWith('recovery')
+    expect(mockFrom).toHaveBeenCalledWith(RECOVERY_KEYS_TABLE)
     expect(qb.upsert).toHaveBeenCalledWith(
       {
         user_id: 'user-1',
-        recovery_salt: 'aa'.repeat(16),
-        wrapped_master_key: 'bb'.repeat(48),
-        recovery_iv: 'cc'.repeat(12),
+        recovery_key_salt: 'aa'.repeat(16),
+        recovery_wrapped_master_key: 'bb'.repeat(48),
+        recovery_key_iv: 'cc'.repeat(12),
       },
       { onConflict: 'user_id' },
     )
@@ -126,9 +127,9 @@ describe('saveRecoveryData', () => {
 
     try {
       await saveRecoveryData('user-1', {
-        recoverySalt: 'aa'.repeat(16),
-        wrappedMasterKey: 'bb'.repeat(48),
-        recoveryIV: 'cc'.repeat(12),
+        recoveryKeySalt: 'aa'.repeat(16),
+        recoveryWrappedMasterKey: 'bb'.repeat(48),
+        recoveryKeyIV: 'cc'.repeat(12),
       })
       expect.unreachable('should have thrown')
     } catch (e) {

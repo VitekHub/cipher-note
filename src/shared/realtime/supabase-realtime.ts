@@ -37,8 +37,8 @@ class SupabaseRealtimeAdapter implements IRealtimeAdapter {
         const data: ServerEncryptedField = {
           entryId: row.entry_id,
           fieldName: row.field_name as FieldName,
-          encryptedBlob: row.encrypted_blob,
-          iv: row.iv,
+          ciphertext: row.ciphertext,
+          ciphertextIV: row.ciphertext_iv,
           updatedAt: row.updated_at,
         }
         callbacks.onFieldChange(data)

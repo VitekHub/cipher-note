@@ -18,11 +18,11 @@ export async function unwrapMasterKeyWithPassword(
   password: string,
   envelope: ServerMasterKeyEnvelope,
 ): Promise<Uint8Array<ArrayBuffer>> {
-  const keySalt = hexDecode(envelope.keySalt)
+  const passwordKeySalt = hexDecode(envelope.passwordKeySalt)
   const wrappedMasterKey = hexDecode(envelope.wrappedMasterKey)
   const masterKeyIV = hexDecode(envelope.masterKeyIV)
 
-  const passwordKey = await derivePasswordKey(password, keySalt)
+  const passwordKey = await derivePasswordKey(password, passwordKeySalt)
   const cryptoPasswordKey = await importKey(passwordKey)
   zeroFill(passwordKey)
 

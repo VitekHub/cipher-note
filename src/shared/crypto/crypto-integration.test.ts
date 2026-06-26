@@ -52,9 +52,9 @@ const RECOVERY_KEK_FILL = 0x33
 const NUMBER_OF_FIELD_KEYS = 4
 
 async function setupRegistration() {
-  const authSalt = mockBytes(16, 0x01)
-  const keySalt = mockBytes(16, 0x02)
-  vi.mocked(generateSalt).mockReturnValueOnce(authSalt).mockReturnValueOnce(keySalt)
+  const authHashSalt = mockBytes(16, 0x01)
+  const passwordKeySalt = mockBytes(16, 0x02)
+  vi.mocked(generateSalt).mockReturnValueOnce(authHashSalt).mockReturnValueOnce(passwordKeySalt)
   vi.mocked(deriveAuthHash).mockResolvedValue('a'.repeat(64))
   vi.mocked(derivePasswordKey).mockResolvedValue(mockBytes(32, PASSWORD_KEY_FILL))
 
@@ -73,8 +73,8 @@ async function setupRegistration() {
   const serverFieldKeys: ServerFieldKey[] = wrappedFieldKeys.map((w) => ({
     fieldName: w.fieldName,
     version: w.version,
-    wrappedKey: hexEncode(w.wrappedKey),
-    keyIV: hexEncode(w.iv),
+    wrappedFieldKey: hexEncode(w.wrappedFieldKey),
+    fieldKeyIV: hexEncode(w.fieldKeyIV),
   }))
 
   const passwordCryptoKey = await importKey(authCreds.passwordKey)
@@ -102,8 +102,8 @@ async function setupRegistration() {
     serverFieldKeys,
     wrappedMasterKey,
     masterKeyIV: iv,
-    authSalt,
-    keySalt,
+    authHashSalt,
+    passwordKeySalt,
     recoveryData,
   }
 }
@@ -155,17 +155,21 @@ describe('crypto integration', () => {
 
       // Unwrap master key with recovery (re-mock deriveKey since it was consumed during setup)
       vi.mocked(deriveKey).mockResolvedValueOnce(mockBytes(32, RECOVERY_KEK_FILL))
-      const recoveredMasterKey = await unwrapMasterKeyWithRecovery(recoveryData.wrappedMasterKey, MOCK_VALID_MNEMONIC, {
-        iv: recoveryData.recoveryIV,
-        salt: recoveryData.recoverySalt,
-      })
+      const recoveredMasterKey = await unwrapMasterKeyWithRecovery(
+        recoveryData.recoveryWrappedMasterKey,
+        MOCK_VALID_MNEMONIC,
+        {
+          iv: recoveryData.recoveryKeyIV,
+          salt: recoveryData.recoveryKeySalt,
+        },
+      )
       expect(recoveredMasterKey).toEqual(masterKey)
     })
   })
 
   describe('login flow', () => {
     it('recovers all keys from stored server data', async () => {
-      const { masterKey, authCreds, serverFieldKeys, wrappedMasterKey, masterKeyIV, authSalt, keySalt } =
+      const { masterKey, authCreds, serverFieldKeys, wrappedMasterKey, masterKeyIV, authHashSalt, passwordKeySalt } =
         await setupRegistration()
       vi.clearAllMocks()
 
@@ -173,8 +177,8 @@ describe('crypto integration', () => {
       vi.mocked(derivePasswordKey).mockResolvedValue(authCreds.passwordKey)
 
       // Login now uses deriveAuthHash + derivePasswordKey
-      const authHash = await deriveAuthHash(PASSWORD, authSalt)
-      const passwordKey = await derivePasswordKey(PASSWORD, keySalt)
+      const authHash = await deriveAuthHash(PASSWORD, authHashSalt)
+      const passwordKey = await derivePasswordKey(PASSWORD, passwordKeySalt)
       expect(authHash).toBe(authCreds.authHash)
       expect(passwordKey).toEqual(authCreds.passwordKey)
       expect(generateSalt).not.toHaveBeenCalled()
@@ -218,17 +222,17 @@ describe('crypto integration', () => {
       const { masterKey, kek, serverFieldKeys, wrappedMasterKey, masterKeyIV, authCreds } = await setupRegistration()
       vi.clearAllMocks()
 
-      const newAuthSalt = mockBytes(16, 0xbb)
-      const newKeySalt = mockBytes(16, 0xcc)
+      const newAuthHashSalt = mockBytes(16, 0xbb)
+      const newPasswordKeySalt = mockBytes(16, 0xcc)
       vi.mocked(derivePasswordKey)
         .mockImplementationOnce(async () => mockBytes(32, PASSWORD_KEY_FILL))
         .mockImplementationOnce(async () => mockBytes(32, NEW_PASSWORD_KEY_FILL))
       vi.mocked(deriveAuthHash).mockResolvedValue('b'.repeat(64))
-      vi.mocked(generateSalt).mockReturnValueOnce(newAuthSalt).mockReturnValueOnce(newKeySalt)
+      vi.mocked(generateSalt).mockReturnValueOnce(newAuthHashSalt).mockReturnValueOnce(newPasswordKeySalt)
 
       const envelope: ServerMasterKeyEnvelope = {
-        authSalt: hexEncode(authCreds.authSalt),
-        keySalt: hexEncode(authCreds.keySalt),
+        authHashSalt: hexEncode(authCreds.authHashSalt),
+        passwordKeySalt: hexEncode(authCreds.passwordKeySalt),
         wrappedMasterKey: hexEncode(wrappedMasterKey),
         masterKeyIV: hexEncode(masterKeyIV),
       }
@@ -277,10 +281,14 @@ describe('crypto integration', () => {
       vi.clearAllMocks()
 
       vi.mocked(deriveKey).mockResolvedValue(mockBytes(32, RECOVERY_KEK_FILL))
-      const recoveredMasterKey = await unwrapMasterKeyWithRecovery(recoveryData.wrappedMasterKey, MOCK_VALID_MNEMONIC, {
-        iv: recoveryData.recoveryIV,
-        salt: recoveryData.recoverySalt,
-      })
+      const recoveredMasterKey = await unwrapMasterKeyWithRecovery(
+        recoveryData.recoveryWrappedMasterKey,
+        MOCK_VALID_MNEMONIC,
+        {
+          iv: recoveryData.recoveryKeyIV,
+          salt: recoveryData.recoveryKeySalt,
+        },
+      )
       expect(recoveredMasterKey).toEqual(masterKey)
 
       const recoveredKekBytes = await deriveKEK(recoveredMasterKey)
@@ -311,9 +319,9 @@ describe('crypto integration', () => {
       // Wrong mnemonic cannot unwrap
       vi.mocked(deriveKey).mockResolvedValueOnce(mockBytes(32, 0x44))
       await expect(
-        unwrapMasterKeyWithRecovery(recoveryData.wrappedMasterKey, 'wrong mnemonic here', {
-          iv: recoveryData.recoveryIV,
-          salt: recoveryData.recoverySalt,
+        unwrapMasterKeyWithRecovery(recoveryData.recoveryWrappedMasterKey, 'wrong mnemonic here', {
+          iv: recoveryData.recoveryKeyIV,
+          salt: recoveryData.recoveryKeySalt,
         }),
       ).rejects.toThrow(DecryptionError)
     })
@@ -345,8 +353,8 @@ describe('crypto integration', () => {
       const rotatedServerFieldKeys: ServerFieldKey[] = rotatedWrapped.map((w) => ({
         fieldName: w.fieldName,
         version: w.version,
-        wrappedKey: hexEncode(w.wrappedKey),
-        keyIV: hexEncode(w.iv),
+        wrappedFieldKey: hexEncode(w.wrappedFieldKey),
+        fieldKeyIV: hexEncode(w.fieldKeyIV),
       }))
 
       // Re-encrypt note content with new key
@@ -384,8 +392,8 @@ describe('crypto integration', () => {
       const tamperedServer: ServerFieldKey = {
         fieldName: tampered.fieldName,
         version: tampered.version,
-        wrappedKey: hexEncode(tampered.wrappedKey),
-        keyIV: hexEncode(tampered.iv),
+        wrappedFieldKey: hexEncode(tampered.wrappedFieldKey),
+        fieldKeyIV: hexEncode(tampered.fieldKeyIV),
       }
       await expect(unwrapFieldKeys([tamperedServer], kek)).rejects.toThrow(DecryptionError)
     })
@@ -400,14 +408,14 @@ describe('crypto integration', () => {
     })
 
     it('login flow completes within 5 seconds', async () => {
-      const { authCreds, wrappedMasterKey, masterKeyIV, serverFieldKeys, keySalt } = await setupRegistration()
+      const { authCreds, wrappedMasterKey, masterKeyIV, serverFieldKeys, passwordKeySalt } = await setupRegistration()
       vi.clearAllMocks()
 
       vi.mocked(deriveAuthHash).mockResolvedValue(authCreds.authHash)
       vi.mocked(derivePasswordKey).mockResolvedValue(authCreds.passwordKey)
 
       const start = Date.now()
-      const passwordKey = await derivePasswordKey(PASSWORD, keySalt)
+      const passwordKey = await derivePasswordKey(PASSWORD, passwordKeySalt)
       const passwordCryptoKey = await importKey(passwordKey)
       const masterKey = await decrypt(wrappedMasterKey, passwordCryptoKey, {
         iv: masterKeyIV,

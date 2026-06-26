@@ -17,10 +17,10 @@ export async function encryptField(
   fieldName: FieldName,
 ): Promise<EncryptedFieldData> {
   const plaintextBytes = new TextEncoder().encode(plaintext) as Uint8Array<ArrayBuffer>
-  const iv = generateIV()
+  const ciphertextIV = generateIV()
   const aad = encodeAAD(fieldName, FIELD_KEY_VERSION)
-  const ciphertext = await encrypt(plaintextBytes, fieldKey, { iv, aad })
-  return { ciphertext, iv }
+  const ciphertext = await encrypt(plaintextBytes, fieldKey, { iv: ciphertextIV, aad })
+  return { ciphertext, ciphertextIV }
 }
 
 /**
@@ -35,7 +35,7 @@ export async function decryptField(
   fieldName: FieldName,
 ): Promise<string> {
   const aad = encodeAAD(fieldName, FIELD_KEY_VERSION)
-  const plaintextBytes = await decrypt(encryptedData.ciphertext, fieldKey, { iv: encryptedData.iv, aad })
+  const plaintextBytes = await decrypt(encryptedData.ciphertext, fieldKey, { iv: encryptedData.ciphertextIV, aad })
   return new TextDecoder().decode(plaintextBytes)
 }
 
@@ -46,8 +46,8 @@ export function toSaveFieldData(
   fieldName: FieldName,
 ): SaveFieldData {
   return {
-    encryptedBlob: hexEncode(encryptedData.ciphertext),
-    iv: hexEncode(encryptedData.iv),
+    ciphertext: hexEncode(encryptedData.ciphertext),
+    ciphertextIV: hexEncode(encryptedData.ciphertextIV),
     entryId,
     fieldName,
   }
@@ -56,7 +56,7 @@ export function toSaveFieldData(
 /** Convert hex-string ServerEncryptedField from the API to binary EncryptedFieldData. */
 export function toEncryptedFieldData(serverField: ServerEncryptedField): EncryptedFieldData {
   return {
-    ciphertext: hexDecode(serverField.encryptedBlob),
-    iv: hexDecode(serverField.iv),
+    ciphertext: hexDecode(serverField.ciphertext),
+    ciphertextIV: hexDecode(serverField.ciphertextIV),
   }
 }

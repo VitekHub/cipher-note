@@ -71,8 +71,8 @@ describe('deriveRegistrationKeys', () => {
   })
 
   it('returns 16-byte salts in keyEnvelope', () => {
-    expect(result.keyEnvelope.authSalt).toHaveLength(16)
-    expect(result.keyEnvelope.keySalt).toHaveLength(16)
+    expect(result.keyEnvelope.authHashSalt).toHaveLength(16)
+    expect(result.keyEnvelope.passwordKeySalt).toHaveLength(16)
   })
 
   it('returns wrappedMasterKey of 48 bytes and 12-byte IV in keyEnvelope', () => {
@@ -95,15 +95,15 @@ describe('deriveRegistrationKeys', () => {
     expect(result.wrappedFieldKeys).toHaveLength(NUMBER_OF_FIELD_KEYS)
     for (const wfk of result.wrappedFieldKeys) {
       expect(wfk.version).toBe(FIELD_KEY_VERSION)
-      expect(wfk.wrappedKey).toHaveLength(48)
-      expect(wfk.iv).toHaveLength(12)
+      expect(wfk.wrappedFieldKey).toHaveLength(48)
+      expect(wfk.fieldKeyIV).toHaveLength(12)
     }
   })
 
   it('returns recovery data with correct sizes', () => {
-    expect(result.recovery.recoverySalt).toHaveLength(16)
-    expect(result.recovery.wrappedMasterKey).toHaveLength(48)
-    expect(result.recovery.recoveryIV).toHaveLength(12)
+    expect(result.recovery.recoveryKeySalt).toHaveLength(16)
+    expect(result.recovery.recoveryWrappedMasterKey).toHaveLength(48)
+    expect(result.recovery.recoveryKeyIV).toHaveLength(12)
   })
 
   it('returns 12-word mnemonic', () => {
@@ -126,8 +126,8 @@ describe('deriveRegistrationKeys', () => {
     const serverFieldKeys: ServerFieldKey[] = result.wrappedFieldKeys.map((wfk) => ({
       fieldName: wfk.fieldName,
       version: wfk.version,
-      wrappedKey: hexEncode(wfk.wrappedKey),
-      keyIV: hexEncode(wfk.iv),
+      wrappedFieldKey: hexEncode(wfk.wrappedFieldKey),
+      fieldKeyIV: hexEncode(wfk.fieldKeyIV),
     }))
 
     // unwrapFieldKeys now returns Map<string, CryptoKey>
@@ -149,10 +149,14 @@ describe('deriveRegistrationKeys', () => {
   })
 
   it('unwraps master key with recovery mnemonic', async () => {
-    const masterKey = await unwrapMasterKeyWithRecovery(result.recovery.wrappedMasterKey, result.recovery.mnemonic, {
-      iv: result.recovery.recoveryIV,
-      salt: result.recovery.recoverySalt,
-    })
+    const masterKey = await unwrapMasterKeyWithRecovery(
+      result.recovery.recoveryWrappedMasterKey,
+      result.recovery.mnemonic,
+      {
+        iv: result.recovery.recoveryKeyIV,
+        salt: result.recovery.recoveryKeySalt,
+      },
+    )
     // Verify unwrapped key is 32 bytes (master key length)
     expect(masterKey).toHaveLength(32)
 
@@ -167,7 +171,7 @@ describe('deriveRegistrationKeys', () => {
   })
 
   it('calls deriveAuthCredentials with password', () => {
-    expect(deriveAuthHash).toHaveBeenCalledWith(PASSWORD, result.keyEnvelope.authSalt)
-    expect(derivePasswordKey).toHaveBeenCalledWith(PASSWORD, result.keyEnvelope.keySalt)
+    expect(deriveAuthHash).toHaveBeenCalledWith(PASSWORD, result.keyEnvelope.authHashSalt)
+    expect(derivePasswordKey).toHaveBeenCalledWith(PASSWORD, result.keyEnvelope.passwordKeySalt)
   })
 })

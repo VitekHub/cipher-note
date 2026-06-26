@@ -29,9 +29,9 @@ export async function regenerateMnemonic(password: string): Promise<string> {
     const { mnemonic, recoveryData } = await createRecoveryData(masterKey)
 
     await saveRecoveryData(user.id, {
-      recoverySalt: hexEncode(recoveryData.recoverySalt),
-      wrappedMasterKey: hexEncode(recoveryData.wrappedMasterKey),
-      recoveryIV: hexEncode(recoveryData.recoveryIV),
+      recoveryKeySalt: hexEncode(recoveryData.recoveryKeySalt),
+      recoveryWrappedMasterKey: hexEncode(recoveryData.recoveryWrappedMasterKey),
+      recoveryKeyIV: hexEncode(recoveryData.recoveryKeyIV),
     })
 
     return mnemonic

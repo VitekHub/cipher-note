@@ -144,9 +144,9 @@ describe('mnemonic', () => {
 
       const result: RecoveryData = await wrapMasterKeyWithRecovery(masterKey, MOCK_VALID_MNEMONIC, { iv, salt })
 
-      expect(result.wrappedMasterKey).toBeInstanceOf(Uint8Array)
-      expect(result.recoveryIV).toEqual(iv)
-      expect(result.recoverySalt).toEqual(salt)
+      expect(result.recoveryWrappedMasterKey).toBeInstanceOf(Uint8Array)
+      expect(result.recoveryKeyIV).toEqual(iv)
+      expect(result.recoveryKeySalt).toEqual(salt)
     })
 
     it('calls deriveKey with mnemonic and salt', async () => {
@@ -171,9 +171,9 @@ describe('mnemonic', () => {
       vi.mocked(deriveKey).mockResolvedValue(mockBytes(32, RECOVERY_KEK_FILL))
 
       const wrapped = await wrapMasterKeyWithRecovery(masterKey, MOCK_VALID_MNEMONIC, { iv, salt })
-      const unwrapped = await unwrapMasterKeyWithRecovery(wrapped.wrappedMasterKey, MOCK_VALID_MNEMONIC, {
-        iv: wrapped.recoveryIV,
-        salt: wrapped.recoverySalt,
+      const unwrapped = await unwrapMasterKeyWithRecovery(wrapped.recoveryWrappedMasterKey, MOCK_VALID_MNEMONIC, {
+        iv: wrapped.recoveryKeyIV,
+        salt: wrapped.recoveryKeySalt,
       })
 
       expect(unwrapped).toEqual(masterKey)
@@ -194,9 +194,9 @@ describe('mnemonic', () => {
       vi.mocked(deriveKey).mockResolvedValueOnce(mockBytes(32, 0x22))
 
       await expect(
-        unwrapMasterKeyWithRecovery(wrapped.wrappedMasterKey, 'wrong mnemonic', {
-          iv: wrapped.recoveryIV,
-          salt: wrapped.recoverySalt,
+        unwrapMasterKeyWithRecovery(wrapped.recoveryWrappedMasterKey, 'wrong mnemonic', {
+          iv: wrapped.recoveryKeyIV,
+          salt: wrapped.recoveryKeySalt,
         }),
       ).rejects.toThrow(DecryptionError)
     })
@@ -210,13 +210,13 @@ describe('mnemonic', () => {
       const wrapped = await wrapMasterKeyWithRecovery(masterKey, MOCK_VALID_MNEMONIC, { iv, salt })
 
       // Tamper with the wrapped key
-      const tampered = new Uint8Array(wrapped.wrappedMasterKey) as Uint8Array<ArrayBuffer>
+      const tampered = new Uint8Array(wrapped.recoveryWrappedMasterKey) as Uint8Array<ArrayBuffer>
       tampered[0] ^= 0xff
 
       await expect(
         unwrapMasterKeyWithRecovery(tampered, MOCK_VALID_MNEMONIC, {
-          iv: wrapped.recoveryIV,
-          salt: wrapped.recoverySalt,
+          iv: wrapped.recoveryKeyIV,
+          salt: wrapped.recoveryKeySalt,
         }),
       ).rejects.toThrow(DecryptionError)
     })
@@ -232,9 +232,9 @@ describe('mnemonic', () => {
       const wrongIV = generateIV()
 
       await expect(
-        unwrapMasterKeyWithRecovery(wrapped.wrappedMasterKey, MOCK_VALID_MNEMONIC, {
+        unwrapMasterKeyWithRecovery(wrapped.recoveryWrappedMasterKey, MOCK_VALID_MNEMONIC, {
           iv: wrongIV,
-          salt: wrapped.recoverySalt,
+          salt: wrapped.recoveryKeySalt,
         }),
       ).rejects.toThrow(DecryptionError)
     })
@@ -252,9 +252,9 @@ describe('mnemonic', () => {
       expect(result.mnemonic).toBeDefined()
       expect(result.mnemonic.split(' ')).toHaveLength(12)
       expect(result.recoveryData).toBeDefined()
-      expect(result.recoveryData.recoverySalt).toBeInstanceOf(Uint8Array)
-      expect(result.recoveryData.recoveryIV).toBeInstanceOf(Uint8Array)
-      expect(result.recoveryData.wrappedMasterKey).toBeInstanceOf(Uint8Array)
+      expect(result.recoveryData.recoveryKeySalt).toBeInstanceOf(Uint8Array)
+      expect(result.recoveryData.recoveryKeyIV).toBeInstanceOf(Uint8Array)
+      expect(result.recoveryData.recoveryWrappedMasterKey).toBeInstanceOf(Uint8Array)
     })
 
     it('uses fresh recovery salt and IV', async () => {
@@ -264,8 +264,8 @@ describe('mnemonic', () => {
       const result1 = await createRecoveryData(masterKey)
       const result2 = await createRecoveryData(masterKey)
 
-      expect(result1.recoveryData.recoverySalt).not.toEqual(result2.recoveryData.recoverySalt)
-      expect(result1.recoveryData.recoveryIV).not.toEqual(result2.recoveryData.recoveryIV)
+      expect(result1.recoveryData.recoveryKeySalt).not.toEqual(result2.recoveryData.recoveryKeySalt)
+      expect(result1.recoveryData.recoveryKeyIV).not.toEqual(result2.recoveryData.recoveryKeyIV)
     })
 
     it('wraps the master key so it can be unwrapped with the returned mnemonic', async () => {
@@ -273,9 +273,9 @@ describe('mnemonic', () => {
       vi.mocked(deriveKey).mockResolvedValue(mockBytes(32, RECOVERY_KEK_FILL))
 
       const { mnemonic, recoveryData } = await createRecoveryData(masterKey)
-      const unwrapped = await unwrapMasterKeyWithRecovery(recoveryData.wrappedMasterKey, mnemonic, {
-        iv: recoveryData.recoveryIV,
-        salt: recoveryData.recoverySalt,
+      const unwrapped = await unwrapMasterKeyWithRecovery(recoveryData.recoveryWrappedMasterKey, mnemonic, {
+        iv: recoveryData.recoveryKeyIV,
+        salt: recoveryData.recoveryKeySalt,
       })
 
       expect(unwrapped).toEqual(masterKey)

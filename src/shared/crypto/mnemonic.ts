@@ -96,7 +96,7 @@ export async function wrapMasterKeyWithRecovery(
     aad: MASTER_KEY_RECOVERY_AAD,
   })
 
-  return { wrappedMasterKey, recoveryIV: iv, recoverySalt: salt }
+  return { recoveryWrappedMasterKey: wrappedMasterKey, recoveryKeyIV: iv, recoveryKeySalt: salt }
 }
 
 /**
@@ -125,8 +125,11 @@ export async function createRecoveryData(
   masterKey: Uint8Array<ArrayBuffer>,
 ): Promise<{ mnemonic: string; recoveryData: RecoveryData }> {
   const mnemonic = await generateMnemonic()
-  const recoveryIV = generateIV()
-  const recoverySalt = generateSalt()
-  const recoveryData = await wrapMasterKeyWithRecovery(masterKey, mnemonic, { iv: recoveryIV, salt: recoverySalt })
+  const recoveryKeyIV = generateIV()
+  const recoveryKeySalt = generateSalt()
+  const recoveryData = await wrapMasterKeyWithRecovery(masterKey, mnemonic, {
+    iv: recoveryKeyIV,
+    salt: recoveryKeySalt,
+  })
   return { mnemonic, recoveryData }
 }

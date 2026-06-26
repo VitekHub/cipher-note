@@ -25,16 +25,16 @@ vi.mock('@/features/auth/model/registration-crypto', () => ({
       ]),
     },
     keyEnvelope: {
-      authSalt: new Uint8Array(16).fill(0x01),
-      keySalt: new Uint8Array(16).fill(0x02),
+      authHashSalt: new Uint8Array(16).fill(0x01),
+      passwordKeySalt: new Uint8Array(16).fill(0x02),
       wrappedMasterKey: new Uint8Array(48).fill(0x05),
       masterKeyIV: new Uint8Array(12).fill(0x06),
     },
     wrappedFieldKeys: [],
     recovery: {
-      recoverySalt: new Uint8Array(16).fill(0xaa),
-      wrappedMasterKey: new Uint8Array(48).fill(0xbb),
-      recoveryIV: new Uint8Array(12).fill(0xcc),
+      recoveryKeySalt: new Uint8Array(16).fill(0xaa),
+      recoveryWrappedMasterKey: new Uint8Array(48).fill(0xbb),
+      recoveryKeyIV: new Uint8Array(12).fill(0xcc),
       mnemonic: 'word0 word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11',
     },
   }),
@@ -62,8 +62,8 @@ vi.mock('@/shared/api/supabase-registration', () => ({
 // Mock Supabase keys
 const { mockFetchedEnvelope } = vi.hoisted(() => ({
   mockFetchedEnvelope: {
-    authSalt: 'f1e2d3c4'.repeat(4),
-    keySalt: 'b5a6g7h8'.repeat(4),
+    authHashSalt: 'f1e2d3c4'.repeat(4),
+    passwordKeySalt: 'b5a6g7h8'.repeat(4),
     wrappedMasterKey: 'ff'.repeat(48),
     masterKeyIV: 'ee'.repeat(12),
     fieldKeys: [] as import('@/shared/types/api.types').ServerFieldKey[],
@@ -72,8 +72,8 @@ const { mockFetchedEnvelope } = vi.hoisted(() => ({
 
 vi.mock('@/shared/api/supabase-keys', () => ({
   fetchLoginSalts: vi.fn().mockResolvedValue({
-    authSalt: '01'.repeat(16),
-    keySalt: '02'.repeat(16),
+    authHashSalt: '01'.repeat(16),
+    passwordKeySalt: '02'.repeat(16),
   }),
   fetchMasterKeyEnvelope: vi.fn(),
   fetchFieldKeys: vi.fn(),
@@ -159,8 +159,8 @@ vi.mock('@/shared/crypto/split-kdf', async () => {
     ...actual,
     changePassword: vi.fn().mockResolvedValue({
       newAuthHash: 'newhash'.padEnd(64, '0'),
-      newAuthSalt: new Uint8Array(16).fill(0x11),
-      newKeySalt: new Uint8Array(16).fill(0x22),
+      newAuthHashSalt: new Uint8Array(16).fill(0x11),
+      newPasswordKeySalt: new Uint8Array(16).fill(0x22),
       newWrappedMasterKey: new Uint8Array(48).fill(0x33),
       newMasterKeyIV: new Uint8Array(12).fill(0x44),
     }),
@@ -516,8 +516,8 @@ describe('subscribeToAuthChanges', () => {
 
 describe('changeUserPassword', () => {
   const mockEnvelope = {
-    authSalt: 'a1b2c3d4'.repeat(4),
-    keySalt: 'e5f6g7h8'.repeat(4),
+    authHashSalt: 'a1b2c3d4'.repeat(4),
+    passwordKeySalt: 'e5f6g7h8'.repeat(4),
     wrappedMasterKey: 'aa'.repeat(48),
     masterKeyIV: 'bb'.repeat(12),
     fieldKeys: [],
@@ -525,8 +525,8 @@ describe('changeUserPassword', () => {
 
   const mockChangeResult = {
     newAuthHash: 'newhash'.padEnd(64, '0'),
-    newAuthSalt: new Uint8Array(16).fill(0x11) as Uint8Array<ArrayBuffer>,
-    newKeySalt: new Uint8Array(16).fill(0x22) as Uint8Array<ArrayBuffer>,
+    newAuthHashSalt: new Uint8Array(16).fill(0x11) as Uint8Array<ArrayBuffer>,
+    newPasswordKeySalt: new Uint8Array(16).fill(0x22) as Uint8Array<ArrayBuffer>,
     newWrappedMasterKey: new Uint8Array(48).fill(0x33) as Uint8Array<ArrayBuffer>,
     newMasterKeyIV: new Uint8Array(12).fill(0x44) as Uint8Array<ArrayBuffer>,
   }
@@ -568,8 +568,8 @@ describe('changeUserPassword', () => {
     await changeUserPassword('oldPassword', 'newPassword')
 
     expect(updateMasterKeyEnvelope).toHaveBeenCalledWith('user-1', {
-      authSalt: '11111111111111111111111111111111',
-      keySalt: '22222222222222222222222222222222',
+      authHashSalt: '11111111111111111111111111111111',
+      passwordKeySalt: '22222222222222222222222222222222',
       wrappedMasterKey: '33'.repeat(48),
       masterKeyIV: '44'.repeat(12),
     })
@@ -594,8 +594,8 @@ describe('changeUserPassword', () => {
 
     expect(mockSetEnvelope).toHaveBeenCalledWith(
       expect.objectContaining({
-        authSalt: '11111111111111111111111111111111',
-        keySalt: '22222222222222222222222222222222',
+        authHashSalt: '11111111111111111111111111111111',
+        passwordKeySalt: '22222222222222222222222222222222',
         wrappedMasterKey: '33'.repeat(48),
         masterKeyIV: '44'.repeat(12),
       }),
@@ -650,8 +650,8 @@ describe('changeUserPassword', () => {
     // First call: upload new data; second call: rollback with old data
     expect(updateMasterKeyEnvelope).toHaveBeenCalledTimes(2)
     expect(updateMasterKeyEnvelope).toHaveBeenNthCalledWith(2, 'user-1', {
-      authSalt: mockEnvelope.authSalt,
-      keySalt: mockEnvelope.keySalt,
+      authHashSalt: mockEnvelope.authHashSalt,
+      passwordKeySalt: mockEnvelope.passwordKeySalt,
       wrappedMasterKey: mockEnvelope.wrappedMasterKey,
       masterKeyIV: mockEnvelope.masterKeyIV,
     })
