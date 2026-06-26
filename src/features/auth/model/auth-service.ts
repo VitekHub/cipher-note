@@ -5,8 +5,9 @@ import { authAdapter } from '@/shared/auth/supabase-adapter'
 import { uploadRegistrationData } from '@/shared/api/supabase-registration'
 import { fetchLoginSalts, updateMasterKeyEnvelope, fetchFreshEnvelope } from '@/shared/api/supabase-keys'
 import { hexDecode, hexEncode } from '@/shared/crypto/crypto-utils'
-import { deriveAuthHash, terminateWorker } from '@/shared/crypto/argon2id'
-import { changePassword } from '@/shared/crypto/split-kdf'
+import { deriveAuthHash } from '@/shared/crypto/split-kdf'
+import { changePassword } from '@/shared/crypto/master-key'
+import { terminateWorker } from '@/shared/crypto/argon2id'
 import { keyVault } from '@/shared/crypto/key-vault'
 
 /**

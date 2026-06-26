@@ -1,21 +1,25 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { encrypt, decrypt, importKey } from '@/shared/crypto/aes-gcm'
-import { generateMasterKey } from '@/shared/crypto/master-key'
-import { generateFieldKeys, wrapFieldKeys, unwrapFieldKeys } from '@/shared/crypto/field-keys'
+import { generateMasterKey, changePassword } from '@/shared/crypto/master-key'
+import { generateAndWrapFieldKeys, unwrapFieldKeys } from '@/shared/crypto/field-keys'
 import { deriveKEK } from '@/shared/crypto/hkdf'
-import { deriveAuthCredentials, changePassword } from '@/shared/crypto/split-kdf'
+import { deriveAuthCredentials, deriveAuthHash, derivePasswordKey } from '@/shared/crypto/split-kdf'
 import { wrapMasterKeyWithRecovery, unwrapMasterKeyWithRecovery } from '@/shared/crypto/mnemonic'
 import { DecryptionError } from '@/shared/crypto/errors'
 import { MASTER_KEY_PASSWORD_AAD } from '@/shared/types/crypto.types'
 import { hexEncode } from '@/shared/crypto/crypto-utils'
-import type { WrappedFieldKey } from '@/shared/types/crypto.types'
 import type { ServerFieldKey, ServerMasterKeyEnvelope } from '../types/api.types'
 
 // Mock Argon2id module — Web Worker won't run in jsdom
 vi.mock('@/shared/crypto/argon2id', () => ({
+  deriveKey: vi.fn(),
+}))
+
+// Mock split-kdf module — control derived values without Worker dependency
+vi.mock('@/shared/crypto/split-kdf', () => ({
   deriveAuthHash: vi.fn(),
   derivePasswordKey: vi.fn(),
-  deriveKey: vi.fn(),
+  deriveAuthCredentials: vi.fn(),
 }))
 
 // Mock @scure/bip39 — avoid loading 2048-word dictionary
@@ -32,7 +36,7 @@ vi.mock('@scure/bip39/wordlists/english.js', () => ({
   wordlist: MOCK_WORDLIST,
 }))
 
-import { deriveAuthHash, derivePasswordKey, deriveKey } from '@/shared/crypto/argon2id'
+import { deriveKey } from '@/shared/crypto/argon2id'
 
 function mockBytes(length: number, fill: number): Uint8Array<ArrayBuffer> {
   return new Uint8Array(length).fill(fill) as Uint8Array<ArrayBuffer>
@@ -43,7 +47,7 @@ vi.mock('@/shared/crypto/crypto-utils', async () => ({
   ...(await vi.importActual('@/shared/crypto/crypto-utils')),
   generateSalt: vi.fn(),
 }))
-import { generateIV, generateSalt } from '@/shared/crypto/crypto-utils'
+import { generateKey, generateIV, encodeAAD, zeroFill, generateSalt } from '@/shared/crypto/crypto-utils'
 
 const PASSWORD = 'test-password-123'
 const PASSWORD_KEY_FILL = 0x11
@@ -55,21 +59,18 @@ async function setupRegistration() {
   const authHashSalt = mockBytes(16, 0x01)
   const passwordKeySalt = mockBytes(16, 0x02)
   vi.mocked(generateSalt).mockReturnValueOnce(authHashSalt).mockReturnValueOnce(passwordKeySalt)
-  vi.mocked(deriveAuthHash).mockResolvedValue('a'.repeat(64))
-  vi.mocked(derivePasswordKey).mockResolvedValue(mockBytes(32, PASSWORD_KEY_FILL))
+  vi.mocked(deriveAuthCredentials).mockResolvedValue({
+    authHash: 'a'.repeat(64),
+    passwordKey: mockBytes(32, PASSWORD_KEY_FILL),
+    authHashSalt,
+    passwordKeySalt,
+  })
 
   const masterKey = generateMasterKey()
   const authCreds = await deriveAuthCredentials(PASSWORD)
   const kekBytes = await deriveKEK(masterKey)
   const kek = await importKey(kekBytes)
-  const { rawFieldKeys, cryptoFieldKeys } = await generateFieldKeys()
-  const versions = new Map([
-    ['note', 1],
-    ['website', 1],
-    ['email', 1],
-    ['title', 1],
-  ])
-  const wrappedFieldKeys = await wrapFieldKeys(rawFieldKeys, kek, versions)
+  const { cryptoFieldKeys, wrappedFieldKeys } = await generateAndWrapFieldKeys(kek)
   const serverFieldKeys: ServerFieldKey[] = wrappedFieldKeys.map((w) => ({
     fieldName: w.fieldName,
     version: w.version,
@@ -96,9 +97,7 @@ async function setupRegistration() {
     masterKey,
     authCreds,
     kek,
-    rawFieldKeys,
     cryptoFieldKeys,
-    wrappedFieldKeys,
     serverFieldKeys,
     wrappedMasterKey,
     masterKeyIV: iv,
@@ -118,7 +117,6 @@ describe('crypto integration', () => {
       const {
         masterKey,
         kek,
-        rawFieldKeys,
         cryptoFieldKeys,
         serverFieldKeys,
         wrappedMasterKey,
@@ -129,7 +127,6 @@ describe('crypto integration', () => {
 
       expect(masterKey.byteLength).toBe(32)
       expect(kek.type).toBe('secret')
-      expect(rawFieldKeys.size).toBe(NUMBER_OF_FIELD_KEYS)
       expect(cryptoFieldKeys.size).toBe(NUMBER_OF_FIELD_KEYS)
       expect(serverFieldKeys).toHaveLength(NUMBER_OF_FIELD_KEYS)
 
@@ -224,11 +221,15 @@ describe('crypto integration', () => {
 
       const newAuthHashSalt = mockBytes(16, 0xbb)
       const newPasswordKeySalt = mockBytes(16, 0xcc)
-      vi.mocked(derivePasswordKey)
-        .mockImplementationOnce(async () => mockBytes(32, PASSWORD_KEY_FILL))
-        .mockImplementationOnce(async () => mockBytes(32, NEW_PASSWORD_KEY_FILL))
-      vi.mocked(deriveAuthHash).mockResolvedValue('b'.repeat(64))
-      vi.mocked(generateSalt).mockReturnValueOnce(newAuthHashSalt).mockReturnValueOnce(newPasswordKeySalt)
+      // derivePasswordKey is called by unwrapMasterKeyWithPassword with the old password
+      vi.mocked(derivePasswordKey).mockResolvedValueOnce(mockBytes(32, PASSWORD_KEY_FILL))
+      // deriveAuthCredentials returns the new credentials for the new password
+      vi.mocked(deriveAuthCredentials).mockResolvedValueOnce({
+        authHash: 'b'.repeat(64),
+        passwordKey: mockBytes(32, NEW_PASSWORD_KEY_FILL),
+        authHashSalt: newAuthHashSalt,
+        passwordKeySalt: newPasswordKeySalt,
+      })
 
       const envelope: ServerMasterKeyEnvelope = {
         authHashSalt: hexEncode(authCreds.authHashSalt),
@@ -329,36 +330,33 @@ describe('crypto integration', () => {
 
   describe('key rotation', () => {
     it('rotates one field key without affecting others', async () => {
-      const { kek, rawFieldKeys } = await setupRegistration()
+      const { kek, cryptoFieldKeys, serverFieldKeys } = await setupRegistration()
       vi.clearAllMocks()
 
-      // Import original v1 key for later comparison
-      const originalNoteKey = rawFieldKeys.get('note')!
-      const originalNoteCryptoKey = await importKey(originalNoteKey)
+      // Get original note CryptoKey for later comparison
+      const originalNoteCryptoKey = cryptoFieldKeys.get('note')!
       const plaintext = new TextEncoder().encode('Sensitive note content')
 
-      // Rotate note key to v2
-      const newNoteKey = crypto.getRandomValues(new Uint8Array(32)) as Uint8Array<ArrayBuffer>
-      expect(newNoteKey).not.toEqual(originalNoteKey)
+      // Generate a new note key and wrap it directly with v2 AAD
+      const newNoteKey = generateKey()
+      const newNoteCryptoKey = await importKey(newNoteKey)
+      const newNoteIV = generateIV()
+      const newNoteAAD = encodeAAD('note', 2)
+      const newNoteWrapped = await encrypt(newNoteKey, kek, { iv: newNoteIV, aad: newNoteAAD })
+      zeroFill(newNoteKey)
 
-      const rotatedFieldKeys = new Map(rawFieldKeys)
-      rotatedFieldKeys.set('note', newNoteKey)
-      const newVersions = new Map([
-        ['note', 2],
-        ['website', 1],
-        ['email', 1],
-        ['title', 1],
-      ])
-      const rotatedWrapped = await wrapFieldKeys(rotatedFieldKeys, kek, newVersions)
-      const rotatedServerFieldKeys: ServerFieldKey[] = rotatedWrapped.map((w) => ({
-        fieldName: w.fieldName,
-        version: w.version,
-        wrappedFieldKey: hexEncode(w.wrappedFieldKey),
-        fieldKeyIV: hexEncode(w.fieldKeyIV),
-      }))
+      // Build server field keys: replace note key with rotated v2, keep others as-is
+      const rotatedServerFieldKeys: ServerFieldKey[] = [
+        ...serverFieldKeys.filter((f) => f.fieldName !== 'note'),
+        {
+          fieldName: 'note',
+          version: 2,
+          wrappedFieldKey: hexEncode(newNoteWrapped),
+          fieldKeyIV: hexEncode(newNoteIV),
+        },
+      ]
 
       // Re-encrypt note content with new key
-      const newNoteCryptoKey = await importKey(newNoteKey)
       const v2IV = generateIV()
       const v2AAD = new Uint8Array([1])
       const v2Ciphertext = await encrypt(plaintext, newNoteCryptoKey, { iv: v2IV, aad: v2AAD })
@@ -372,9 +370,8 @@ describe('crypto integration', () => {
       const decrypted = await decrypt(v2Ciphertext, newNoteCryptoKey, { iv: v2IV, aad: v2AAD })
       expect(new TextDecoder().decode(decrypted)).toBe('Sensitive note content')
 
-      // Website/email keys unaffected - unwrapFieldKeys returns Map<string, CryptoKey>
+      // Website/email keys unaffected
       const unwrapped = await unwrapFieldKeys(rotatedServerFieldKeys, kek)
-      // Verify via round-trip since we can't compare CryptoKey directly
       const websiteCryptoKey = unwrapped.get('website')!
       const emailCryptoKey = unwrapped.get('email')!
       const websitePlaintext = new Uint8Array([0x42])
@@ -386,16 +383,14 @@ describe('crypto integration', () => {
       expect(await decrypt(websiteCiphertext, websiteCryptoKey, { iv, aad })).toEqual(websitePlaintext)
       expect(await decrypt(emailCiphertext, emailCryptoKey, { iv, aad })).toEqual(emailPlaintext)
 
-      // Version rollback protection: unwrap v2 wrapped key with v1 AAD fails
-      const v2WrappedNote = rotatedWrapped.find((k) => k.fieldName === 'note')!
-      const tampered: WrappedFieldKey = { ...v2WrappedNote, version: 1 }
-      const tamperedServer: ServerFieldKey = {
-        fieldName: tampered.fieldName,
-        version: tampered.version,
-        wrappedFieldKey: hexEncode(tampered.wrappedFieldKey),
-        fieldKeyIV: hexEncode(tampered.fieldKeyIV),
+      // Version rollback protection: v2 wrapped key with v1 AAD fails
+      const tampered: ServerFieldKey = {
+        fieldName: 'note',
+        version: 1,
+        wrappedFieldKey: hexEncode(newNoteWrapped),
+        fieldKeyIV: hexEncode(newNoteIV),
       }
-      await expect(unwrapFieldKeys([tamperedServer], kek)).rejects.toThrow(DecryptionError)
+      await expect(unwrapFieldKeys([tampered], kek)).rejects.toThrow(DecryptionError)
     })
   })
 

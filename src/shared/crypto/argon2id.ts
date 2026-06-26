@@ -2,7 +2,6 @@ import type { Argon2Params } from '@/shared/types/crypto.types'
 import { DEFAULT_ARGON2_PARAMS } from '@/shared/types/crypto.types'
 import type { Argon2DeriveRequest, Argon2WorkerResponse } from '@/shared/types/argon2-worker.types'
 import { Argon2Error } from '@/shared/crypto/errors'
-import { hexEncode } from '@/shared/crypto/crypto-utils'
 
 interface PendingRequest {
   resolve: (value: Uint8Array<ArrayBuffer>) => void
@@ -75,26 +74,6 @@ export function deriveKey(
       reject(new Argon2Error(err instanceof Error ? err.message : 'Failed to send message to worker'))
     }
   })
-}
-
-/**
- * Derive an auth hash for Supabase Auth verification.
- * Returns a 64-character hex string suitable for use as a "password" in Supabase Auth.
- */
-export async function deriveAuthHash(password: string, authSalt: Uint8Array<ArrayBuffer>): Promise<string> {
-  const hash = await deriveKey(password, authSalt)
-  return hexEncode(hash)
-}
-
-/**
- * Derive a password key for wrapping the master key.
- * Returns a 32-byte Uint8Array for use in AES-256-GCM key wrapping.
- */
-export async function derivePasswordKey(
-  password: string,
-  keySalt: Uint8Array<ArrayBuffer>,
-): Promise<Uint8Array<ArrayBuffer>> {
-  return deriveKey(password, keySalt)
 }
 
 export type { Argon2DeriveRequest as WorkerDeriveRequest, Argon2WorkerResponse as WorkerResponse }

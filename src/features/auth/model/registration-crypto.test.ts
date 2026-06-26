@@ -10,9 +10,14 @@ import { hexEncode } from '@/shared/crypto/crypto-utils'
 
 // Mock Argon2id module — Web Worker won't run in jsdom
 vi.mock('@/shared/crypto/argon2id', () => ({
+  deriveKey: vi.fn(),
+}))
+
+// Mock split-kdf module — deriveAuthHash/derivePasswordKey
+vi.mock('@/shared/crypto/split-kdf', () => ({
   deriveAuthHash: vi.fn(),
   derivePasswordKey: vi.fn(),
-  deriveKey: vi.fn(),
+  deriveAuthCredentials: vi.fn(),
 }))
 
 // Mock @scure/bip39 — avoid loading 2048-word dictionary
@@ -35,7 +40,8 @@ vi.mock('@/shared/crypto/crypto-utils', async () => ({
   generateSalt: vi.fn(),
 }))
 
-import { deriveAuthHash, derivePasswordKey, deriveKey } from '@/shared/crypto/argon2id'
+import { deriveAuthCredentials } from '@/shared/crypto/split-kdf'
+import { deriveKey } from '@/shared/crypto/argon2id'
 import { generateSalt } from '@/shared/crypto/crypto-utils'
 import { deriveRegistrationKeys } from '@/features/auth/model/registration-crypto'
 
@@ -57,9 +63,13 @@ describe('deriveRegistrationKeys', () => {
     const authSalt = mockBytes(16, 0x01)
     const keySalt = mockBytes(16, 0x02)
     const recoverySalt = mockBytes(16, 0x03)
-    vi.mocked(generateSalt).mockReturnValueOnce(authSalt).mockReturnValueOnce(keySalt).mockReturnValueOnce(recoverySalt)
-    vi.mocked(deriveAuthHash).mockResolvedValue('a'.repeat(64))
-    vi.mocked(derivePasswordKey).mockResolvedValue(mockBytes(32, PASSWORD_KEY_FILL))
+    vi.mocked(generateSalt).mockReturnValueOnce(recoverySalt)
+    vi.mocked(deriveAuthCredentials).mockResolvedValue({
+      authHash: 'a'.repeat(64),
+      passwordKey: mockBytes(32, PASSWORD_KEY_FILL),
+      authHashSalt: authSalt,
+      passwordKeySalt: keySalt,
+    })
     vi.mocked(deriveKey).mockResolvedValue(mockBytes(32, RECOVERY_KEK_FILL))
 
     result = await deriveRegistrationKeys(PASSWORD)
@@ -171,7 +181,6 @@ describe('deriveRegistrationKeys', () => {
   })
 
   it('calls deriveAuthCredentials with password', () => {
-    expect(deriveAuthHash).toHaveBeenCalledWith(PASSWORD, result.keyEnvelope.authHashSalt)
-    expect(derivePasswordKey).toHaveBeenCalledWith(PASSWORD, result.keyEnvelope.passwordKeySalt)
+    expect(deriveAuthCredentials).toHaveBeenCalledWith(PASSWORD)
   })
 })

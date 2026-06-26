@@ -1,10 +1,10 @@
 /**
- * Field key operations: generation, wrapping, and unwrapping.
+ * Field key operations: generation+wrapping and unwrapping.
  *
  * Each entry has four encrypted fields (title, note, website, email), each
- * protected by its own 256-bit field key. Field keys are wrapped (encrypted)
- * with the KEK and AAD(fieldName, version) for server storage, and unwrapped
- * during vault unlock.
+ * protected by its own 256-bit field key. `generateAndWrapFieldKeys` creates
+ * and wraps all four field keys in a single parallel pass; `unwrapFieldKeys`
+ * decrypts them during vault unlock.
  */
 
 import { importKey } from '@/shared/crypto/aes-gcm'
@@ -47,56 +47,6 @@ export async function generateAndWrapFieldKeys(
   )
 
   return { cryptoFieldKeys, wrappedFieldKeys }
-}
-
-/**
- * Generate all four field keys (title, note, website, email) at once.
- * Each is a 256-bit random key. Returns both the raw key bytes (for wrapping)
- * and imported CryptoKeys (for encryption).
- */
-export async function generateFieldKeys(): Promise<{
-  rawFieldKeys: Map<string, Uint8Array<ArrayBuffer>>
-  cryptoFieldKeys: Map<string, CryptoKey>
-}> {
-  const entries = FIELD_NAMES.map((name) => [name, generateKey()] as [string, Uint8Array<ArrayBuffer>])
-  const cryptoFieldKeys = new Map(
-    await Promise.all(entries.map(async ([name, key]) => [name, await importKey(key)] as const)),
-  )
-  return { rawFieldKeys: new Map(entries), cryptoFieldKeys }
-}
-
-/**
- * Wrap multiple field keys with the KEK for server storage.
- *
- * Each field key is encrypted with AES-256-GCM using AAD that binds the
- * ciphertext to the field name and version. This provides rollback protection:
- * unwrapping with a wrong version will fail.
- *
- * @param fieldKeys - Map of field name → plaintext field key
- * @param kek - Key Encryption Key (CryptoKey) to wrap with
- * @param versions - Map of field name → key version number. Every field key
- *   must have a corresponding version, otherwise this throws.
- * @returns Array of wrapped field keys ready for server upload
- */
-export async function wrapFieldKeys(
-  fieldKeys: Map<string, Uint8Array<ArrayBuffer>>,
-  kek: CryptoKey,
-  versions: Map<string, number>,
-): Promise<WrappedFieldKey[]> {
-  return await Promise.all(
-    Array.from(fieldKeys.entries()).map(async ([fieldName, key]) => {
-      const version = versions.get(fieldName)
-      if (version === undefined) {
-        throw new Error(`Missing version for field "${fieldName}"`)
-      }
-
-      const aad = encodeAAD(fieldName, version)
-      const fieldKeyIV = generateIV()
-      const wrappedFieldKey = await encrypt(key, kek, { iv: fieldKeyIV, aad })
-
-      return { fieldName, version, wrappedFieldKey, fieldKeyIV } as WrappedFieldKey
-    }),
-  )
 }
 
 /**

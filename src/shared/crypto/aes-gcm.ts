@@ -5,6 +5,7 @@ import type { AesGcmOptions } from '@/shared/types/crypto.types'
 
 const AES_GCM_ALGORITHM = 'AES-GCM'
 
+/** Encrypt plaintext using AES-256-GCM. Returns ciphertext with the IV/AAD bound to the key. */
 export async function encrypt(
   plaintext: Uint8Array<ArrayBuffer>,
   key: CryptoKey,
@@ -15,6 +16,7 @@ export async function encrypt(
   return copyToUint8Array(buffer)
 }
 
+/** Decrypt AES-256-GCM ciphertext. Throws DecryptionError on wrong key or tampered data. */
 export async function decrypt(
   ciphertext: Uint8Array<ArrayBuffer>,
   key: CryptoKey,

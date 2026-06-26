@@ -8,11 +8,29 @@
  * derive passwordKey.
  */
 
-import { deriveAuthHash, derivePasswordKey } from '@/shared/crypto/argon2id'
-import { generateSalt, zeroFill } from '@/shared/crypto/crypto-utils'
-import { unwrapMasterKeyWithPassword, wrapMasterKeyWithPassword } from '@/shared/crypto/master-key'
-import type { AuthCredentials, PasswordChangeResult } from '@/shared/types/crypto.types'
-import type { ServerMasterKeyEnvelope } from '@/shared/types/api.types'
+import { deriveKey } from '@/shared/crypto/argon2id'
+import { generateSalt, hexEncode } from '@/shared/crypto/crypto-utils'
+import type { AuthCredentials } from '@/shared/types/crypto.types'
+
+/**
+ * Derive an auth hash for Supabase Auth verification.
+ * Returns a 64-character hex string suitable for use as a "password" in Supabase Auth.
+ */
+export async function deriveAuthHash(password: string, authSalt: Uint8Array<ArrayBuffer>): Promise<string> {
+  const hash = await deriveKey(password, authSalt)
+  return hexEncode(hash)
+}
+
+/**
+ * Derive a password key for wrapping the master key.
+ * Returns a 32-byte Uint8Array for use in AES-256-GCM key wrapping.
+ */
+export async function derivePasswordKey(
+  password: string,
+  keySalt: Uint8Array<ArrayBuffer>,
+): Promise<Uint8Array<ArrayBuffer>> {
+  return deriveKey(password, keySalt)
+}
 
 /**
  * Derive authentication credentials for a new registration.
@@ -29,40 +47,4 @@ export async function deriveAuthCredentials(password: string): Promise<AuthCrede
   ])
 
   return { authHash, passwordKey, authHashSalt, passwordKeySalt }
-}
-
-/**
- * Change the user's password by re-wrapping the master key.
- *
- * The master key itself is never changed - only its wrapping.
- * Field keys encrypted with the KEK are completely unaffected.
- *
- * @param oldPassword - The user's current password
- * @param newPassword - The desired new password
- * @param envelope - The current key envelope (hex strings from the server)
- */
-export async function changePassword(
-  oldPassword: string,
-  newPassword: string,
-  envelope: ServerMasterKeyEnvelope,
-): Promise<PasswordChangeResult> {
-  const masterKey = await unwrapMasterKeyWithPassword(oldPassword, envelope)
-
-  // Generate new salts and derive new credentials
-  const newCredentials = await deriveAuthCredentials(newPassword)
-
-  // Re-wrap master key with new password key
-  const { wrappedMasterKey: newWrappedMasterKey, masterKeyIV: newMasterKeyIV } = await wrapMasterKeyWithPassword(
-    masterKey,
-    newCredentials.passwordKey,
-  )
-  zeroFill(masterKey)
-
-  return {
-    newAuthHash: newCredentials.authHash,
-    newAuthHashSalt: newCredentials.authHashSalt,
-    newPasswordKeySalt: newCredentials.passwordKeySalt,
-    newWrappedMasterKey,
-    newMasterKeyIV,
-  }
 }

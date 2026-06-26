@@ -1,26 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { DecryptionError } from '@/shared/crypto/errors'
-import { deriveAuthCredentials, changePassword } from '@/shared/crypto/split-kdf'
-import { importKey, decrypt } from '@/shared/crypto/aes-gcm'
-import { generateMasterKey } from '@/shared/crypto/master-key'
-import { MASTER_KEY_PASSWORD_AAD } from '@/shared/types/crypto.types'
-import type { AuthCredentials, PasswordChangeResult } from '@/shared/types/crypto.types'
-import type { ServerMasterKeyEnvelope } from '@/shared/types/api.types'
+import { deriveAuthCredentials, deriveAuthHash, derivePasswordKey } from '@/shared/crypto/split-kdf'
+import type { AuthCredentials } from '@/shared/types/crypto.types'
 
-// Mock Argon2id module to avoid WASM/worker dependency in tests
+// Mock argon2id module to avoid WASM/worker dependency in tests
 vi.mock('@/shared/crypto/argon2id', () => ({
-  deriveAuthHash: vi.fn(),
-  derivePasswordKey: vi.fn(),
+  deriveKey: vi.fn(),
 }))
 
-// Mock master-key module — unwrap is mocked (returns controlled values), wrap uses real impl
-vi.mock('@/shared/crypto/master-key', async () => ({
-  ...(await vi.importActual('@/shared/crypto/master-key')),
-  unwrapMasterKeyWithPassword: vi.fn(),
-}))
-
-import { deriveAuthHash, derivePasswordKey } from '@/shared/crypto/argon2id'
-import { unwrapMasterKeyWithPassword } from '@/shared/crypto/master-key'
+import { deriveKey } from '@/shared/crypto/argon2id'
 
 // Mock crypto-utils module — allow generateSalt to be controlled per-test
 vi.mock('@/shared/crypto/crypto-utils', async () => ({
@@ -38,31 +25,59 @@ describe('split-kdf', () => {
     vi.clearAllMocks()
   })
 
+  describe('deriveAuthHash', () => {
+    it('returns 64-character hex string from derived key', async () => {
+      vi.mocked(deriveKey).mockResolvedValue(mockBytes(32, 0xab))
+
+      const result = await deriveAuthHash('test-password', mockBytes(16, 0x01))
+
+      expect(deriveKey).toHaveBeenCalledWith('test-password', expect.any(Uint8Array))
+      expect(typeof result).toBe('string')
+      expect(result).toHaveLength(64)
+      expect(result).toMatch(/^[0-9a-f]{64}$/)
+    })
+  })
+
+  describe('derivePasswordKey', () => {
+    it('returns Uint8Array from derived key', async () => {
+      const keyBytes = mockBytes(32, 0xcd)
+      vi.mocked(deriveKey).mockResolvedValue(keyBytes)
+
+      const result = await derivePasswordKey('test-password', mockBytes(16, 0x02))
+
+      expect(deriveKey).toHaveBeenCalledWith('test-password', expect.any(Uint8Array))
+      expect(result).toBeInstanceOf(Uint8Array)
+      expect(result.byteLength).toBe(32)
+    })
+  })
+
   describe('deriveAuthCredentials', () => {
     it('generates two salts and derives authHash and passwordKey in parallel', async () => {
       const authHashSalt = mockBytes(16, 0x01)
       const passwordKeySalt = mockBytes(16, 0x02)
       vi.mocked(generateSalt).mockReturnValueOnce(authHashSalt).mockReturnValueOnce(passwordKeySalt)
-      vi.mocked(deriveAuthHash).mockResolvedValue('a'.repeat(64))
-      vi.mocked(derivePasswordKey).mockResolvedValue(mockBytes(32, 0xab))
+      // deriveAuthHash calls deriveKey first, then derivePasswordKey calls it second
+      vi.mocked(deriveKey)
+        .mockResolvedValueOnce(mockBytes(32, 0xab)) // for deriveAuthHash → hexEncode
+        .mockResolvedValueOnce(mockBytes(32, 0xcd)) // for derivePasswordKey
 
       const result = await deriveAuthCredentials('password123')
 
       expect(generateSalt).toHaveBeenCalledTimes(2)
-      expect(deriveAuthHash).toHaveBeenCalledWith('password123', authHashSalt)
-      expect(derivePasswordKey).toHaveBeenCalledWith('password123', passwordKeySalt)
+      expect(deriveKey).toHaveBeenCalledWith('password123', authHashSalt)
+      expect(deriveKey).toHaveBeenCalledWith('password123', passwordKeySalt)
       expect(result).toEqual({
-        authHash: 'a'.repeat(64),
-        passwordKey: mockBytes(32, 0xab),
+        authHash: expect.any(String),
+        passwordKey: mockBytes(32, 0xcd),
         authHashSalt,
         passwordKeySalt,
       })
+      expect(result.authHash).toHaveLength(64)
     })
 
     it('returns AuthCredentials with correct types', async () => {
       vi.mocked(generateSalt).mockReturnValue(mockBytes(16, 0x01))
-      vi.mocked(deriveAuthHash).mockResolvedValue('b'.repeat(64))
-      vi.mocked(derivePasswordKey).mockResolvedValue(mockBytes(32, 0xcd))
+      vi.mocked(deriveKey).mockResolvedValue(mockBytes(32, 0xff))
 
       const result: AuthCredentials = await deriveAuthCredentials('test')
 
@@ -74,102 +89,6 @@ describe('split-kdf', () => {
       expect(result.authHashSalt.byteLength).toBe(16)
       expect(result.passwordKeySalt).toBeInstanceOf(Uint8Array)
       expect(result.passwordKeySalt.byteLength).toBe(16)
-    })
-  })
-
-  describe('changePassword', () => {
-    const NEW_KEY_FILL = 0x22
-
-    /** Minimal envelope — values are irrelevant since unwrapMasterKeyWithPassword is mocked. */
-    const stubEnvelope: ServerMasterKeyEnvelope = {
-      authHashSalt: 'aa'.repeat(16),
-      passwordKeySalt: 'bb'.repeat(16),
-      wrappedMasterKey: 'cc'.repeat(48),
-      masterKeyIV: 'dd'.repeat(12),
-    }
-
-    it('unwraps master key with old password and re-wraps with new password', async () => {
-      const masterKey = generateMasterKey()
-      // Pass a copy so zeroFill inside changePassword doesn't zero the reference we compare against
-      vi.mocked(unwrapMasterKeyWithPassword).mockResolvedValueOnce(new Uint8Array(masterKey) as Uint8Array<ArrayBuffer>)
-      vi.mocked(derivePasswordKey).mockImplementationOnce(async () => mockBytes(32, NEW_KEY_FILL))
-      vi.mocked(deriveAuthHash).mockResolvedValue('newhash'.padEnd(64, '0'))
-
-      const result: PasswordChangeResult = await changePassword('oldPassword', 'newPassword', stubEnvelope)
-
-      const newWrappingKey = await importKey(mockBytes(32, NEW_KEY_FILL))
-      const unwrappedMasterKey = await decrypt(result.newWrappedMasterKey, newWrappingKey, {
-        iv: result.newMasterKeyIV,
-        aad: MASTER_KEY_PASSWORD_AAD,
-      })
-
-      expect(unwrappedMasterKey).toEqual(masterKey)
-    })
-
-    it('generates new salts that differ from old salts', async () => {
-      const masterKey = generateMasterKey()
-      vi.mocked(unwrapMasterKeyWithPassword).mockResolvedValueOnce(masterKey)
-      vi.mocked(derivePasswordKey).mockResolvedValue(mockBytes(32, NEW_KEY_FILL))
-      vi.mocked(deriveAuthHash).mockResolvedValue('a'.repeat(64))
-
-      const newAuthHashSalt = mockBytes(16, 0xbb)
-      const newPasswordKeySalt = mockBytes(16, 0xcc)
-      vi.mocked(generateSalt).mockReturnValueOnce(newAuthHashSalt).mockReturnValueOnce(newPasswordKeySalt)
-
-      const result = await changePassword('oldPw', 'newPw', stubEnvelope)
-
-      expect(result.newAuthHashSalt).toEqual(newAuthHashSalt)
-      expect(result.newPasswordKeySalt).toEqual(newPasswordKeySalt)
-    })
-
-    it('returns newAuthHash from deriveAuthHash', async () => {
-      const masterKey = generateMasterKey()
-      vi.mocked(unwrapMasterKeyWithPassword).mockResolvedValueOnce(masterKey)
-      vi.mocked(derivePasswordKey).mockImplementationOnce(async () => mockBytes(32, NEW_KEY_FILL))
-      vi.mocked(deriveAuthHash).mockResolvedValue('newauthhash00000000000000000000000000000000000000000000000')
-
-      vi.mocked(generateSalt).mockReturnValueOnce(mockBytes(16, 0xaa)).mockReturnValueOnce(mockBytes(16, 0xbb))
-
-      const result = await changePassword('oldPw', 'newPw', stubEnvelope)
-
-      expect(result.newAuthHash).toBe('newauthhash00000000000000000000000000000000000000000000000')
-    })
-
-    it('throws DecryptionError if old password cannot unwrap master key', async () => {
-      vi.mocked(unwrapMasterKeyWithPassword).mockRejectedValueOnce(new DecryptionError())
-
-      await expect(changePassword('wrongPassword', 'newPw', stubEnvelope)).rejects.toThrow(DecryptionError)
-    })
-
-    it('calls generateSalt twice for new salts', async () => {
-      const masterKey = generateMasterKey()
-      vi.mocked(unwrapMasterKeyWithPassword).mockResolvedValueOnce(masterKey)
-      vi.mocked(derivePasswordKey).mockImplementationOnce(async () => mockBytes(32, NEW_KEY_FILL))
-      vi.mocked(deriveAuthHash).mockResolvedValue('a'.repeat(64))
-      vi.mocked(generateSalt).mockReturnValueOnce(mockBytes(16, 0xaa)).mockReturnValueOnce(mockBytes(16, 0xbb))
-
-      await changePassword('oldPw', 'newPw', stubEnvelope)
-
-      expect(generateSalt).toHaveBeenCalledTimes(2)
-    })
-
-    it('master key content is unchanged after re-wrap', async () => {
-      const masterKey = generateMasterKey()
-      vi.mocked(unwrapMasterKeyWithPassword).mockResolvedValueOnce(new Uint8Array(masterKey) as Uint8Array<ArrayBuffer>)
-      vi.mocked(unwrapMasterKeyWithPassword).mockResolvedValueOnce(masterKey)
-      vi.mocked(derivePasswordKey).mockImplementationOnce(async () => mockBytes(32, NEW_KEY_FILL))
-      vi.mocked(deriveAuthHash).mockResolvedValue('a'.repeat(64))
-      vi.mocked(generateSalt).mockReturnValueOnce(mockBytes(16, 0xaa)).mockReturnValueOnce(mockBytes(16, 0xbb))
-
-      const result = await changePassword('oldPw', 'newPw', stubEnvelope)
-
-      const newWrappingKey = await importKey(mockBytes(32, NEW_KEY_FILL))
-      const unwrapped = await decrypt(result.newWrappedMasterKey, newWrappingKey, {
-        iv: result.newMasterKeyIV,
-        aad: MASTER_KEY_PASSWORD_AAD,
-      })
-
-      expect(unwrapped).toEqual(masterKey)
     })
   })
 })

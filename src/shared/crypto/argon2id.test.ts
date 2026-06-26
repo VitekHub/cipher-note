@@ -80,47 +80,6 @@ describe('argon2id — Worker communication', () => {
     await expect(derivePromise).rejects.toThrow('WASM load failed')
   })
 
-  it('deriveAuthHash returns 64-character hex string', async () => {
-    const { deriveAuthHash } = await import('@/shared/crypto/argon2id')
-    const { generateSalt } = await import('@/shared/crypto/crypto-utils')
-    const authSalt = generateSalt()
-
-    const derivePromise = deriveAuthHash('test-password', authSalt)
-
-    const sentData = mockWorker.postMessage.mock.calls[0][0]
-    const mockHash = new Uint8Array(32).fill(0xab)
-    mockWorker.onmessage?.(
-      new MessageEvent('message', {
-        data: { type: 'result', id: sentData.id, hash: mockHash },
-      }),
-    )
-
-    const result = await derivePromise
-    expect(typeof result).toBe('string')
-    expect(result).toHaveLength(64)
-    expect(result).toMatch(/^[0-9a-f]{64}$/)
-  })
-
-  it('derivePasswordKey returns Uint8Array', async () => {
-    const { derivePasswordKey } = await import('@/shared/crypto/argon2id')
-    const { generateSalt } = await import('@/shared/crypto/crypto-utils')
-    const keySalt = generateSalt()
-
-    const derivePromise = derivePasswordKey('test-password', keySalt)
-
-    const sentData = mockWorker.postMessage.mock.calls[0][0]
-    const mockHash = new Uint8Array(32).fill(0xcd)
-    mockWorker.onmessage?.(
-      new MessageEvent('message', {
-        data: { type: 'result', id: sentData.id, hash: mockHash },
-      }),
-    )
-
-    const result = await derivePromise
-    expect(result).toBeInstanceOf(Uint8Array)
-    expect(result.byteLength).toBe(32)
-  })
-
   it('deriveKey uses default params when not specified', async () => {
     const { deriveKey } = await import('@/shared/crypto/argon2id')
     const { generateSalt } = await import('@/shared/crypto/crypto-utils')
@@ -163,36 +122,6 @@ describe('argon2id — Worker communication', () => {
       }),
     )
     await derivePromise
-  })
-
-  it('deriveAuthHash and derivePasswordKey send different salts for same password', async () => {
-    const { deriveAuthHash, derivePasswordKey } = await import('@/shared/crypto/argon2id')
-    const { generateSalt } = await import('@/shared/crypto/crypto-utils')
-    const authSalt = generateSalt()
-    const keySalt = generateSalt()
-
-    const authPromise = deriveAuthHash('test-password', authSalt)
-    const authSentData = mockWorker.postMessage.mock.calls[0][0]
-    const mockAuthHash = new Uint8Array(32).fill(0xaa)
-    mockWorker.onmessage?.(
-      new MessageEvent('message', {
-        data: { type: 'result', id: authSentData.id, hash: mockAuthHash },
-      }),
-    )
-    await authPromise
-
-    const keyPromise = derivePasswordKey('test-password', keySalt)
-    const keySentData = mockWorker.postMessage.mock.calls[1][0]
-    expect(authSentData.salt).not.toEqual(keySentData.salt)
-    expect(authSentData.password).toBe(keySentData.password)
-
-    const mockKeyHash = new Uint8Array(32).fill(0xbb)
-    mockWorker.onmessage?.(
-      new MessageEvent('message', {
-        data: { type: 'result', id: keySentData.id, hash: mockKeyHash },
-      }),
-    )
-    await keyPromise
   })
 })
 

@@ -83,7 +83,6 @@ vi.mock('@/shared/api/supabase-keys', () => ({
 
 // Mock Argon2id
 vi.mock('@/shared/crypto/argon2id', () => ({
-  deriveAuthHash: vi.fn().mockResolvedValue('a'.repeat(64)),
   terminateWorker: vi.fn(),
 }))
 
@@ -152,9 +151,18 @@ vi.mock('@/shared/crypto/key-vault-service', () => ({
   populateKeyVault: vi.fn().mockResolvedValue(undefined),
 }))
 
-// Mock split-kdf changePassword (hoisted mock — factory must not reference external variables)
+// Mock split-kdf (hoisted mock — factory must not reference external variables)
 vi.mock('@/shared/crypto/split-kdf', async () => {
   const actual = await vi.importActual<typeof import('@/shared/crypto/split-kdf')>('@/shared/crypto/split-kdf')
+  return {
+    ...actual,
+    deriveAuthHash: vi.fn().mockResolvedValue('a'.repeat(64)),
+  }
+})
+
+// Mock master-key — changePassword is now here
+vi.mock('@/shared/crypto/master-key', async () => {
+  const actual = await vi.importActual<typeof import('@/shared/crypto/master-key')>('@/shared/crypto/master-key')
   return {
     ...actual,
     changePassword: vi.fn().mockResolvedValue({
@@ -184,7 +192,7 @@ import { AuthError, AuthErrorCode } from '@/shared/auth/auth-errors'
 import type { AuthResult } from '@/shared/auth/auth.types'
 import { keyVault } from '@/shared/crypto/key-vault'
 import { terminateWorker } from '@/shared/crypto/argon2id'
-import { changePassword } from '@/shared/crypto/split-kdf'
+import { changePassword } from '@/shared/crypto/master-key'
 
 describe('signUpUser', () => {
   beforeEach(() => {
