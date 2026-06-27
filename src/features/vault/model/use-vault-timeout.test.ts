@@ -1,16 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { act } from 'react'
 
-import { useCryptoStore } from '@/shared/crypto/crypto-store'
+import { useCryptoStore } from '@/shared/crypto/vault/crypto-store'
 import { DEFAULT_VAULT_TIMEOUT_MS } from './use-vault-timeout'
 
-vi.mock('@/shared/crypto/key-vault', () => ({
+vi.mock('@/shared/crypto/vault/key-vault', () => ({
   keyVault: {
     lockVault: vi.fn<() => void>(),
   },
 }))
 
-import { keyVault } from '@/shared/crypto/key-vault'
+import { keyVault } from '@/shared/crypto/vault/key-vault'
 import { useVaultTimeout } from './use-vault-timeout'
 import { renderHook } from '@/test/utils'
 

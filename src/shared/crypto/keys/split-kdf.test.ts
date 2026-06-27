@@ -1,20 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { deriveAuthCredentials, deriveAuthHash, derivePasswordKey } from '@/shared/crypto/split-kdf'
+import { deriveAuthCredentials, deriveAuthHash, derivePasswordKey } from '@/shared/crypto/keys/split-kdf'
 import type { AuthCredentials } from '@/shared/types/crypto.types'
 
 // Mock argon2id module to avoid WASM/worker dependency in tests
-vi.mock('@/shared/crypto/argon2id', () => ({
+vi.mock('@/shared/crypto/core/argon2id', () => ({
   deriveKey: vi.fn(),
 }))
 
-import { deriveKey } from '@/shared/crypto/argon2id'
+import { deriveKey } from '@/shared/crypto/core/argon2id'
 
 // Mock crypto-utils module — allow generateSalt to be controlled per-test
-vi.mock('@/shared/crypto/crypto-utils', async () => ({
-  ...(await vi.importActual('@/shared/crypto/crypto-utils')),
+vi.mock('@/shared/crypto/core/crypto-utils', async () => ({
+  ...(await vi.importActual('@/shared/crypto/core/crypto-utils')),
   generateSalt: vi.fn(),
 }))
-import { generateSalt } from '@/shared/crypto/crypto-utils'
+import { generateSalt } from '@/shared/crypto/core/crypto-utils'
 
 function mockBytes(length: number, fill: number): Uint8Array<ArrayBuffer> {
   return new Uint8Array(length).fill(fill) as Uint8Array<ArrayBuffer>

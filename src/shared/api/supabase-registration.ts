@@ -1,6 +1,6 @@
 import { getSupabase } from '@/shared/api/supabase-client'
 import { wrapApiError } from '@/shared/api/api-errors'
-import { hexEncode } from '@/shared/crypto/crypto-utils'
+import { hexEncode } from '@/shared/crypto/core/crypto-utils'
 import type { RegistrationResult } from '@/shared/types/crypto.types'
 import {
   LOGIN_SALTS_TABLE,

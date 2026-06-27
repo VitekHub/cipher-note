@@ -1,5 +1,5 @@
-import { decrypt, encrypt } from '@/shared/crypto/aes-gcm'
-import { encodeAAD, generateIV, hexDecode, hexEncode } from '@/shared/crypto/crypto-utils'
+import { decrypt, encrypt } from '@/shared/crypto/core/aes-gcm'
+import { encodeAAD, generateIV, hexDecode, hexEncode } from '@/shared/crypto/core/crypto-utils'
 import { FIELD_KEY_VERSION } from '@/shared/types/crypto.types'
 import type { EncryptedFieldData } from '@/shared/types/crypto.types'
 import type { FieldName } from '@/shared/types/entities/field.types'

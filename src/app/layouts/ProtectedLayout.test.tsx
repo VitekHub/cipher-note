@@ -3,7 +3,7 @@ import React from 'react'
 import { render, screen } from '@/test/utils'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { useLayoutStore } from './layout-store'
-import { useCryptoStore } from '@/shared/crypto/crypto-store'
+import { useCryptoStore } from '@/shared/crypto/vault/crypto-store'
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children, ...props }: Record<string, unknown> & { children?: React.ReactNode }) =>

@@ -39,11 +39,11 @@ vi.mock('sonner', () => ({
   toast: { info: ctx.toastInfo, success: ctx.toastSuccess, error: ctx.toastError },
 }))
 
-vi.mock('@/shared/crypto/key-vault', () => ({
+vi.mock('@/shared/crypto/vault/key-vault', () => ({
   keyVault: { syncFieldKeys: ctx.mockSyncFieldKeys },
 }))
 
-vi.mock('@/shared/crypto/crypto-store', () => ({
+vi.mock('@/shared/crypto/vault/crypto-store', () => ({
   useCryptoStore: {
     getState: () => ctx.cryptoStoreState,
   },
@@ -55,7 +55,7 @@ import { useRealtimeSync } from '@/features/fields/model/use-realtime-sync'
 import { useSyncStatusStore, SYNC_STATUS } from '@/features/fields/model/sync-status-store'
 import { markLocalSave, clearEchoMarkers } from '@/shared/realtime/realtime-echo'
 import { queryKeys } from '@/shared/lib/query-keys'
-import { DecryptionError } from '@/shared/crypto/errors'
+import { DecryptionError } from '@/shared/crypto/core/errors'
 import type { RealtimeCallbacks } from '@/shared/realtime/realtime.types'
 import type { ServerEncryptedField } from '@/shared/types/api.types'
 

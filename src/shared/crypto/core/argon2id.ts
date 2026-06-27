@@ -1,7 +1,7 @@
 import type { Argon2Params } from '@/shared/types/crypto.types'
 import { DEFAULT_ARGON2_PARAMS } from '@/shared/types/crypto.types'
 import type { Argon2DeriveRequest, Argon2WorkerResponse } from '@/shared/types/argon2-worker.types'
-import { Argon2Error } from '@/shared/crypto/errors'
+import { Argon2Error } from '@/shared/crypto/core/errors'
 
 interface PendingRequest {
   resolve: (value: Uint8Array<ArrayBuffer>) => void

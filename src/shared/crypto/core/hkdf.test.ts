@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { deriveSubKey, deriveKEK, deriveSigningKeySeed } from '@/shared/crypto/hkdf'
+import { deriveSubKey, deriveKEK, deriveSigningKeySeed } from '@/shared/crypto/core/hkdf'
 
 describe('hkdf', () => {
   function generateKey(): Uint8Array<ArrayBuffer> {

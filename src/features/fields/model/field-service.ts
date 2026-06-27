@@ -1,4 +1,4 @@
-import { keyVault } from '@/shared/crypto/key-vault'
+import { keyVault } from '@/shared/crypto/vault/key-vault'
 import { fetchField, fetchAllFields, saveField as saveFieldToServer } from '@/shared/api/supabase-fields'
 import { FIELD_NAMES } from '@/shared/types/entities/field.types'
 import type { FieldName } from '@/shared/types/entities/field.types'

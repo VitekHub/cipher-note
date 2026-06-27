@@ -1,11 +1,11 @@
-import { useCryptoStore } from '@/shared/crypto/crypto-store'
+import { useCryptoStore } from '@/shared/crypto/vault/crypto-store'
 import { fetchFieldKeys, fetchFreshEnvelope } from '@/shared/api/supabase-keys'
-import { zeroFill } from '@/shared/crypto/crypto-utils'
-import { importKey } from '@/shared/crypto/aes-gcm'
-import { unwrapFieldKeys } from '@/shared/crypto/field-keys'
-import { deriveKEK } from '@/shared/crypto/hkdf'
-import { unwrapMasterKeyWithPassword } from '@/shared/crypto/master-key'
-import { DecryptionError } from '@/shared/crypto/errors'
+import { zeroFill } from '@/shared/crypto/core/crypto-utils'
+import { importKey } from '@/shared/crypto/core/aes-gcm'
+import { unwrapFieldKeys } from '@/shared/crypto/keys/field-keys'
+import { deriveKEK } from '@/shared/crypto/core/hkdf'
+import { unwrapMasterKeyWithPassword } from '@/shared/crypto/keys/master-key'
+import { DecryptionError } from '@/shared/crypto/core/errors'
 import type { CachedVaultEnvelope } from '@/shared/types/api.types'
 
 /**

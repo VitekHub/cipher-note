@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import userEvent from '@testing-library/user-event'
 import { render, screen } from '@/test/utils'
-import { useCryptoStore } from '@/shared/crypto/crypto-store'
+import { useCryptoStore } from '@/shared/crypto/vault/crypto-store'
 import { useVaultDialogStore } from '@/features/vault/model/vault-dialog-store'
 import { VaultIndicator } from './VaultIndicator'
 

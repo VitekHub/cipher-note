@@ -1,20 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { decrypt, encrypt, importKey } from '@/shared/crypto/aes-gcm'
-import { unwrapFieldKeys } from '@/shared/crypto/field-keys'
-import { unwrapMasterKeyWithRecovery } from '@/shared/crypto/mnemonic'
+import { decrypt, encrypt, importKey } from '@/shared/crypto/core/aes-gcm'
+import { unwrapFieldKeys } from '@/shared/crypto/keys/field-keys'
+import { unwrapMasterKeyWithRecovery } from '@/shared/crypto/keys/mnemonic'
 import { FIELD_KEY_VERSION, MASTER_KEY_PASSWORD_AAD } from '@/shared/types/crypto.types'
 import type { RegistrationResult } from '@/shared/types/crypto.types'
 import type { ServerFieldKey } from '@/shared/types/api.types'
-import { generateIV } from '@/shared/crypto/crypto-utils'
-import { hexEncode } from '@/shared/crypto/crypto-utils'
+import { generateIV } from '@/shared/crypto/core/crypto-utils'
+import { hexEncode } from '@/shared/crypto/core/crypto-utils'
 
 // Mock Argon2id module — Web Worker won't run in jsdom
-vi.mock('@/shared/crypto/argon2id', () => ({
+vi.mock('@/shared/crypto/core/argon2id', () => ({
   deriveKey: vi.fn(),
 }))
 
 // Mock split-kdf module — deriveAuthHash/derivePasswordKey
-vi.mock('@/shared/crypto/split-kdf', () => ({
+vi.mock('@/shared/crypto/keys/split-kdf', () => ({
   deriveAuthHash: vi.fn(),
   derivePasswordKey: vi.fn(),
   deriveAuthCredentials: vi.fn(),
@@ -35,14 +35,14 @@ vi.mock('@scure/bip39/wordlists/english.js', () => ({
 }))
 
 // Mock crypto-utils module — allow generateSalt to be controlled per-test
-vi.mock('@/shared/crypto/crypto-utils', async () => ({
-  ...(await vi.importActual('@/shared/crypto/crypto-utils')),
+vi.mock('@/shared/crypto/core/crypto-utils', async () => ({
+  ...(await vi.importActual('@/shared/crypto/core/crypto-utils')),
   generateSalt: vi.fn(),
 }))
 
-import { deriveAuthCredentials } from '@/shared/crypto/split-kdf'
-import { deriveKey } from '@/shared/crypto/argon2id'
-import { generateSalt } from '@/shared/crypto/crypto-utils'
+import { deriveAuthCredentials } from '@/shared/crypto/keys/split-kdf'
+import { deriveKey } from '@/shared/crypto/core/argon2id'
+import { generateSalt } from '@/shared/crypto/core/crypto-utils'
 import { deriveRegistrationKeys } from '@/features/auth/model/registration-crypto'
 
 function mockBytes(length: number, fill: number): Uint8Array<ArrayBuffer> {

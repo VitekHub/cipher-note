@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { Lock, Unlock } from 'lucide-react'
 
-import { useCryptoStore } from '@/shared/crypto/crypto-store'
+import { useCryptoStore } from '@/shared/crypto/vault/crypto-store'
 import { useVaultDialogStore } from '@/features/vault/model/vault-dialog-store'
 import { cn } from '@/shared/lib/utils'
 

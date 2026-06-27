@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { importKey } from '@/shared/crypto/aes-gcm'
-import { DecryptionError } from '@/shared/crypto/errors'
+import { importKey } from '@/shared/crypto/core/aes-gcm'
+import { DecryptionError } from '@/shared/crypto/core/errors'
 import { encryptField, decryptField, toSaveFieldData, toEncryptedFieldData } from '@/features/fields/model/field-crypto'
 import { FIELD_NAMES } from '@/shared/types/entities/field.types'
 import type { FieldName } from '@/shared/types/entities/field.types'

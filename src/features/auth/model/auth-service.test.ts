@@ -44,7 +44,7 @@ vi.mock('@/features/auth/model/registration-crypto', () => ({
 const { mockClearVault } = vi.hoisted(() => ({
   mockClearVault: vi.fn<() => void>(),
 }))
-vi.mock('@/shared/crypto/key-vault', () => ({
+vi.mock('@/shared/crypto/vault/key-vault', () => ({
   keyVault: {
     lockVault: vi.fn<() => void>(),
     unlockVault: vi.fn<(userId: string, password: string) => void>(),
@@ -82,13 +82,13 @@ vi.mock('@/shared/api/supabase-keys', () => ({
 }))
 
 // Mock Argon2id
-vi.mock('@/shared/crypto/argon2id', () => ({
+vi.mock('@/shared/crypto/core/argon2id', () => ({
   terminateWorker: vi.fn(),
 }))
 
 // Mock crypto memory
-vi.mock('@/shared/crypto/crypto-utils', async () => ({
-  ...(await vi.importActual('@/shared/crypto/crypto-utils')),
+vi.mock('@/shared/crypto/core/crypto-utils', async () => ({
+  ...(await vi.importActual('@/shared/crypto/core/crypto-utils')),
   hexEncode: vi.fn((data: Uint8Array) =>
     Array.from(data)
       .map((b: number) => b.toString(16).padStart(2, '0'))
@@ -139,21 +139,18 @@ const cryptoStoreState = {
   clearVault: mockClearVault,
 }
 
-vi.mock('@/shared/crypto/crypto-store', () => ({
+vi.mock('@/shared/crypto/vault/crypto-store', () => ({
   useCryptoStore: {
     getState: vi.fn(() => cryptoStoreState),
     setState: vi.fn(),
   },
 }))
 
-// Mock populateKeyVault
-vi.mock('@/shared/crypto/key-vault-service', () => ({
-  populateKeyVault: vi.fn().mockResolvedValue(undefined),
-}))
-
 // Mock split-kdf (hoisted mock — factory must not reference external variables)
-vi.mock('@/shared/crypto/split-kdf', async () => {
-  const actual = await vi.importActual<typeof import('@/shared/crypto/split-kdf')>('@/shared/crypto/split-kdf')
+vi.mock('@/shared/crypto/keys/split-kdf', async () => {
+  const actual = await vi.importActual<typeof import('@/shared/crypto/keys/split-kdf')>(
+    '@/shared/crypto/keys/split-kdf',
+  )
   return {
     ...actual,
     deriveAuthHash: vi.fn().mockResolvedValue('a'.repeat(64)),
@@ -161,8 +158,10 @@ vi.mock('@/shared/crypto/split-kdf', async () => {
 })
 
 // Mock master-key — rewrapMasterKey is now here
-vi.mock('@/shared/crypto/master-key', async () => {
-  const actual = await vi.importActual<typeof import('@/shared/crypto/master-key')>('@/shared/crypto/master-key')
+vi.mock('@/shared/crypto/keys/master-key', async () => {
+  const actual = await vi.importActual<typeof import('@/shared/crypto/keys/master-key')>(
+    '@/shared/crypto/keys/master-key',
+  )
   return {
     ...actual,
     rewrapMasterKey: vi.fn().mockResolvedValue({
@@ -190,9 +189,9 @@ import { fetchLoginSalts, updateMasterKeyEnvelope, fetchFreshEnvelope } from '@/
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { AuthError, AuthErrorCode } from '@/shared/auth/auth-errors'
 import type { AuthResult } from '@/shared/auth/auth.types'
-import { keyVault } from '@/shared/crypto/key-vault'
-import { terminateWorker } from '@/shared/crypto/argon2id'
-import { rewrapMasterKey } from '@/shared/crypto/master-key'
+import { keyVault } from '@/shared/crypto/vault/key-vault'
+import { terminateWorker } from '@/shared/crypto/core/argon2id'
+import { rewrapMasterKey } from '@/shared/crypto/keys/master-key'
 
 describe('signUpUser', () => {
   beforeEach(() => {

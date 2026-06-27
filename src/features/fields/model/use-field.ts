@@ -1,8 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRequiredUserId } from '@/shared/auth/use-current-user'
 import { fieldService } from '@/features/fields/model/field-service'
-import { DecryptionError } from '@/shared/crypto/errors'
-import { useCryptoStore } from '@/shared/crypto/crypto-store'
+import { DecryptionError } from '@/shared/crypto/core/errors'
+import { useCryptoStore } from '@/shared/crypto/vault/crypto-store'
 import { queryKeys } from '@/shared/lib/query-keys'
 import type { FieldName } from '@/shared/types/entities/field.types'
 

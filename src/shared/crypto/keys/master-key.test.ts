@@ -1,31 +1,35 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { unwrapMasterKeyWithPassword, wrapMasterKeyWithPassword, rewrapMasterKey } from '@/shared/crypto/master-key'
-import { generateMasterKey } from '@/shared/crypto/master-key'
-import { DecryptionError } from '@/shared/crypto/errors'
+import {
+  unwrapMasterKeyWithPassword,
+  wrapMasterKeyWithPassword,
+  rewrapMasterKey,
+} from '@/shared/crypto/keys/master-key'
+import { generateMasterKey } from '@/shared/crypto/keys/master-key'
+import { DecryptionError } from '@/shared/crypto/core/errors'
 import { MASTER_KEY_PASSWORD_AAD } from '@/shared/types/crypto.types'
 import type { PasswordChangeResult } from '@/shared/types/crypto.types'
 import type { ServerMasterKeyEnvelope } from '@/shared/types/api.types'
 
-vi.mock('@/shared/crypto/split-kdf', () => ({
+vi.mock('@/shared/crypto/keys/split-kdf', () => ({
   derivePasswordKey: vi.fn().mockResolvedValue(new Uint8Array(32).fill(0x07)),
   deriveAuthCredentials: vi.fn(),
 }))
 
-vi.mock('@/shared/crypto/aes-gcm', () => ({
+vi.mock('@/shared/crypto/core/aes-gcm', () => ({
   importKey: vi.fn().mockResolvedValue({} as CryptoKey),
   encrypt: vi.fn().mockResolvedValue(new Uint8Array(48).fill(0x04)),
   decrypt: vi.fn().mockResolvedValue(new Uint8Array(32).fill(0x03)),
 }))
 
-vi.mock('@/shared/crypto/crypto-utils', async () => ({
-  ...(await vi.importActual('@/shared/crypto/crypto-utils')),
+vi.mock('@/shared/crypto/core/crypto-utils', async () => ({
+  ...(await vi.importActual('@/shared/crypto/core/crypto-utils')),
   generateIV: vi.fn().mockReturnValue(new Uint8Array(12).fill(0x0a) as Uint8Array<ArrayBuffer>),
   zeroFill: vi.fn(),
 }))
 
-import { derivePasswordKey, deriveAuthCredentials } from '@/shared/crypto/split-kdf'
-import { importKey as realImportKey, decrypt as realDecrypt } from '@/shared/crypto/aes-gcm'
-import { generateIV, zeroFill } from '@/shared/crypto/crypto-utils'
+import { derivePasswordKey, deriveAuthCredentials } from '@/shared/crypto/keys/split-kdf'
+import { importKey as realImportKey, decrypt as realDecrypt } from '@/shared/crypto/core/aes-gcm'
+import { generateIV, zeroFill } from '@/shared/crypto/core/crypto-utils'
 
 function mockBytes(length: number, fill: number): Uint8Array<ArrayBuffer> {
   return new Uint8Array(length).fill(fill) as Uint8Array<ArrayBuffer>

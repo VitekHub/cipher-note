@@ -42,7 +42,7 @@ vi.mock('@/features/auth/model/auth-store', () => ({
 }))
 
 // Mock crypto store
-vi.mock('@/shared/crypto/crypto-store', () => ({
+vi.mock('@/shared/crypto/vault/crypto-store', () => ({
   useCryptoStore: {
     getState: vi.fn(() => ({
       cachedEnvelope: mockEnvelope,
@@ -61,19 +61,19 @@ vi.mock('@/shared/api/supabase-recovery', () => ({
 }))
 
 // Mock crypto modules
-vi.mock('@/shared/crypto/mnemonic', () => ({
+vi.mock('@/shared/crypto/keys/mnemonic', () => ({
   createRecoveryData: vi.fn().mockResolvedValue({
     mnemonic: mockMnemonic,
     recoveryData: mockRecoveryData,
   }),
 }))
 
-vi.mock('@/shared/crypto/master-key', () => ({
+vi.mock('@/shared/crypto/keys/master-key', () => ({
   unwrapMasterKeyWithPassword: vi.fn().mockResolvedValue(mockMasterKey),
 }))
 
-vi.mock('@/shared/crypto/crypto-utils', async () => ({
-  ...(await vi.importActual<typeof import('@/shared/crypto/crypto-utils')>('@/shared/crypto/crypto-utils')),
+vi.mock('@/shared/crypto/core/crypto-utils', async () => ({
+  ...(await vi.importActual<typeof import('@/shared/crypto/core/crypto-utils')>('@/shared/crypto/core/crypto-utils')),
   hexEncode: vi.fn((data: Uint8Array) =>
     Array.from(data)
       .map((b: number) => b.toString(16).padStart(2, '0'))
@@ -83,13 +83,13 @@ vi.mock('@/shared/crypto/crypto-utils', async () => ({
 }))
 
 import { regenerateMnemonic } from '@/features/auth/model/mnemonic-service'
-import { createRecoveryData } from '@/shared/crypto/mnemonic'
-import { unwrapMasterKeyWithPassword } from '@/shared/crypto/master-key'
+import { createRecoveryData } from '@/shared/crypto/keys/mnemonic'
+import { unwrapMasterKeyWithPassword } from '@/shared/crypto/keys/master-key'
 import { saveRecoveryData } from '@/shared/api/supabase-recovery'
 import { fetchFreshEnvelope } from '@/shared/api/supabase-keys'
-import { hexEncode, zeroFill } from '@/shared/crypto/crypto-utils'
+import { hexEncode, zeroFill } from '@/shared/crypto/core/crypto-utils'
 import { useAuthStore } from '@/features/auth/model/auth-store'
-import { useCryptoStore } from '@/shared/crypto/crypto-store'
+import { useCryptoStore } from '@/shared/crypto/vault/crypto-store'
 
 describe('regenerateMnemonic', () => {
   beforeEach(() => {

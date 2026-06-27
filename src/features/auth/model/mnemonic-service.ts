@@ -1,10 +1,10 @@
 import { useAuthStore } from '@/features/auth/model/auth-store'
-import { useCryptoStore } from '@/shared/crypto/crypto-store'
+import { useCryptoStore } from '@/shared/crypto/vault/crypto-store'
 import { fetchFreshEnvelope } from '@/shared/api/supabase-keys'
 import { saveRecoveryData } from '@/shared/api/supabase-recovery'
-import { createRecoveryData } from '@/shared/crypto/mnemonic'
-import { unwrapMasterKeyWithPassword } from '@/shared/crypto/master-key'
-import { hexEncode, zeroFill } from '@/shared/crypto/crypto-utils'
+import { createRecoveryData } from '@/shared/crypto/keys/mnemonic'
+import { unwrapMasterKeyWithPassword } from '@/shared/crypto/keys/master-key'
+import { hexEncode, zeroFill } from '@/shared/crypto/core/crypto-utils'
 
 /**
  * Regenerate the user's seed phrase for account recovery.

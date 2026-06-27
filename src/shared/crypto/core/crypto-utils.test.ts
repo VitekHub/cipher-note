@@ -8,7 +8,7 @@ import {
   generateSalt,
   generateKey,
   encodeAAD,
-} from '@/shared/crypto/crypto-utils'
+} from '@/shared/crypto/core/crypto-utils'
 
 describe('memory', () => {
   describe('hexEncode', () => {

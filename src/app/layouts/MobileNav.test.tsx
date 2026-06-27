@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import userEvent from '@testing-library/user-event'
 import { render, screen } from '@/test/utils'
-import { useCryptoStore } from '@/shared/crypto/crypto-store'
+import { useCryptoStore } from '@/shared/crypto/vault/crypto-store'
 import { useVaultDialogStore } from '@/features/vault/model/vault-dialog-store'
 
 const { mockLockVault, mockNavigate } = vi.hoisted(() => ({
@@ -14,7 +14,7 @@ vi.mock('@tanstack/react-router', () => ({
   useParams: vi.fn(() => ({})),
 }))
 
-vi.mock('@/shared/crypto/key-vault', () => ({
+vi.mock('@/shared/crypto/vault/key-vault', () => ({
   keyVault: {
     lockVault: mockLockVault,
   },

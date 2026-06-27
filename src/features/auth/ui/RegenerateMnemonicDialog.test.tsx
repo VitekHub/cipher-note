@@ -55,7 +55,7 @@ describe('RegenerateMnemonicDialog', () => {
 
   it('shows error message when password confirmation fails', async () => {
     const user = userEvent.setup()
-    const { DecryptionError } = await import('@/shared/crypto/errors')
+    const { DecryptionError } = await import('@/shared/crypto/core/errors')
     mockRegenerateMnemonic.mockRejectedValueOnce(new DecryptionError())
 
     render(<RegenerateMnemonicDialog />)

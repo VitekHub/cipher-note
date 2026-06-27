@@ -1,5 +1,5 @@
 import type { TFunction } from 'i18next'
-import { DecryptionError, CorruptedDataError, Argon2Error } from '@/shared/crypto/errors'
+import { DecryptionError, CorruptedDataError, Argon2Error } from '@/shared/crypto/core/errors'
 import { mapErrorToMessage, type ErrorKeySpec } from '@/shared/lib/error-messages'
 
 const VAULT_ERROR_SPEC: ErrorKeySpec = {

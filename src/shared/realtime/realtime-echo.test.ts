@@ -5,7 +5,7 @@ import {
   clearEchoMarkers,
   scheduleRemoteUpdateClear,
 } from '@/shared/realtime/realtime-echo'
-import { useCryptoStore } from '@/shared/crypto/crypto-store'
+import { useCryptoStore } from '@/shared/crypto/vault/crypto-store'
 
 const ENTRY_ID = 'entry-1'
 
