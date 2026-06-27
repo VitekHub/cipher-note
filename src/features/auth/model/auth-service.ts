@@ -6,7 +6,7 @@ import { uploadRegistrationData } from '@/shared/api/supabase-registration'
 import { fetchLoginSalts, updateMasterKeyEnvelope, fetchFreshEnvelope } from '@/shared/api/supabase-keys'
 import { hexDecode, hexEncode } from '@/shared/crypto/crypto-utils'
 import { deriveAuthHash } from '@/shared/crypto/split-kdf'
-import { changePassword } from '@/shared/crypto/master-key'
+import { rewrapMasterKey } from '@/shared/crypto/master-key'
 import { terminateWorker } from '@/shared/crypto/argon2id'
 import { keyVault } from '@/shared/crypto/key-vault'
 
@@ -107,7 +107,7 @@ export async function changeUserPassword(currentPassword: string, newPassword: s
   const envelope = useCryptoStore.getState().cachedEnvelope ?? (await fetchFreshEnvelope(user.id))
 
   // Step 1: Pure crypto — derive new credentials and re-wrap master key
-  const result = await changePassword(currentPassword, newPassword, envelope)
+  const result = await rewrapMasterKey(currentPassword, newPassword, envelope)
 
   // Step 2: Upload new key envelope to DB
   const updateData = {

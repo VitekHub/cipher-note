@@ -160,12 +160,12 @@ vi.mock('@/shared/crypto/split-kdf', async () => {
   }
 })
 
-// Mock master-key — changePassword is now here
+// Mock master-key — rewrapMasterKey is now here
 vi.mock('@/shared/crypto/master-key', async () => {
   const actual = await vi.importActual<typeof import('@/shared/crypto/master-key')>('@/shared/crypto/master-key')
   return {
     ...actual,
-    changePassword: vi.fn().mockResolvedValue({
+    rewrapMasterKey: vi.fn().mockResolvedValue({
       newAuthHash: 'newhash'.padEnd(64, '0'),
       newAuthHashSalt: new Uint8Array(16).fill(0x11),
       newPasswordKeySalt: new Uint8Array(16).fill(0x22),
@@ -192,7 +192,7 @@ import { AuthError, AuthErrorCode } from '@/shared/auth/auth-errors'
 import type { AuthResult } from '@/shared/auth/auth.types'
 import { keyVault } from '@/shared/crypto/key-vault'
 import { terminateWorker } from '@/shared/crypto/argon2id'
-import { changePassword } from '@/shared/crypto/master-key'
+import { rewrapMasterKey } from '@/shared/crypto/master-key'
 
 describe('signUpUser', () => {
   beforeEach(() => {
@@ -558,18 +558,18 @@ describe('changeUserPassword', () => {
     })
   })
 
-  it('calls changePassword with envelope and passwords', async () => {
-    vi.mocked(changePassword).mockResolvedValueOnce(mockChangeResult)
+  it('calls rewrapMasterKey with envelope and passwords', async () => {
+    vi.mocked(rewrapMasterKey).mockResolvedValueOnce(mockChangeResult)
     vi.mocked(updateMasterKeyEnvelope).mockResolvedValueOnce(undefined)
     vi.mocked(authAdapter.updatePassword).mockResolvedValueOnce(undefined)
 
     await changeUserPassword('oldPassword', 'newPassword')
 
-    expect(changePassword).toHaveBeenCalledWith('oldPassword', 'newPassword', mockEnvelope)
+    expect(rewrapMasterKey).toHaveBeenCalledWith('oldPassword', 'newPassword', mockEnvelope)
   })
 
   it('uploads new key envelope to DB', async () => {
-    vi.mocked(changePassword).mockResolvedValueOnce(mockChangeResult)
+    vi.mocked(rewrapMasterKey).mockResolvedValueOnce(mockChangeResult)
     vi.mocked(updateMasterKeyEnvelope).mockResolvedValueOnce(undefined)
     vi.mocked(authAdapter.updatePassword).mockResolvedValueOnce(undefined)
 
@@ -584,7 +584,7 @@ describe('changeUserPassword', () => {
   })
 
   it('updates Supabase Auth password with new auth hash', async () => {
-    vi.mocked(changePassword).mockResolvedValueOnce(mockChangeResult)
+    vi.mocked(rewrapMasterKey).mockResolvedValueOnce(mockChangeResult)
     vi.mocked(updateMasterKeyEnvelope).mockResolvedValueOnce(undefined)
     vi.mocked(authAdapter.updatePassword).mockResolvedValueOnce(undefined)
 
@@ -594,7 +594,7 @@ describe('changeUserPassword', () => {
   })
 
   it('updates cached envelope after success', async () => {
-    vi.mocked(changePassword).mockResolvedValueOnce(mockChangeResult)
+    vi.mocked(rewrapMasterKey).mockResolvedValueOnce(mockChangeResult)
     vi.mocked(updateMasterKeyEnvelope).mockResolvedValueOnce(undefined)
     vi.mocked(authAdapter.updatePassword).mockResolvedValueOnce(undefined)
 
@@ -629,14 +629,14 @@ describe('changeUserPassword', () => {
 
   it('fetches vault envelope when cache is empty', async () => {
     cryptoStoreState.cachedEnvelope = null
-    vi.mocked(changePassword).mockResolvedValueOnce(mockChangeResult)
+    vi.mocked(rewrapMasterKey).mockResolvedValueOnce(mockChangeResult)
     vi.mocked(updateMasterKeyEnvelope).mockResolvedValueOnce(undefined)
     vi.mocked(authAdapter.updatePassword).mockResolvedValueOnce(undefined)
 
     await changeUserPassword('oldPassword', 'newPassword')
 
     expect(fetchFreshEnvelope).toHaveBeenCalledWith('user-1')
-    expect(changePassword).toHaveBeenCalledWith('oldPassword', 'newPassword', mockFetchedEnvelope)
+    expect(rewrapMasterKey).toHaveBeenCalledWith('oldPassword', 'newPassword', mockFetchedEnvelope)
   })
 
   it('throws when fetchFreshEnvelope fails and no cache exists', async () => {
@@ -647,7 +647,7 @@ describe('changeUserPassword', () => {
   })
 
   it('rolls back DB on auth update failure', async () => {
-    vi.mocked(changePassword).mockResolvedValueOnce(mockChangeResult)
+    vi.mocked(rewrapMasterKey).mockResolvedValueOnce(mockChangeResult)
     vi.mocked(updateMasterKeyEnvelope).mockResolvedValueOnce(undefined)
     vi.mocked(authAdapter.updatePassword).mockRejectedValueOnce(new AuthError(AuthErrorCode.NETWORK_ERROR))
     // Rollback call
@@ -666,7 +666,7 @@ describe('changeUserPassword', () => {
   })
 
   it('throws DB error when DB update fails', async () => {
-    vi.mocked(changePassword).mockResolvedValueOnce(mockChangeResult)
+    vi.mocked(rewrapMasterKey).mockResolvedValueOnce(mockChangeResult)
     const dbError = new Error('DB update failed')
     vi.mocked(updateMasterKeyEnvelope).mockRejectedValueOnce(dbError)
 

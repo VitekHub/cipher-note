@@ -54,7 +54,7 @@ export async function wrapMasterKeyWithPassword(
 }
 
 /**
- * Change the user's password by re-wrapping the master key.
+ * Re-wrap the master key with a new password.
  *
  * The master key itself is never changed - only its wrapping.
  * Field keys encrypted with the KEK are completely unaffected.
@@ -63,7 +63,7 @@ export async function wrapMasterKeyWithPassword(
  * @param newPassword - The desired new password
  * @param envelope - The current key envelope (hex strings from the server)
  */
-export async function changePassword(
+export async function rewrapMasterKey(
   oldPassword: string,
   newPassword: string,
   envelope: ServerMasterKeyEnvelope,

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { unwrapMasterKeyWithPassword, wrapMasterKeyWithPassword, changePassword } from '@/shared/crypto/master-key'
+import { unwrapMasterKeyWithPassword, wrapMasterKeyWithPassword, rewrapMasterKey } from '@/shared/crypto/master-key'
 import { generateMasterKey } from '@/shared/crypto/master-key'
 import { DecryptionError } from '@/shared/crypto/errors'
 import { MASTER_KEY_PASSWORD_AAD } from '@/shared/types/crypto.types'
@@ -108,7 +108,7 @@ describe('wrapMasterKeyWithPassword', () => {
   })
 })
 
-describe('changePassword', () => {
+describe('rewrapMasterKey', () => {
   const NEW_KEY_FILL = 0x22
 
   /** Minimal envelope — values are irrelevant since unwrapMasterKeyWithPassword is mocked. */
@@ -136,7 +136,7 @@ describe('changePassword', () => {
       passwordKeySalt: mockBytes(16, 0xbb),
     })
 
-    const result: PasswordChangeResult = await changePassword('oldPassword', 'newPassword', stubEnvelope)
+    const result: PasswordChangeResult = await rewrapMasterKey('oldPassword', 'newPassword', stubEnvelope)
 
     const newWrappingKey = await realImportKey(mockBytes(32, NEW_KEY_FILL))
     const unwrappedMasterKey = await realDecrypt(result.newWrappedMasterKey, newWrappingKey, {
@@ -159,7 +159,7 @@ describe('changePassword', () => {
       passwordKeySalt: newPasswordKeySalt,
     })
 
-    const result = await changePassword('oldPw', 'newPw', stubEnvelope)
+    const result = await rewrapMasterKey('oldPw', 'newPw', stubEnvelope)
 
     expect(result.newAuthHashSalt).toEqual(newAuthHashSalt)
     expect(result.newPasswordKeySalt).toEqual(newPasswordKeySalt)
@@ -175,7 +175,7 @@ describe('changePassword', () => {
       passwordKeySalt: mockBytes(16, 0xbb),
     })
 
-    const result = await changePassword('oldPw', 'newPw', stubEnvelope)
+    const result = await rewrapMasterKey('oldPw', 'newPw', stubEnvelope)
 
     expect(result.newAuthHash).toBe('newauthhash00000000000000000000000000000000000000000000000')
   })
@@ -183,7 +183,7 @@ describe('changePassword', () => {
   it('throws DecryptionError if old password cannot unwrap master key', async () => {
     vi.mocked(realDecrypt).mockRejectedValueOnce(new DecryptionError())
 
-    await expect(changePassword('wrongPassword', 'newPw', stubEnvelope)).rejects.toThrow(DecryptionError)
+    await expect(rewrapMasterKey('wrongPassword', 'newPw', stubEnvelope)).rejects.toThrow(DecryptionError)
   })
 
   it('calls deriveAuthCredentials with new password', async () => {
@@ -196,7 +196,7 @@ describe('changePassword', () => {
       passwordKeySalt: mockBytes(16, 0xbb),
     })
 
-    await changePassword('oldPw', 'newPw', stubEnvelope)
+    await rewrapMasterKey('oldPw', 'newPw', stubEnvelope)
 
     expect(deriveAuthCredentials).toHaveBeenCalledWith('newPw')
   })
@@ -214,7 +214,7 @@ describe('changePassword', () => {
       passwordKeySalt: mockBytes(16, 0xbb),
     })
 
-    const result = await changePassword('oldPw', 'newPw', stubEnvelope)
+    const result = await rewrapMasterKey('oldPw', 'newPw', stubEnvelope)
 
     const newWrappingKey = await realImportKey(mockBytes(32, NEW_KEY_FILL))
     const unwrapped = await realDecrypt(result.newWrappedMasterKey, newWrappingKey, {

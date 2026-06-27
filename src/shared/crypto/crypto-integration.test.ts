@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { encrypt, decrypt, importKey } from '@/shared/crypto/aes-gcm'
-import { generateMasterKey, changePassword } from '@/shared/crypto/master-key'
+import { generateMasterKey, rewrapMasterKey } from '@/shared/crypto/master-key'
 import { generateAndWrapFieldKeys, unwrapFieldKeys } from '@/shared/crypto/field-keys'
 import { deriveKEK } from '@/shared/crypto/hkdf'
 import { deriveAuthCredentials, deriveAuthHash, derivePasswordKey } from '@/shared/crypto/split-kdf'
@@ -238,7 +238,7 @@ describe('crypto integration', () => {
         masterKeyIV: hexEncode(masterKeyIV),
       }
 
-      const result = await changePassword(PASSWORD, 'new-password-456', envelope)
+      const result = await rewrapMasterKey(PASSWORD, 'new-password-456', envelope)
 
       const newCryptoKey = await importKey(mockBytes(32, NEW_PASSWORD_KEY_FILL))
       const unwrapped = await decrypt(result.newWrappedMasterKey, newCryptoKey, {
