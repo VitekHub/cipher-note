@@ -13,9 +13,8 @@ vi.mock('@/shared/crypto/core/argon2id', () => ({
   deriveKey: vi.fn(),
 }))
 
-// Mock split-kdf module — deriveAuthHash/derivePasswordKey
+// Mock split-kdf module — deriveAuthCredentials/derivePasswordKey
 vi.mock('@/shared/crypto/keys/split-kdf', () => ({
-  deriveAuthHash: vi.fn(),
   derivePasswordKey: vi.fn(),
   deriveAuthCredentials: vi.fn(),
 }))
@@ -38,11 +37,12 @@ vi.mock('@scure/bip39/wordlists/english.js', () => ({
 vi.mock('@/shared/crypto/core/crypto-utils', async () => ({
   ...(await vi.importActual('@/shared/crypto/core/crypto-utils')),
   generateSalt: vi.fn(),
+  zeroFill: vi.fn(),
 }))
 
 import { deriveAuthCredentials } from '@/shared/crypto/keys/split-kdf'
 import { deriveKey } from '@/shared/crypto/core/argon2id'
-import { generateSalt } from '@/shared/crypto/core/crypto-utils'
+import { generateSalt, zeroFill } from '@/shared/crypto/core/crypto-utils'
 import { deriveRegistrationKeys } from '@/features/auth/model/registration-crypto'
 
 function mockBytes(length: number, fill: number): Uint8Array<ArrayBuffer> {
@@ -60,15 +60,13 @@ describe('deriveRegistrationKeys', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
 
-    const authSalt = mockBytes(16, 0x01)
-    const keySalt = mockBytes(16, 0x02)
+    const kdfSalt = mockBytes(16, 0x01)
     const recoverySalt = mockBytes(16, 0x03)
-    vi.mocked(generateSalt).mockReturnValueOnce(recoverySalt)
+    vi.mocked(generateSalt).mockReturnValueOnce(kdfSalt).mockReturnValueOnce(recoverySalt)
     vi.mocked(deriveAuthCredentials).mockResolvedValue({
       authHash: 'a'.repeat(64),
       passwordKey: mockBytes(32, PASSWORD_KEY_FILL),
-      authHashSalt: authSalt,
-      passwordKeySalt: keySalt,
+      kdfSalt,
     })
     vi.mocked(deriveKey).mockResolvedValue(mockBytes(32, RECOVERY_KEK_FILL))
 
@@ -80,9 +78,8 @@ describe('deriveRegistrationKeys', () => {
     expect(result.authHash).toMatch(/^[0-9a-f]{64}$/)
   })
 
-  it('returns 16-byte salts in keyEnvelope', () => {
-    expect(result.keyEnvelope.authHashSalt).toHaveLength(16)
-    expect(result.keyEnvelope.passwordKeySalt).toHaveLength(16)
+  it('returns 16-byte kdfSalt in keyEnvelope', () => {
+    expect(result.keyEnvelope.kdfSalt).toHaveLength(16)
   })
 
   it('returns wrappedMasterKey of 48 bytes and 12-byte IV in keyEnvelope', () => {
@@ -180,7 +177,12 @@ describe('deriveRegistrationKeys', () => {
     expect(decrypted).toEqual(plaintext)
   })
 
-  it('calls deriveAuthCredentials with password', () => {
-    expect(deriveAuthCredentials).toHaveBeenCalledWith(PASSWORD)
+  it('calls deriveAuthCredentials with password and kdfSalt', () => {
+    expect(deriveAuthCredentials).toHaveBeenCalledWith(PASSWORD, expect.any(Uint8Array))
+  })
+
+  it('zero-fills passwordKey after wrapping', () => {
+    // passwordKey is zeroed after wrapMasterKeyWithPassword in the finally block
+    expect(zeroFill).toHaveBeenCalled()
   })
 })

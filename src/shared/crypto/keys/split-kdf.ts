@@ -29,10 +29,7 @@ export async function deriveAuthCredentials(
 }
 
 /** Derive only the passwordKey from a password and salt (single Argon2id + one HKDF branch). */
-export async function derivePasswordKey(
-  password: string,
-  kdfSalt: string,
-): Promise<Uint8Array<ArrayBuffer>> {
+export async function derivePasswordKey(password: string, kdfSalt: string): Promise<Uint8Array<ArrayBuffer>> {
   const masterSecret = await deriveKey(password, hexDecode(kdfSalt))
   try {
     return hkdfExpand(masterSecret, HKDF_INFO.PASSWORD_KEY)

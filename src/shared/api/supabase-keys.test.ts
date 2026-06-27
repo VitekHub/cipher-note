@@ -39,7 +39,7 @@ describe('fetchLoginSalts', () => {
 
   it('calls RPC with correct username and returns salts', async () => {
     mockRpc.mockResolvedValueOnce({
-      data: [{ auth_hash_salt: 'a1b2c3d4'.repeat(4), password_key_salt: 'e5f6g7h8'.repeat(4) }],
+      data: [{ kdf_salt: 'a1b2c3d4'.repeat(4) }],
       error: null,
     })
 
@@ -47,8 +47,7 @@ describe('fetchLoginSalts', () => {
 
     expect(mockRpc).toHaveBeenCalledWith(GET_LOGIN_SALTS_RPC, { p_username: 'testuser' })
     expect(result).toEqual({
-      authHashSalt: 'a1b2c3d4'.repeat(4),
-      passwordKeySalt: 'e5f6g7h8'.repeat(4),
+      kdfSalt: 'a1b2c3d4'.repeat(4),
     })
   })
 
@@ -101,7 +100,7 @@ describe('fetchLoginSalts', () => {
 
   it('accepts uppercase usernames and calls RPC', async () => {
     mockRpc.mockResolvedValueOnce({
-      data: [{ auth_hash_salt: 'a1b2c3d4'.repeat(4), password_key_salt: 'e5f6g7h8'.repeat(4) }],
+      data: [{ kdf_salt: 'a1b2c3d4'.repeat(4) }],
       error: null,
     })
 
@@ -116,11 +115,10 @@ describe('fetchMasterKeyEnvelope', () => {
     vi.clearAllMocks()
   })
 
-  it('queries login_salts and master_keys tables and maps snake_case to camelCase', async () => {
+  it('queries login_salts and master_keys tables in parallel and maps snake_case to camelCase', async () => {
     const saltsSingle = vi.fn().mockResolvedValueOnce({
       data: {
-        auth_hash_salt: 'a1b2c3d4'.repeat(4),
-        password_key_salt: 'e5f6g7h8'.repeat(4),
+        kdf_salt: 'a1b2c3d4'.repeat(4),
       },
       error: null,
     })
@@ -144,8 +142,7 @@ describe('fetchMasterKeyEnvelope', () => {
     expect(mockFrom).toHaveBeenCalledWith(LOGIN_SALTS_TABLE)
     expect(mockFrom).toHaveBeenCalledWith(MASTER_KEYS_TABLE)
     expect(result).toEqual({
-      authHashSalt: 'a1b2c3d4'.repeat(4),
-      passwordKeySalt: 'e5f6g7h8'.repeat(4),
+      kdfSalt: 'a1b2c3d4'.repeat(4),
       wrappedMasterKey: 'aa'.repeat(48),
       masterKeyIV: 'bb'.repeat(12),
     })
@@ -176,8 +173,7 @@ describe('fetchMasterKeyEnvelope', () => {
   it('throws ApiError on master_keys query error', async () => {
     const saltsSingle = vi.fn().mockResolvedValueOnce({
       data: {
-        auth_hash_salt: 'a1b2c3d4'.repeat(4),
-        password_key_salt: 'e5f6g7h8'.repeat(4),
+        kdf_salt: 'a1b2c3d4'.repeat(4),
       },
       error: null,
     })
@@ -227,8 +223,7 @@ describe('fetchMasterKeyEnvelope', () => {
   it('throws NOT_FOUND when no master_keys data found', async () => {
     const saltsSingle = vi.fn().mockResolvedValueOnce({
       data: {
-        auth_hash_salt: 'a1b2c3d4'.repeat(4),
-        password_key_salt: 'e5f6g7h8'.repeat(4),
+        kdf_salt: 'a1b2c3d4'.repeat(4),
       },
       error: null,
     })
@@ -343,8 +338,7 @@ describe('fetchFreshEnvelope', () => {
     // Mock three sequential queries: login_salts, master_keys, field_keys
     const saltsSingle = vi.fn().mockResolvedValueOnce({
       data: {
-        auth_hash_salt: 'a1b2c3d4'.repeat(4),
-        password_key_salt: 'e5f6g7h8'.repeat(4),
+        kdf_salt: 'a1b2c3d4'.repeat(4),
       },
       error: null,
     })
@@ -376,8 +370,7 @@ describe('fetchFreshEnvelope', () => {
     const result = await fetchFreshEnvelope('user-1')
 
     expect(result).toEqual({
-      authHashSalt: 'a1b2c3d4'.repeat(4),
-      passwordKeySalt: 'e5f6g7h8'.repeat(4),
+      kdfSalt: 'a1b2c3d4'.repeat(4),
       wrappedMasterKey: 'aa'.repeat(48),
       masterKeyIV: 'bb'.repeat(12),
       fieldKeys: [
@@ -411,8 +404,7 @@ describe('fetchFreshEnvelope', () => {
   it('propagates errors from fetchFieldKeys', async () => {
     const saltsSingle = vi.fn().mockResolvedValueOnce({
       data: {
-        auth_hash_salt: 'a1b2c3d4'.repeat(4),
-        password_key_salt: 'e5f6g7h8'.repeat(4),
+        kdf_salt: 'a1b2c3d4'.repeat(4),
       },
       error: null,
     })
@@ -516,8 +508,7 @@ describe('updateMasterKeyEnvelope', () => {
     mockEq.mockResolvedValueOnce({ data: null, error: null })
 
     await updateMasterKeyEnvelope('user-1', {
-      authHashSalt: 'a1b2c3d4'.repeat(4),
-      passwordKeySalt: 'e5f6g7h8'.repeat(4),
+      kdfSalt: 'a1b2c3d4'.repeat(4),
       wrappedMasterKey: 'aa'.repeat(48),
       masterKeyIV: 'bb'.repeat(12),
     })
@@ -525,8 +516,7 @@ describe('updateMasterKeyEnvelope', () => {
     expect(mockFrom).toHaveBeenCalledWith(LOGIN_SALTS_TABLE)
     expect(mockFrom).toHaveBeenCalledWith(MASTER_KEYS_TABLE)
     expect(mockUpdate).toHaveBeenCalledWith({
-      auth_hash_salt: 'a1b2c3d4'.repeat(4),
-      password_key_salt: 'e5f6g7h8'.repeat(4),
+      kdf_salt: 'a1b2c3d4'.repeat(4),
     })
     expect(mockUpdate).toHaveBeenCalledWith({
       wrapped_master_key: 'aa'.repeat(48),
@@ -543,8 +533,7 @@ describe('updateMasterKeyEnvelope', () => {
 
     try {
       await updateMasterKeyEnvelope('user-1', {
-        authHashSalt: 'a1b2c3d4'.repeat(4),
-        passwordKeySalt: 'e5f6g7h8'.repeat(4),
+        kdfSalt: 'a1b2c3d4'.repeat(4),
         wrappedMasterKey: 'aa'.repeat(48),
         masterKeyIV: 'bb'.repeat(12),
       })

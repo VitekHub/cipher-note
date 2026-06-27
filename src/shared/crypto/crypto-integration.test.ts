@@ -3,7 +3,7 @@ import { encrypt, decrypt, importKey } from '@/shared/crypto/core/aes-gcm'
 import { generateMasterKey, rewrapMasterKey } from '@/shared/crypto/keys/master-key'
 import { generateAndWrapFieldKeys, unwrapFieldKeys } from '@/shared/crypto/keys/field-keys'
 import { deriveKEK } from '@/shared/crypto/core/hkdf'
-import { deriveAuthCredentials, deriveAuthHash, derivePasswordKey } from '@/shared/crypto/keys/split-kdf'
+import { deriveAuthCredentials, derivePasswordKey } from '@/shared/crypto/keys/split-kdf'
 import { wrapMasterKeyWithRecovery, unwrapMasterKeyWithRecovery } from '@/shared/crypto/keys/mnemonic'
 import { DecryptionError } from '@/shared/crypto/core/errors'
 import { MASTER_KEY_PASSWORD_AAD } from '@/shared/types/crypto.types'
@@ -17,7 +17,6 @@ vi.mock('@/shared/crypto/core/argon2id', () => ({
 
 // Mock split-kdf module — control derived values without Worker dependency
 vi.mock('@/shared/crypto/keys/split-kdf', () => ({
-  deriveAuthHash: vi.fn(),
   derivePasswordKey: vi.fn(),
   deriveAuthCredentials: vi.fn(),
 }))
@@ -56,18 +55,16 @@ const RECOVERY_KEK_FILL = 0x33
 const NUMBER_OF_FIELD_KEYS = 4
 
 async function setupRegistration() {
-  const authHashSalt = mockBytes(16, 0x01)
-  const passwordKeySalt = mockBytes(16, 0x02)
-  vi.mocked(generateSalt).mockReturnValueOnce(authHashSalt).mockReturnValueOnce(passwordKeySalt)
+  const kdfSalt = mockBytes(16, 0x01)
+  vi.mocked(generateSalt).mockReturnValueOnce(kdfSalt)
   vi.mocked(deriveAuthCredentials).mockResolvedValue({
     authHash: 'a'.repeat(64),
     passwordKey: mockBytes(32, PASSWORD_KEY_FILL),
-    authHashSalt,
-    passwordKeySalt,
+    kdfSalt,
   })
 
   const masterKey = generateMasterKey()
-  const authCreds = await deriveAuthCredentials(PASSWORD)
+  const authCreds = await deriveAuthCredentials(PASSWORD, kdfSalt)
   const kekBytes = await deriveKEK(masterKey)
   const kek = await importKey(kekBytes)
   const { cryptoFieldKeys, wrappedFieldKeys } = await generateAndWrapFieldKeys(kek)
@@ -101,8 +98,7 @@ async function setupRegistration() {
     serverFieldKeys,
     wrappedMasterKey,
     masterKeyIV: iv,
-    authHashSalt,
-    passwordKeySalt,
+    kdfSalt,
     recoveryData,
   }
 }
@@ -166,20 +162,22 @@ describe('crypto integration', () => {
 
   describe('login flow', () => {
     it('recovers all keys from stored server data', async () => {
-      const { masterKey, authCreds, serverFieldKeys, wrappedMasterKey, masterKeyIV, authHashSalt, passwordKeySalt } =
+      const { masterKey, authCreds, serverFieldKeys, wrappedMasterKey, masterKeyIV, kdfSalt } =
         await setupRegistration()
       vi.clearAllMocks()
 
-      vi.mocked(deriveAuthHash).mockResolvedValue(authCreds.authHash)
+      // Login derives both authHash and passwordKey from a single salt
+      vi.mocked(deriveAuthCredentials).mockResolvedValue(authCreds)
       vi.mocked(derivePasswordKey).mockResolvedValue(authCreds.passwordKey)
 
-      // Login now uses deriveAuthHash + derivePasswordKey
-      const authHash = await deriveAuthHash(PASSWORD, authHashSalt)
-      const passwordKey = await derivePasswordKey(PASSWORD, passwordKeySalt)
-      expect(authHash).toBe(authCreds.authHash)
-      expect(passwordKey).toEqual(authCreds.passwordKey)
+      // deriveAuthCredentials with the kdfSalt returns the same credentials
+      const loginCreds = await deriveAuthCredentials(PASSWORD, kdfSalt)
+      expect(loginCreds.authHash).toBe(authCreds.authHash)
+      expect(loginCreds.passwordKey).toEqual(authCreds.passwordKey)
       expect(generateSalt).not.toHaveBeenCalled()
 
+      // derivePasswordKey for vault unlock
+      const passwordKey = await derivePasswordKey(PASSWORD, hexEncode(kdfSalt))
       // Manual KEK derivation: importKey(passwordKey) -> decrypt(wrappedMasterKey) -> deriveKEK(masterKey) -> importKey(kekBytes)
       const passwordCryptoKey = await importKey(passwordKey)
       const unwrappedMasterKey = await decrypt(wrappedMasterKey, passwordCryptoKey, {
@@ -219,21 +217,19 @@ describe('crypto integration', () => {
       const { masterKey, kek, serverFieldKeys, wrappedMasterKey, masterKeyIV, authCreds } = await setupRegistration()
       vi.clearAllMocks()
 
-      const newAuthHashSalt = mockBytes(16, 0xbb)
-      const newPasswordKeySalt = mockBytes(16, 0xcc)
-      // derivePasswordKey is called by unwrapMasterKeyWithPassword with the old password
+      const newKdfSalt = mockBytes(16, 0xbb)
+      // derivePasswordKey is called by rewrapMasterKey with the old password
       vi.mocked(derivePasswordKey).mockResolvedValueOnce(mockBytes(32, PASSWORD_KEY_FILL))
       // deriveAuthCredentials returns the new credentials for the new password
       vi.mocked(deriveAuthCredentials).mockResolvedValueOnce({
         authHash: 'b'.repeat(64),
         passwordKey: mockBytes(32, NEW_PASSWORD_KEY_FILL),
-        authHashSalt: newAuthHashSalt,
-        passwordKeySalt: newPasswordKeySalt,
+        kdfSalt: newKdfSalt,
       })
+      vi.mocked(generateSalt).mockReturnValueOnce(newKdfSalt)
 
       const envelope: ServerMasterKeyEnvelope = {
-        authHashSalt: hexEncode(authCreds.authHashSalt),
-        passwordKeySalt: hexEncode(authCreds.passwordKeySalt),
+        kdfSalt: hexEncode(authCreds.kdfSalt),
         wrappedMasterKey: hexEncode(wrappedMasterKey),
         masterKeyIV: hexEncode(masterKeyIV),
       }
@@ -345,7 +341,7 @@ describe('crypto integration', () => {
       const newNoteWrapped = await encrypt(newNoteKey, kek, { iv: newNoteIV, aad: newNoteAAD })
       zeroFill(newNoteKey)
 
-      // Build server field keys: replace note key with rotated v2, keep others as-is
+      // Build server field keys: replace note key with rotated v2, keep others as‑is
       const rotatedServerFieldKeys: ServerFieldKey[] = [
         ...serverFieldKeys.filter((f) => f.fieldName !== 'note'),
         {
@@ -356,7 +352,7 @@ describe('crypto integration', () => {
         },
       ]
 
-      // Re-encrypt note content with new key
+      // Re‑encrypt note content with new key
       const v2IV = generateIV()
       const v2AAD = new Uint8Array([1])
       const v2Ciphertext = await encrypt(plaintext, newNoteCryptoKey, { iv: v2IV, aad: v2AAD })
@@ -403,14 +399,13 @@ describe('crypto integration', () => {
     })
 
     it('login flow completes within 5 seconds', async () => {
-      const { authCreds, wrappedMasterKey, masterKeyIV, serverFieldKeys, passwordKeySalt } = await setupRegistration()
+      const { authCreds, wrappedMasterKey, masterKeyIV, serverFieldKeys, kdfSalt } = await setupRegistration()
       vi.clearAllMocks()
 
-      vi.mocked(deriveAuthHash).mockResolvedValue(authCreds.authHash)
       vi.mocked(derivePasswordKey).mockResolvedValue(authCreds.passwordKey)
 
       const start = Date.now()
-      const passwordKey = await derivePasswordKey(PASSWORD, passwordKeySalt)
+      const passwordKey = await derivePasswordKey(PASSWORD, hexEncode(kdfSalt))
       const passwordCryptoKey = await importKey(passwordKey)
       const masterKey = await decrypt(wrappedMasterKey, passwordCryptoKey, {
         iv: masterKeyIV,

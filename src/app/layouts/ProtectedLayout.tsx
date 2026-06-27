@@ -17,8 +17,21 @@ import { useResizable } from '@/shared/lib/use-resizable'
 import { useVaultTimeout } from '@/features/vault/model/use-vault-timeout'
 import { logoutUser } from '@/features/auth/model/auth-service'
 import { useRealtimeSync } from '@/features/fields/model/use-realtime-sync'
+import { useAuth } from '@/shared/auth/auth-context'
 
+/**
+ * Thin wrapper that guards the authenticated layout.
+ * Returns null during the logout transition so auth-dependent hooks
+ * in AuthenticatedLayout never run without a user.
+ */
 function ProtectedLayout() {
+  const { isAuthenticated } = useAuth()
+  if (!isAuthenticated) return null
+  return <AuthenticatedLayout />
+}
+
+/** The full authenticated shell — only mounted when a user is present. */
+function AuthenticatedLayout() {
   const { t } = useTranslation('common')
   const sidebarOpen = useLayoutStore((s) => s.sidebarOpen)
   const setSidebarOpen = useLayoutStore((s) => s.setSidebarOpen)

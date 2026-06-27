@@ -155,7 +155,10 @@ class KeyVault {
     this.storeFieldKeys(unwrappedFieldKeys)
   }
 
-  private async deriveKekFromEnvelope(passwordKey: Uint8Array<ArrayBuffer>, envelope: CachedVaultEnvelope): Promise<CryptoKey> {
+  private async deriveKekFromEnvelope(
+    passwordKey: Uint8Array<ArrayBuffer>,
+    envelope: CachedVaultEnvelope,
+  ): Promise<CryptoKey> {
     const masterKey = await unwrapMasterKeyWithPassword(passwordKey, envelope)
     const kekBytes = await deriveKEK(masterKey)
     const kek = await importKey(kekBytes)

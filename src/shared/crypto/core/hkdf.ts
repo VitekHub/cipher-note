@@ -52,4 +52,3 @@ export async function deriveKEK(masterKey: Uint8Array<ArrayBuffer>): Promise<Uin
 export async function deriveSigningKeySeed(masterKey: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
   return hkdfExpand(masterKey, HKDF_INFO.SIGN)
 }
-

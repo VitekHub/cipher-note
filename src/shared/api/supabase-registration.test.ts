@@ -38,8 +38,7 @@ function makeRegistrationResult(): RegistrationResult {
       ]),
     },
     keyEnvelope: {
-      authHashSalt: mockBytes(16, 0x01),
-      passwordKeySalt: mockBytes(16, 0x02),
+      kdfSalt: mockBytes(16, 0x01),
       wrappedMasterKey: mockBytes(48, 0x05),
       masterKeyIV: mockBytes(12, 0x06),
     },
@@ -96,8 +95,7 @@ describe('uploadRegistrationData', () => {
 
     const saltsRow = insert.mock.calls[0][0]
     expect(saltsRow.user_id).toBe(USER_ID)
-    expect(saltsRow.auth_hash_salt).toHaveLength(32)
-    expect(saltsRow.password_key_salt).toHaveLength(32)
+    expect(saltsRow.kdf_salt).toHaveLength(32)
 
     const masterKeysRow = insert.mock.calls[1][0]
     expect(masterKeysRow.user_id).toBe(USER_ID)

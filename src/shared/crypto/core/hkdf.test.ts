@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { hkdfExpand, deriveKEK, deriveSigningKeySeed } from '@/shared/crypto/core/hkdf'
+import { hkdfExpand, deriveKEK, deriveSigningKeySeed, HKDF_INFO } from '@/shared/crypto/core/hkdf'
 
 describe('hkdf', () => {
   function generateKey(): Uint8Array<ArrayBuffer> {
     return crypto.getRandomValues(new Uint8Array(32))
   }
 
-  describe('deriveSubKey', () => {
+  describe('hkdfExpand', () => {
     it('produces deterministic output for same master key and info', async () => {
       const masterKey = generateKey()
       const result1 = await hkdfExpand(masterKey, 'wrap')
@@ -64,7 +64,7 @@ describe('hkdf', () => {
 
     it('throws for non-32-byte master key', async () => {
       const shortKey = crypto.getRandomValues(new Uint8Array(16))
-      await expect(hkdfExpand(shortKey, 'wrap')).rejects.toThrow('Invalid master key length: expected 32 bytes, got 16')
+      await expect(hkdfExpand(shortKey, 'wrap')).rejects.toThrow('Invalid PRK length: expected 32 bytes, got 16')
     })
   })
 
@@ -75,10 +75,10 @@ describe('hkdf', () => {
       expect(kek.length).toBe(32)
     })
 
-    it('is consistent with deriveSubKey(masterKey, "wrap")', async () => {
+    it('is consistent with hkdfExpand(masterKey, HKDF_INFO.KEK)', async () => {
       const masterKey = generateKey()
       const kek = await deriveKEK(masterKey)
-      const direct = await hkdfExpand(masterKey, 'wrap')
+      const direct = await hkdfExpand(masterKey, HKDF_INFO.KEK)
       expect(kek).toEqual(direct)
     })
   })
@@ -90,10 +90,10 @@ describe('hkdf', () => {
       expect(seed.length).toBe(32)
     })
 
-    it('is consistent with deriveSubKey(masterKey, "sign")', async () => {
+    it('is consistent with hkdfExpand(masterKey, HKDF_INFO.SIGN)', async () => {
       const masterKey = generateKey()
       const seed = await deriveSigningKeySeed(masterKey)
-      const direct = await hkdfExpand(masterKey, 'sign')
+      const direct = await hkdfExpand(masterKey, HKDF_INFO.SIGN)
       expect(seed).toEqual(direct)
     })
 

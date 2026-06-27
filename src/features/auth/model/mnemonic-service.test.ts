@@ -6,15 +6,16 @@ const {
   mockUser,
   mockRecoveryData,
   mockMasterKey,
+  mockPasswordKey,
   mockMnemonic,
   mockSaveRecoveryData,
   mockSetCachedEnvelope,
 } = vi.hoisted(() => {
   const mockMasterKey = new Uint8Array(32).fill(0xdd) as Uint8Array<ArrayBuffer>
+  const mockPasswordKey = new Uint8Array(32).fill(0x04) as Uint8Array<ArrayBuffer>
   return {
     mockEnvelope: {
-      authHashSalt: 'a1b2c3d4'.repeat(4),
-      passwordKeySalt: 'e5f6g7h8'.repeat(4),
+      kdfSalt: 'a1b2c3d4'.repeat(4),
       wrappedMasterKey: 'aa'.repeat(48),
       masterKeyIV: 'bb'.repeat(12),
       fieldKeys: [],
@@ -26,6 +27,7 @@ const {
       recoveryKeySalt: new Uint8Array(16).fill(0xaa),
     },
     mockMasterKey,
+    mockPasswordKey,
     mockMnemonic: 'word0 word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11',
     mockSaveRecoveryData: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
     mockSetCachedEnvelope: vi.fn<(envelope: unknown) => void>(),
@@ -68,6 +70,10 @@ vi.mock('@/shared/crypto/keys/mnemonic', () => ({
   }),
 }))
 
+vi.mock('@/shared/crypto/keys/split-kdf', () => ({
+  derivePasswordKey: vi.fn().mockResolvedValue(mockPasswordKey),
+}))
+
 vi.mock('@/shared/crypto/keys/master-key', () => ({
   unwrapMasterKeyWithPassword: vi.fn().mockResolvedValue(mockMasterKey),
 }))
@@ -85,6 +91,7 @@ vi.mock('@/shared/crypto/core/crypto-utils', async () => ({
 import { regenerateMnemonic } from '@/features/auth/model/mnemonic-service'
 import { createRecoveryData } from '@/shared/crypto/keys/mnemonic'
 import { unwrapMasterKeyWithPassword } from '@/shared/crypto/keys/master-key'
+import { derivePasswordKey } from '@/shared/crypto/keys/split-kdf'
 import { saveRecoveryData } from '@/shared/api/supabase-recovery'
 import { fetchFreshEnvelope } from '@/shared/api/supabase-keys'
 import { hexEncode, zeroFill } from '@/shared/crypto/core/crypto-utils'
@@ -129,10 +136,11 @@ describe('regenerateMnemonic', () => {
     expect(mockSetCachedEnvelope).toHaveBeenCalled()
   })
 
-  it('unwraps master key with password and envelope', async () => {
+  it('derives password key and unwraps master key with it', async () => {
     await regenerateMnemonic('password')
 
-    expect(unwrapMasterKeyWithPassword).toHaveBeenCalledWith('password', mockEnvelope)
+    expect(derivePasswordKey).toHaveBeenCalledWith('password', mockEnvelope.kdfSalt)
+    expect(unwrapMasterKeyWithPassword).toHaveBeenCalledWith(mockPasswordKey, mockEnvelope)
   })
 
   it('creates recovery data from unwrapped master key', async () => {
@@ -157,25 +165,27 @@ describe('regenerateMnemonic', () => {
     expect(result).toBe(mockMnemonic)
   })
 
-  it('zero-fills master key on success', async () => {
+  it('zero-fills password key and master key on success', async () => {
     await regenerateMnemonic('password')
 
+    expect(zeroFill).toHaveBeenCalledWith(mockPasswordKey)
     expect(zeroFill).toHaveBeenCalledWith(mockMasterKey)
   })
 
-  it('zero-fills master key even when saveRecoveryData fails', async () => {
+  it('zero-fills password key and master key even when saveRecoveryData fails', async () => {
     vi.mocked(saveRecoveryData).mockRejectedValueOnce(new Error('Network error'))
 
     await expect(regenerateMnemonic('password')).rejects.toThrow('Network error')
 
+    expect(zeroFill).toHaveBeenCalledWith(mockPasswordKey)
     expect(zeroFill).toHaveBeenCalledWith(mockMasterKey)
   })
 
-  it('zero-fills master key even when createRecoveryData fails', async () => {
+  it('zero-fills password key even when createRecoveryData fails', async () => {
     vi.mocked(createRecoveryData).mockRejectedValueOnce(new Error('Crypto error'))
 
     await expect(regenerateMnemonic('password')).rejects.toThrow('Crypto error')
 
-    expect(zeroFill).toHaveBeenCalledWith(mockMasterKey)
+    expect(zeroFill).toHaveBeenCalledWith(mockPasswordKey)
   })
 })

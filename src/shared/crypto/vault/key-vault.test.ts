@@ -7,13 +7,13 @@ import { deriveKEK } from '@/shared/crypto/core/hkdf'
 import { unwrapFieldKeys } from '@/shared/crypto/keys/field-keys'
 import { DecryptionError } from '@/shared/crypto/core/errors'
 import { unwrapMasterKeyWithPassword } from '@/shared/crypto/keys/master-key'
+import { derivePasswordKey } from '@/shared/crypto/keys/split-kdf'
 import { fetchFreshEnvelope, fetchFieldKeys } from '@/shared/api/supabase-keys'
 
 // Shared mock data used across legacy key vault tests
 const { mockEnvelopeData, mockFieldKeysData } = vi.hoisted(() => ({
   mockEnvelopeData: {
-    authHashSalt: '01'.repeat(16),
-    passwordKeySalt: '02'.repeat(16),
+    kdfSalt: '01'.repeat(16),
     wrappedMasterKey: '05'.repeat(48),
     masterKeyIV: '06'.repeat(12),
   },
@@ -45,6 +45,10 @@ const cryptoStoreState = {
 // Mocks for modules used by the key vault service
 vi.mock('@/shared/crypto/keys/master-key', () => ({
   unwrapMasterKeyWithPassword: vi.fn().mockResolvedValue(new Uint8Array(32).fill(0x03)),
+}))
+
+vi.mock('@/shared/crypto/keys/split-kdf', () => ({
+  derivePasswordKey: vi.fn().mockResolvedValue(new Uint8Array(32).fill(0x04)),
 }))
 
 vi.mock('@/shared/crypto/core/crypto-utils', async () => ({
@@ -209,7 +213,8 @@ describe('unlockVault', () => {
   it('derives KEK from password and envelope, then stores field keys', async () => {
     await keyVault.unlockVault('1', 'testpass123')
 
-    expect(unwrapMasterKeyWithPassword).toHaveBeenCalledWith('testpass123', expect.any(Object))
+    expect(derivePasswordKey).toHaveBeenCalledWith('testpass123', expect.any(String))
+    expect(unwrapMasterKeyWithPassword).toHaveBeenCalledWith(expect.any(Uint8Array), expect.any(Object))
     expect(deriveKEK).toHaveBeenCalled()
     expect(unwrapFieldKeys).toHaveBeenCalledWith(mockFieldKeysData, expect.any(Object))
     expect(mockMarkKeysLoaded).toHaveBeenCalledWith(['note', 'website', 'email'])
@@ -226,8 +231,7 @@ describe('unlockVault', () => {
 
   it('uses cached envelope when available instead of fetching from server', async () => {
     const cachedEnvelope = {
-      authHashSalt: 'aa'.repeat(16),
-      passwordKeySalt: 'bb'.repeat(16),
+      kdfSalt: 'aa'.repeat(16),
       wrappedMasterKey: 'cc'.repeat(48),
       masterKeyIV: 'dd'.repeat(12),
       fieldKeys: mockFieldKeysData,
@@ -244,8 +248,7 @@ describe('unlockVault', () => {
 
   it('does not call setCachedEnvelope when envelope is already cached', async () => {
     const cachedEnvelope = {
-      authHashSalt: 'aa'.repeat(16),
-      passwordKeySalt: 'bb'.repeat(16),
+      kdfSalt: 'aa'.repeat(16),
       wrappedMasterKey: 'cc'.repeat(48),
       masterKeyIV: 'dd'.repeat(12),
       fieldKeys: mockFieldKeysData,
@@ -258,8 +261,7 @@ describe('unlockVault', () => {
   it('clears cache and retries from server on DecryptionError', async () => {
     const storeFieldKeysSpy = vi.spyOn(keyVault, 'storeFieldKeys')
     const cachedEnvelope = {
-      authHashSalt: 'aa'.repeat(16),
-      passwordKeySalt: 'bb'.repeat(16),
+      kdfSalt: 'aa'.repeat(16),
       wrappedMasterKey: 'cc'.repeat(48),
       masterKeyIV: 'dd'.repeat(12),
       fieldKeys: mockFieldKeysData,
@@ -275,8 +277,7 @@ describe('unlockVault', () => {
 
   it('re-throws if retry also fails', async () => {
     const cachedEnvelope = {
-      authHashSalt: 'aa'.repeat(16),
-      passwordKeySalt: 'bb'.repeat(16),
+      kdfSalt: 'aa'.repeat(16),
       wrappedMasterKey: 'cc'.repeat(48),
       masterKeyIV: 'dd'.repeat(12),
       fieldKeys: mockFieldKeysData,
@@ -290,8 +291,7 @@ describe('unlockVault', () => {
 
   it('does not retry on non-DecryptionError', async () => {
     const cachedEnvelope = {
-      authHashSalt: 'aa'.repeat(16),
-      passwordKeySalt: 'bb'.repeat(16),
+      kdfSalt: 'aa'.repeat(16),
       wrappedMasterKey: 'cc'.repeat(48),
       masterKeyIV: 'dd'.repeat(12),
       fieldKeys: mockFieldKeysData,
@@ -312,8 +312,7 @@ describe('syncFieldKeys', () => {
   ]
 
   const cachedEnvelope = {
-    authHashSalt: 'aabb',
-    passwordKeySalt: 'ccdd',
+    kdfSalt: 'aabb',
     wrappedMasterKey: 'eeff',
     masterKeyIV: '1122',
     fieldKeys: [{ fieldName: 'note', version: 1, wrappedFieldKey: 'old-note-key', fieldKeyIV: 'note-iv' }],
