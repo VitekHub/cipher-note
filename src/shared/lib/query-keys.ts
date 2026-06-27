@@ -1,6 +1,10 @@
 import type { FieldName } from '@/shared/types/entities/field.types'
 
 export const queryKeys = {
+  usernameAvailability: {
+    all: ['username-availability'] as const,
+    check: (username: string) => [...queryKeys.usernameAvailability.all, username] as const,
+  },
   field: {
     all: ['field'] as const,
     byEntry: (entryId: string) => [...queryKeys.field.all, entryId] as const,

@@ -91,8 +91,8 @@ describe('SupabaseRealtimeAdapter', () => {
       new: {
         entry_id: 'e1',
         field_name: 'note',
-        encrypted_blob: 'deadbeef',
-        iv: 'aabb',
+        ciphertext: 'deadbeef',
+        ciphertext_iv: 'aabb',
         updated_at: '2026-01-01T00:00:00Z',
       },
       old: null,
@@ -100,8 +100,8 @@ describe('SupabaseRealtimeAdapter', () => {
     expect(callbacks.onFieldChange).toHaveBeenCalledWith({
       entryId: 'e1',
       fieldName: 'note',
-      encryptedBlob: 'deadbeef',
-      iv: 'aabb',
+      ciphertext: 'deadbeef',
+      ciphertextIV: 'aabb',
       updatedAt: '2026-01-01T00:00:00Z',
     })
   })

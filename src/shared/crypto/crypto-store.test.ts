@@ -9,13 +9,13 @@ const mockQueryClient = { removeQueries: mockRemoveQueries } as unknown as impor
 setQueryClient(mockQueryClient)
 
 const sampleEnvelope: CachedVaultEnvelope = {
-  authSalt: 'salt1',
-  keySalt: 'salt2',
+  authHashSalt: 'salt1',
+  passwordKeySalt: 'salt2',
   wrappedMasterKey: 'wrapped',
   masterKeyIV: 'iv',
   fieldKeys: [
-    { fieldName: 'note', version: 1, wrappedKey: 'aa', keyIV: 'bb' },
-    { fieldName: 'website', version: 1, wrappedKey: 'cc', keyIV: 'dd' },
+    { fieldName: 'note', version: 1, wrappedFieldKey: 'aa', fieldKeyIV: 'bb' },
+    { fieldName: 'website', version: 1, wrappedFieldKey: 'cc', fieldKeyIV: 'dd' },
   ],
 }
 

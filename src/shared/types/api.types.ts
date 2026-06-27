@@ -1,8 +1,8 @@
 import type { FieldName } from '@/shared/types/entities/field.types'
 
 export interface ServerMasterKeyEnvelope {
-  authSalt: string
-  keySalt: string
+  authHashSalt: string
+  passwordKeySalt: string
   wrappedMasterKey: string
   masterKeyIV: string
 }
@@ -14,47 +14,47 @@ export interface CachedVaultEnvelope extends ServerMasterKeyEnvelope {
 export interface ServerFieldKey {
   fieldName: string
   version: number
-  wrappedKey: string
-  keyIV: string
+  wrappedFieldKey: string
+  fieldKeyIV: string
 }
 
 export interface ServerEncryptedField {
   entryId: string
   fieldName: FieldName
-  encryptedBlob: string
-  iv: string
+  ciphertext: string
+  ciphertextIV: string
   updatedAt: string
 }
 
 export interface ServerRecoveryData {
-  recoverySalt: string
-  wrappedMasterKey: string
-  recoveryIV: string
+  recoveryKeySalt: string
+  recoveryWrappedMasterKey: string
+  recoveryKeyIV: string
 }
 
 export interface SaveWrappedKeyData {
   fieldName: string
   version: number
-  wrappedKey: string
-  keyIV: string
+  wrappedFieldKey: string
+  fieldKeyIV: string
 }
 
 export interface SaveFieldData {
   entryId: string
   fieldName: FieldName
-  encryptedBlob: string
-  iv: string
+  ciphertext: string
+  ciphertextIV: string
 }
 
 export interface SaveRecoveryData {
-  recoverySalt: string
-  wrappedMasterKey: string
-  recoveryIV: string
+  recoveryKeySalt: string
+  recoveryWrappedMasterKey: string
+  recoveryKeyIV: string
 }
 
 export interface UpdateMasterKeyEnvelopeData {
-  authSalt: string
-  keySalt: string
+  authHashSalt: string
+  passwordKeySalt: string
   wrappedMasterKey: string
   masterKeyIV: string
 }

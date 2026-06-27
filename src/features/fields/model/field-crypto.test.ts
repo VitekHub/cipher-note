@@ -74,20 +74,20 @@ describe('toSaveFieldData + toEncryptedFieldData', () => {
 
     // Internal binary → hex for API
     const saveData = toSaveFieldData(encrypted, 'entry-1', 'note')
-    expect(typeof saveData.encryptedBlob).toBe('string')
-    expect(typeof saveData.iv).toBe('string')
+    expect(typeof saveData.ciphertext).toBe('string')
+    expect(typeof saveData.ciphertextIV).toBe('string')
 
     // Hex from API → internal binary
     const serverField = {
       entryId: 'entry-1',
       fieldName: 'note' as FieldName,
-      encryptedBlob: saveData.encryptedBlob,
-      iv: saveData.iv,
+      ciphertext: saveData.ciphertext,
+      ciphertextIV: saveData.ciphertextIV,
       updatedAt: '2025-01-01T00:00:00Z',
     }
     const restored = toEncryptedFieldData(serverField)
     expect(restored.ciphertext).toEqual(encrypted.ciphertext)
-    expect(restored.iv).toEqual(encrypted.iv)
+    expect(restored.ciphertextIV).toEqual(encrypted.ciphertextIV)
 
     // Full round-trip: encrypt → toSaveFieldData → toEncryptedFieldData → decrypt
     const decrypted = await decryptField(restored, key, 'note')

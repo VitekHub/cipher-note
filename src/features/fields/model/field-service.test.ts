@@ -15,8 +15,8 @@ const { mockFetchField, mockSaveField, mockFetchAllFields, mockGetKey } = vi.hoi
         data: {
           entryId: string
           fieldName: FieldName
-          encryptedBlob: string
-          iv: string
+          ciphertext: string
+          ciphertextIV: string
         },
       ) => Promise<string>
     >(),
@@ -54,8 +54,8 @@ async function encryptForServer(
   return {
     entryId: TEST_ENTRY_ID,
     fieldName,
-    encryptedBlob: saveData.encryptedBlob,
-    iv: saveData.iv,
+    ciphertext: saveData.ciphertext,
+    ciphertextIV: saveData.ciphertextIV,
     updatedAt: '2025-01-01T00:00:00Z',
   }
 }
@@ -127,14 +127,14 @@ describe('FieldService', () => {
         expect.objectContaining({
           entryId: TEST_ENTRY_ID,
           fieldName: 'note',
-          encryptedBlob: expect.any(String),
-          iv: expect.any(String),
+          ciphertext: expect.any(String),
+          ciphertextIV: expect.any(String),
         }),
       )
       const saveData = mockSaveField.mock.calls[0][1]
       // Hex strings should contain only hex chars
-      expect(saveData.encryptedBlob).toMatch(/^[0-9a-f]+$/)
-      expect(saveData.iv).toMatch(/^[0-9a-f]+$/)
+      expect(saveData.ciphertext).toMatch(/^[0-9a-f]+$/)
+      expect(saveData.ciphertextIV).toMatch(/^[0-9a-f]+$/)
     })
 
     it('throws when field key is not available (vault locked)', async () => {

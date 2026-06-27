@@ -67,8 +67,13 @@ BEGIN
 END;
 $$;
 
-CREATE TRIGGER update_keys_updated_at
-  BEFORE UPDATE ON public.keys
+CREATE TRIGGER update_login_salts_updated_at
+  BEFORE UPDATE ON public.login_salts
+  FOR EACH ROW
+  EXECUTE FUNCTION public.update_updated_at_column();
+
+CREATE TRIGGER update_master_keys_updated_at
+  BEFORE UPDATE ON public.master_keys
   FOR EACH ROW
   EXECUTE FUNCTION public.update_updated_at_column();
 
@@ -87,8 +92,8 @@ CREATE TRIGGER update_encrypted_fields_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION public.update_updated_at_column();
 
-CREATE TRIGGER update_recovery_updated_at
-  BEFORE UPDATE ON public.recovery
+CREATE TRIGGER update_recovery_keys_updated_at
+  BEFORE UPDATE ON public.recovery_keys
   FOR EACH ROW
   EXECUTE FUNCTION public.update_updated_at_column();
 

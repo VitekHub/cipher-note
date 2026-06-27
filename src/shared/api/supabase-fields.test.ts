@@ -36,8 +36,8 @@ describe('fetchField', () => {
       data: {
         entry_id: 'entry-1',
         field_name: 'note',
-        encrypted_blob: 'aa'.repeat(16),
-        iv: 'bb'.repeat(12),
+        ciphertext: 'aa'.repeat(16),
+        ciphertext_iv: 'bb'.repeat(12),
         updated_at: '2025-01-01T00:00:00Z',
       },
       error: null,
@@ -48,8 +48,8 @@ describe('fetchField', () => {
     expect(result).toEqual({
       entryId: 'entry-1',
       fieldName: 'note',
-      encryptedBlob: 'aa'.repeat(16),
-      iv: 'bb'.repeat(12),
+      ciphertext: 'aa'.repeat(16),
+      ciphertextIV: 'bb'.repeat(12),
       updatedAt: '2025-01-01T00:00:00Z',
     })
   })
@@ -60,7 +60,7 @@ describe('fetchField', () => {
     await fetchField('entry-1', 'website')
 
     expect(mockFrom).toHaveBeenCalledWith(ENCRYPTED_FIELDS_TABLE)
-    expect(qb.select).toHaveBeenCalledWith('entry_id, field_name, encrypted_blob, iv, updated_at')
+    expect(qb.select).toHaveBeenCalledWith('entry_id, field_name, ciphertext, ciphertext_iv, updated_at')
     expect(qb.eq).toHaveBeenCalledWith('entry_id', 'entry-1')
     expect(qb.eq).toHaveBeenCalledWith('field_name', 'website')
   })
@@ -96,8 +96,8 @@ describe('saveField', () => {
     const result = await saveField('user-1', {
       entryId: 'entry-1',
       fieldName: 'note',
-      encryptedBlob: 'aa'.repeat(16),
-      iv: 'bb'.repeat(12),
+      ciphertext: 'aa'.repeat(16),
+      ciphertextIV: 'bb'.repeat(12),
     })
 
     expect(result).toBe('2026-01-01T00:00:00Z')
@@ -107,8 +107,8 @@ describe('saveField', () => {
         user_id: 'user-1',
         entry_id: 'entry-1',
         field_name: 'note',
-        encrypted_blob: 'aa'.repeat(16),
-        iv: 'bb'.repeat(12),
+        ciphertext: 'aa'.repeat(16),
+        ciphertext_iv: 'bb'.repeat(12),
       },
       { onConflict: 'entry_id,field_name' },
     )
@@ -125,8 +125,8 @@ describe('saveField', () => {
       await saveField('user-1', {
         entryId: 'entry-1',
         fieldName: 'note',
-        encryptedBlob: 'aa'.repeat(16),
-        iv: 'bb'.repeat(12),
+        ciphertext: 'aa'.repeat(16),
+        ciphertextIV: 'bb'.repeat(12),
       })
       expect.unreachable('should have thrown')
     } catch (e) {

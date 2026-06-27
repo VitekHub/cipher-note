@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { getSupabase } from '@/shared/api/supabase-client'
 import { USERNAME_PATTERN } from '@/shared/auth/username-utils'
+import { CHECK_USERNAME_AVAILABILITY_RPC } from '@/shared/types/supabase-schema'
+import { queryKeys } from '@/shared/lib/query-keys'
 import { useDebouncedValue } from '@/shared/lib/use-debounced-value'
 
 export type UsernameAvailabilityStatus = 'idle' | 'checking' | 'available' | 'taken' | 'error'
@@ -24,11 +26,11 @@ function useUsernameAvailability({
   const shouldQuery = formatValid && debouncedUsername === username
 
   const { data, isError, isLoading } = useQuery({
-    queryKey: ['username-availability', debouncedUsername],
+    queryKey: queryKeys.usernameAvailability.check(debouncedUsername),
     queryFn: async ({ queryKey }) => {
       const [, name] = queryKey
       const supabase = getSupabase()
-      const { data, error } = await supabase.rpc('check_username_availability', {
+      const { data, error } = await supabase.rpc(CHECK_USERNAME_AVAILABILITY_RPC, {
         p_username: name,
       })
       if (error) throw error

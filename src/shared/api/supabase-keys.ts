@@ -9,15 +9,20 @@ import type {
   SaveWrappedKeyData,
   UpdateMasterKeyEnvelopeData,
 } from '@/shared/types/api.types'
-import { FIELD_KEYS_TABLE } from '@/shared/types/supabase-schema'
+import {
+  LOGIN_SALTS_TABLE,
+  MASTER_KEYS_TABLE,
+  FIELD_KEYS_TABLE,
+  GET_LOGIN_SALTS_RPC,
+} from '@/shared/types/supabase-schema'
 
 export interface LoginSalts {
-  authSalt: string
-  keySalt: string
+  authHashSalt: string
+  passwordKeySalt: string
 }
 
 /**
- * Fetch auth_salt and key_salt for a username.
+ * Fetch auth_hash_salt and password_key_salt for a username.
  * Callable before authentication (uses SECURITY DEFINER RPC).
  * Validates username format client-side to avoid wasting rate-limited RPC calls.
  */
@@ -27,7 +32,7 @@ export async function fetchLoginSalts(username: string): Promise<LoginSalts> {
   }
 
   const supabase = getSupabase()
-  const { data, error } = await supabase.rpc('get_login_salts', { p_username: username })
+  const { data, error } = await supabase.rpc(GET_LOGIN_SALTS_RPC, { p_username: username })
 
   if (error) throw wrapAuthError(error)
   if (!data || data.length === 0) {
@@ -35,7 +40,7 @@ export async function fetchLoginSalts(username: string): Promise<LoginSalts> {
   }
 
   const row = data[0]
-  return { authSalt: row.auth_salt, keySalt: row.key_salt }
+  return { authHashSalt: row.auth_hash_salt, passwordKeySalt: row.password_key_salt }
 }
 
 /**
@@ -44,20 +49,32 @@ export async function fetchLoginSalts(username: string): Promise<LoginSalts> {
  */
 export async function fetchMasterKeyEnvelope(userId: string): Promise<ServerMasterKeyEnvelope> {
   const supabase = getSupabase()
-  const { data, error } = await supabase
-    .from('keys')
-    .select('auth_salt, key_salt, wrapped_master_key, master_key_iv')
+
+  // Fetch salts from login_salts
+  const { data: salts, error: saltsError } = await supabase
+    .from(LOGIN_SALTS_TABLE)
+    .select('auth_hash_salt, password_key_salt')
     .eq('user_id', userId)
     .single()
 
-  if (error) throw wrapApiError(error)
-  if (!data) throw new ApiError(ApiErrorCode.NOT_FOUND)
+  if (saltsError) throw wrapApiError(saltsError)
+  if (!salts) throw new ApiError(ApiErrorCode.NOT_FOUND)
+
+  // Fetch wrapped master key from master_keys
+  const { data: master, error: masterError } = await supabase
+    .from(MASTER_KEYS_TABLE)
+    .select('wrapped_master_key, master_key_iv')
+    .eq('user_id', userId)
+    .single()
+
+  if (masterError) throw wrapApiError(masterError)
+  if (!master) throw new ApiError(ApiErrorCode.NOT_FOUND)
 
   return {
-    authSalt: data.auth_salt,
-    keySalt: data.key_salt,
-    wrappedMasterKey: data.wrapped_master_key,
-    masterKeyIV: data.master_key_iv,
+    authHashSalt: salts.auth_hash_salt,
+    passwordKeySalt: salts.password_key_salt,
+    wrappedMasterKey: master.wrapped_master_key,
+    masterKeyIV: master.master_key_iv,
   }
 }
 
@@ -68,7 +85,7 @@ export async function fetchFieldKeys(userId: string): Promise<ServerFieldKey[]> 
   const supabase = getSupabase()
   const { data, error } = await supabase
     .from(FIELD_KEYS_TABLE)
-    .select('field_name, version, wrapped_key, key_iv')
+    .select('field_name, version, wrapped_field_key, field_key_iv')
     .eq('user_id', userId)
 
   if (error) throw wrapApiError(error)
@@ -79,8 +96,8 @@ export async function fetchFieldKeys(userId: string): Promise<ServerFieldKey[]> 
   return data.map((row) => ({
     fieldName: row.field_name,
     version: row.version,
-    wrappedKey: row.wrapped_key,
-    keyIV: row.key_iv,
+    wrappedFieldKey: row.wrapped_field_key,
+    fieldKeyIV: row.field_key_iv,
   }))
 }
 
@@ -106,8 +123,8 @@ export async function saveWrappedKey(userId: string, data: SaveWrappedKeyData): 
       user_id: userId,
       field_name: data.fieldName,
       version: data.version,
-      wrapped_key: data.wrappedKey,
-      key_iv: data.keyIV,
+      wrapped_field_key: data.wrappedFieldKey,
+      field_key_iv: data.fieldKeyIV,
     },
     { onConflict: 'user_id,field_name,version' },
   )
@@ -116,20 +133,31 @@ export async function saveWrappedKey(userId: string, data: SaveWrappedKeyData): 
 }
 
 /**
- * Update the user's key envelope (auth_salt, key_salt, wrapped_master_key, master_key_iv).
+ * Update the user's key envelope (auth_hash_salt, password_key_salt, wrapped_master_key, master_key_iv).
  * Used after a password change to store the re-wrapped master key.
  */
 export async function updateMasterKeyEnvelope(userId: string, data: UpdateMasterKeyEnvelopeData): Promise<void> {
   const supabase = getSupabase()
-  const { error } = await supabase
-    .from('keys')
+
+  // Update salts in login_salts
+  const { error: saltsError } = await supabase
+    .from(LOGIN_SALTS_TABLE)
     .update({
-      auth_salt: data.authSalt,
-      key_salt: data.keySalt,
+      auth_hash_salt: data.authHashSalt,
+      password_key_salt: data.passwordKeySalt,
+    })
+    .eq('user_id', userId)
+
+  if (saltsError) throw wrapApiError(saltsError)
+
+  // Update master key in master_keys
+  const { error: masterError } = await supabase
+    .from(MASTER_KEYS_TABLE)
+    .update({
       wrapped_master_key: data.wrappedMasterKey,
       master_key_iv: data.masterKeyIV,
     })
     .eq('user_id', userId)
 
-  if (error) throw wrapApiError(error)
+  if (masterError) throw wrapApiError(masterError)
 }
