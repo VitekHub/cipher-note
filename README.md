@@ -121,40 +121,42 @@ Cipher Note uses a layered key hierarchy where each layer protects the one below
                      (never sent to server)
                                │
                    ┌───────────┴───────────┐
-                   │  Split KDF (Argon2id) │
-                   └─────┬──────────┬──────┘
-                         │          │
-                    authSalt    keySalt
-                         │          │
-                         ▼          ▼
-                    authHash    passwordKey
-                         │          │
-        sent to Supabase │          │ kept client-side only
-           as "password" │          │ (never sent to server)
-                         │          │
-                         ▼          │ unwraps
-                   ┌──────────┐     │
-                   │ Supabase │     ▼
-                   │   Auth   │  ┌────────────┐
-                   └──────────┘  │ Master Key │ (random 256 bits)
-                                 └──┬─────┬───┘
-                                    │     │
-                               HKDF │     │ HKDF
-                                    │     │
-                                    ▼     ▼
-                                ┌─────┐ ┌──────────────────┐
-        (never sent to server)  │ KEK │ │ Signing Key Seed │ (never sent to server)
-                                └──┬──┘ └──────────────────┘
-                                   │
-                      AES-GCM wrap │
-                                   ▼
-                         ┌─────────────────┐
-                         │   Field Keys    │
-                         │ (one per field) │
-                         └────────┬────────┘
-                                  │
-                   AES-256-GCM encrypt/decrypt
-                   user field data per entry
+                   │ Split KDF (Argon2id)  │
+                   └───────────┬───────────┘
+                               │
+                 ┌─────────────┴───────────────┐
+                 │                             │
+          HKDF-Expand("auth")      HKDF-Expand("password-key")
+                 │                             │
+                 ▼                             ▼
+            authHash                    passwordKey
+                 │                             │
+sent to Supabase │                             │ kept client-side only
+   as "password" │                             │ (never sent to server)
+                 │                             │
+                 ▼                             │ unwraps
+           ┌──────────┐                        │
+           │ Supabase │                        ▼
+           │   Auth   │                ┌────────────┐
+           └──────────┘                │ Master Key │ (random 256 bits)
+                                       └──┬─────┬───┘
+                                          │     │
+                                     HKDF │     │ HKDF
+                                          │     │
+                                          ▼     ▼
+                                      ┌─────┐ ┌──────────────────┐
+               (never sent to server) │ KEK │ │ Signing Key Seed │ (never sent to server)
+                                      └──┬──┘ └──────────────────┘
+                                         │
+                            AES-GCM wrap │
+                                         ▼
+                               ┌─────────────────┐
+                               │   Field Keys    │
+                               │ (one per field) │
+                               └────────┬────────┘
+                                        │
+                         AES-256-GCM encrypt/decrypt
+                         user field data per entry
 
 
   ┌───────────────────────────────────────────────┐
