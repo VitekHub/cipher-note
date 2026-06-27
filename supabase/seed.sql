@@ -85,19 +85,17 @@ ON CONFLICT (id) DO NOTHING;
 -- ============================================
 -- Login salts for testuser
 -- ============================================
-INSERT INTO public.login_salts (user_id, auth_hash_salt, password_key_salt)
+INSERT INTO public.login_salts (user_id, kdf_salt)
 VALUES (
   'a0eebc99-9c0b-4ef8-bb6d-6bb6513e5e0a',
-  '57f8224006f5ffe8caa77918877811a2',
-  'e5480adac4d241406a29a320896bef26'
+  '57f8224006f5ffe8caa77918877811a2'
 );
 
 -- Login salts for alice
-INSERT INTO public.login_salts (user_id, auth_hash_salt, password_key_salt)
+INSERT INTO public.login_salts (user_id, kdf_salt)
 VALUES (
   'b1eebc99-9c0b-4ef8-bb6d-6bb6513e5e0b',
-  '2209418feadb8df5d56bf11984e9cd1a',
-  '52555a7b430c1ce5d2624e07ef49ae80'
+  '2209418feadb8df5d56bf11984e9cd1a'
 );
 
 -- ============================================

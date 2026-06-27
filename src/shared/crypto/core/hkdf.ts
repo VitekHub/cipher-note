@@ -1,46 +1,38 @@
 /**
- * Derives sub-keys from a master key using HKDF (HMAC-based Key Derivation
- * Function). Each sub-key is uniquely bound to its purpose via the `info`
- * parameter, so the same master key produces different keys for different uses.
- *
- * Typical usage:
- * - `"wrap"` info → KEK (Key Encryption Key) used to wrap/unwrap field keys
- * - `"sign"` info → signing key seed for integrity verification of wrapped keys
+ * HKDF-Expand (SHA-256): derives independent sub-keys from a root secret.
+ * Each info string produces a cryptographically independent key.
  */
 
 import { CRYPTO_KEY_LENGTH } from '@/shared/types/crypto.types'
+
+/** HKDF info strings — single source of truth for all branches in the codebase. */
+const HKDF_INFO = {
+  KEK: 'wrap',
+  SIGN: 'sign',
+  AUTH: 'auth',
+  PASSWORD_KEY: 'password-key',
+} as const
 
 const HKDF_ALGORITHM = { name: 'HKDF', hash: 'SHA-256' }
 
 const encoder = new TextEncoder()
 
-/**
- * Derive a sub-key from a master key using HKDF-SHA-256.
- *
- * Each `info` parameter produces a cryptographically independent sub-key, so
- * the same master key can safely derive both the KEK and the signing key seed
- * with zero overlap.
- *
- * @param masterKey - 32-byte random master key
- * @param info - Purpose string (e.g. `"wrap"` for KEK, `"sign"` for signing key seed)
- * @param length - Output length in bytes (default 32 = 256 bits)
- * @returns Derived sub-key as raw bytes
- */
-export async function deriveSubKey(
-  masterKey: Uint8Array<ArrayBuffer>,
+/** HKDF-Expand: derive an independent sub-key from a PRK using the given info string. */
+export async function hkdfExpand(
+  prk: Uint8Array<ArrayBuffer>,
   info: string,
   length: number = CRYPTO_KEY_LENGTH,
 ): Promise<Uint8Array<ArrayBuffer>> {
-  if (masterKey.length !== CRYPTO_KEY_LENGTH) {
-    throw new Error(`Invalid master key length: expected ${CRYPTO_KEY_LENGTH} bytes, got ${masterKey.length}`)
+  if (prk.length !== CRYPTO_KEY_LENGTH) {
+    throw new Error(`Invalid PRK length: expected ${CRYPTO_KEY_LENGTH} bytes, got ${prk.length}`)
   }
 
-  const baseKey = await crypto.subtle.importKey('raw', masterKey, HKDF_ALGORITHM, false, ['deriveBits'])
+  const baseKey = await crypto.subtle.importKey('raw', prk, HKDF_ALGORITHM, false, ['deriveBits'])
 
   const derivedBits = await crypto.subtle.deriveBits(
     {
       ...HKDF_ALGORITHM,
-      // empty salt: master key is already a cryptographically random 256-bit value
+      // empty salt: PRK is already a cryptographically random 256-bit value
       salt: new Uint8Array(0),
       info: encoder.encode(info),
     },
@@ -51,17 +43,22 @@ export async function deriveSubKey(
   return new Uint8Array(derivedBits)
 }
 
-/**
- * Derive the Key Encryption Key (KEK) from a master key.
- * The KEK is used to wrap and unwrap field keys.
- */
+/** Derive the Key Encryption Key (KEK) from a master key. */
 export async function deriveKEK(masterKey: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
-  return deriveSubKey(masterKey, 'wrap')
+  return hkdfExpand(masterKey, HKDF_INFO.KEK)
 }
 
-/**
- * Derive the signing key seed from a master key.
- */
+/** Derive the signing key seed from a master key. */
 export async function deriveSigningKeySeed(masterKey: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
-  return deriveSubKey(masterKey, 'sign')
+  return hkdfExpand(masterKey, HKDF_INFO.SIGN)
+}
+
+/** Derive the auth hash from a Split KDF master secret. */
+export async function deriveAuthHash(masterSecret: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
+  return hkdfExpand(masterSecret, HKDF_INFO.AUTH)
+}
+
+/** Derive the password key from a Split KDF master secret. */
+export async function derivePasswordKey(masterSecret: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
+  return hkdfExpand(masterSecret, HKDF_INFO.PASSWORD_KEY)
 }

@@ -53,14 +53,12 @@ export const DEFAULT_ARGON2_PARAMS: Argon2Params = {
 export interface AuthCredentials {
   authHash: string
   passwordKey: Uint8Array<ArrayBuffer>
-  authHashSalt: Uint8Array<ArrayBuffer>
-  passwordKeySalt: Uint8Array<ArrayBuffer>
+  kdfSalt: Uint8Array<ArrayBuffer>
 }
 
 export interface PasswordChangeResult {
   newAuthHash: string
-  newAuthHashSalt: Uint8Array<ArrayBuffer>
-  newPasswordKeySalt: Uint8Array<ArrayBuffer>
+  newKdfSalt: Uint8Array<ArrayBuffer>
   newWrappedMasterKey: Uint8Array<ArrayBuffer>
   newMasterKeyIV: Uint8Array<ArrayBuffer>
 }
@@ -78,8 +76,7 @@ export interface RegistrationResult {
     fieldKeys: Map<string, CryptoKey>
   }
   keyEnvelope: {
-    authHashSalt: Uint8Array<ArrayBuffer>
-    passwordKeySalt: Uint8Array<ArrayBuffer>
+    kdfSalt: Uint8Array<ArrayBuffer>
     wrappedMasterKey: Uint8Array<ArrayBuffer>
     masterKeyIV: Uint8Array<ArrayBuffer>
   }

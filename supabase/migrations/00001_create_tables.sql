@@ -23,8 +23,7 @@ CREATE UNIQUE INDEX idx_users_username ON public.users (LOWER(username));
 -- ============================================
 CREATE TABLE public.login_salts (
   user_id UUID PRIMARY KEY REFERENCES public.users(id) ON DELETE CASCADE,
-  auth_hash_salt TEXT NOT NULL CHECK (length(auth_hash_salt) = 32),
-  password_key_salt TEXT NOT NULL CHECK (length(password_key_salt) = 32),
+  kdf_salt TEXT NOT NULL CHECK (length(kdf_salt) = 32),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

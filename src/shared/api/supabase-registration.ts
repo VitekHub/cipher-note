@@ -16,8 +16,7 @@ export async function uploadRegistrationData(data: RegistrationResult, userId: s
   // 1. Insert login salts
   const { error: saltsError } = await supabase.from(LOGIN_SALTS_TABLE).insert({
     user_id: userId,
-    auth_hash_salt: hexEncode(data.keyEnvelope.authHashSalt),
-    password_key_salt: hexEncode(data.keyEnvelope.passwordKeySalt),
+    kdf_salt: hexEncode(data.keyEnvelope.kdfSalt),
   })
   if (saltsError) throw wrapApiError(saltsError)
 

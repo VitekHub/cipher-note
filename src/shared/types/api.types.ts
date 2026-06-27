@@ -1,8 +1,7 @@
 import type { FieldName } from '@/shared/types/entities/field.types'
 
 export interface ServerMasterKeyEnvelope {
-  authHashSalt: string
-  passwordKeySalt: string
+  kdfSalt: string
   wrappedMasterKey: string
   masterKeyIV: string
 }
@@ -53,8 +52,7 @@ export interface SaveRecoveryData {
 }
 
 export interface UpdateMasterKeyEnvelopeData {
-  authHashSalt: string
-  passwordKeySalt: string
+  kdfSalt: string
   wrappedMasterKey: string
   masterKeyIV: string
 }

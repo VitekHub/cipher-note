@@ -2,17 +2,17 @@
 -- Cipher Note: Login Salts RPC
 -- ============================================
 -- Provides a SECURITY DEFINER function that lets
--- unauthenticated users fetch their auth_hash_salt and
--- password_key_salt by username. These salts are not secrets --
--- they are comparable to password salts in traditional
--- auth systems and must be accessible before login to
--- derive the authHash for Supabase Auth.
+-- unauthenticated users fetch their kdf_salt by
+-- username. The salt is not a secret — it is
+-- comparable to a password salt in traditional
+-- auth systems and must be accessible before login
+-- to derive the authHash for Supabase Auth.
 --
 -- Rate limited using the existing private.rate_limits
 -- infrastructure (5 requests per 2 minutes per IP).
 
 CREATE OR REPLACE FUNCTION public.get_login_salts(p_username TEXT)
-RETURNS TABLE(auth_hash_salt TEXT, password_key_salt TEXT)
+RETURNS TABLE(kdf_salt TEXT)
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, extensions
@@ -38,7 +38,7 @@ BEGIN
   PERFORM private.check_rate_limit(rate_key, 5, 120);
 
   RETURN QUERY
-    SELECT ls.auth_hash_salt, ls.password_key_salt
+    SELECT ls.kdf_salt
     FROM public.login_salts ls
     JOIN public.users u ON ls.user_id = u.id
     WHERE LOWER(u.username) = LOWER(p_username);
