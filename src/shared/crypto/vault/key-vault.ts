@@ -5,6 +5,7 @@ import { importKey } from '@/shared/crypto/core/aes-gcm'
 import { unwrapFieldKeys } from '@/shared/crypto/keys/field-keys'
 import { deriveKEK } from '@/shared/crypto/core/hkdf'
 import { unwrapMasterKeyWithPassword } from '@/shared/crypto/keys/master-key'
+import { derivePasswordKey } from '@/shared/crypto/keys/split-kdf'
 import { DecryptionError } from '@/shared/crypto/core/errors'
 import type { CachedVaultEnvelope } from '@/shared/types/api.types'
 
@@ -91,7 +92,17 @@ class KeyVault {
   }
 
   /**
-   * Unlock the vault by populating the KeyVault with non-extractable CryptoKey objects.
+   * Fetch fresh key material from the server, cache it, and populate the vault.
+   * Use when there is no cached envelope available.
+   */
+  async initVault(userId: string, passwordKey: Uint8Array<ArrayBuffer>): Promise<void> {
+    const freshEnvelope = await fetchFreshEnvelope(userId)
+    useCryptoStore.getState().setCachedEnvelope(freshEnvelope)
+    await this.populateKeyVault(passwordKey, freshEnvelope)
+  }
+
+  /**
+   * Unlock the vault by deriving a password key and populating the KeyVault.
    *
    * Uses the cached envelope to skip network calls. If decryption fails (e.g., stale
    * cache from a password change in another session), fetches fresh key material from
@@ -102,7 +113,7 @@ class KeyVault {
     const cachedEnvelope = useCryptoStore.getState().cachedEnvelope
     if (cachedEnvelope) {
       try {
-        await this.populateKeyVault(password, cachedEnvelope)
+        await this.unlockWithEnvelope(password, cachedEnvelope)
       } catch (error) {
         if (error instanceof DecryptionError) {
           // Cached envelope may be stale (password changed in another session).
@@ -118,24 +129,34 @@ class KeyVault {
     if (!cachedEnvelope || staleCache) {
       const freshEnvelope = await fetchFreshEnvelope(userId)
       useCryptoStore.getState().setCachedEnvelope(freshEnvelope)
-      await this.populateKeyVault(password, freshEnvelope)
+      await this.unlockWithEnvelope(password, freshEnvelope)
+    }
+  }
+
+  /** Derive password key from envelope salt, populate vault, zeroize key. */
+  private async unlockWithEnvelope(password: string, envelope: CachedVaultEnvelope): Promise<void> {
+    const passwordKey = await derivePasswordKey(password, envelope.kdfSalt)
+    try {
+      await this.populateKeyVault(passwordKey, envelope)
+    } finally {
+      zeroFill(passwordKey)
     }
   }
 
   /**
-   * Derives the KEK from a password and a master key envelope, unwraps field keys,
+   * Derives the KEK from a password key and a master key envelope, unwraps field keys,
    * and stores them in the KeyVault as non-extractable CryptoKeys - making the vault operational.
    */
-  private async populateKeyVault(password: string, envelope: CachedVaultEnvelope) {
+  private async populateKeyVault(passwordKey: Uint8Array<ArrayBuffer>, envelope: CachedVaultEnvelope) {
     // Store KEK and field keys in the vault (non-extractable CryptoKeys)
-    const kek = await this.deriveKekFromEnvelope(password, envelope)
+    const kek = await this.deriveKekFromEnvelope(passwordKey, envelope)
     this.storeKey('kek', kek)
     const unwrappedFieldKeys = await unwrapFieldKeys(envelope.fieldKeys, kek)
     this.storeFieldKeys(unwrappedFieldKeys)
   }
 
-  private async deriveKekFromEnvelope(password: string, envelope: CachedVaultEnvelope): Promise<CryptoKey> {
-    const masterKey = await unwrapMasterKeyWithPassword(password, envelope)
+  private async deriveKekFromEnvelope(passwordKey: Uint8Array<ArrayBuffer>, envelope: CachedVaultEnvelope): Promise<CryptoKey> {
+    const masterKey = await unwrapMasterKeyWithPassword(passwordKey, envelope)
     const kekBytes = await deriveKEK(masterKey)
     const kek = await importKey(kekBytes)
     zeroFill(kekBytes)

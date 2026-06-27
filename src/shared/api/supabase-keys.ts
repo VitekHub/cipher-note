@@ -43,24 +43,26 @@ export async function fetchLoginSalts(username: string): Promise<LoginSalts> {
 }
 
 /**
- * Fetch the user's wrapped master key envelope (requires authenticated user).
- * Salts are fetched separately via fetchLoginSalts.
+ * Fetch the user's key envelope (requires authenticated user).
+ * Returns kdf_salt (from login_salts), wrapped master key, and IV (from master_keys).
  */
 export async function fetchMasterKeyEnvelope(userId: string): Promise<ServerMasterKeyEnvelope> {
   const supabase = getSupabase()
 
-  const { data: master, error: masterError } = await supabase
-    .from(MASTER_KEYS_TABLE)
-    .select('wrapped_master_key, master_key_iv')
-    .eq('user_id', userId)
-    .single()
+  const [saltsResult, masterResult] = await Promise.all([
+    supabase.from(LOGIN_SALTS_TABLE).select('kdf_salt').eq('user_id', userId).single(),
+    supabase.from(MASTER_KEYS_TABLE).select('wrapped_master_key, master_key_iv').eq('user_id', userId).single(),
+  ])
 
-  if (masterError) throw wrapApiError(masterError)
-  if (!master) throw new ApiError(ApiErrorCode.NOT_FOUND)
+  if (saltsResult.error) throw wrapApiError(saltsResult.error)
+  if (!saltsResult.data) throw new ApiError(ApiErrorCode.NOT_FOUND)
+  if (masterResult.error) throw wrapApiError(masterResult.error)
+  if (!masterResult.data) throw new ApiError(ApiErrorCode.NOT_FOUND)
 
   return {
-    wrappedMasterKey: master.wrapped_master_key,
-    masterKeyIV: master.master_key_iv,
+    kdfSalt: saltsResult.data.kdf_salt,
+    wrappedMasterKey: masterResult.data.wrapped_master_key,
+    masterKeyIV: masterResult.data.master_key_iv,
   }
 }
 

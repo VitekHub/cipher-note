@@ -1,6 +1,6 @@
 import { derivePasswordKey, deriveAuthCredentials } from '@/shared/crypto/keys/split-kdf'
 import { importKey, encrypt, decrypt } from '@/shared/crypto/core/aes-gcm'
-import { hexDecode, generateIV, generateKey, zeroFill } from '@/shared/crypto/core/crypto-utils'
+import { hexDecode, generateIV, generateKey, generateSalt, zeroFill } from '@/shared/crypto/core/crypto-utils'
 import { MASTER_KEY_PASSWORD_AAD } from '@/shared/types/crypto.types'
 import type { PasswordChangeResult } from '@/shared/types/crypto.types'
 import type { ServerMasterKeyEnvelope } from '@/shared/types/api.types'
@@ -12,20 +12,17 @@ export function generateMasterKey(): Uint8Array<ArrayBuffer> {
 
 /**
  * Unwrap the master key from its password-protected envelope.
- * Zeroes the password key after import; caller must zeroFill the returned master key.
- * @throws DecryptionError if the password is wrong or data is corrupted
+ * Caller must zeroFill the passwordKey after use and zeroFill the returned master key.
+ * @throws DecryptionError if the passwordKey is wrong or data is corrupted
  */
 export async function unwrapMasterKeyWithPassword(
-  password: string,
+  passwordKey: Uint8Array<ArrayBuffer>,
   envelope: ServerMasterKeyEnvelope,
 ): Promise<Uint8Array<ArrayBuffer>> {
-  const passwordKeySalt = hexDecode(envelope.passwordKeySalt)
   const wrappedMasterKey = hexDecode(envelope.wrappedMasterKey)
   const masterKeyIV = hexDecode(envelope.masterKeyIV)
 
-  const passwordKey = await derivePasswordKey(password, passwordKeySalt)
   const cryptoPasswordKey = await importKey(passwordKey)
-  zeroFill(passwordKey)
 
   return decrypt(wrappedMasterKey, cryptoPasswordKey, {
     iv: masterKeyIV,
@@ -35,14 +32,13 @@ export async function unwrapMasterKeyWithPassword(
 
 /**
  * Wrap the master key with a password-derived key for server storage.
- * Zeroes the raw password key after import; caller must zeroFill the master key.
+ * Caller must zeroFill both the passwordKey and the master key after use.
  */
 export async function wrapMasterKeyWithPassword(
   masterKey: Uint8Array<ArrayBuffer>,
   passwordKey: Uint8Array<ArrayBuffer>,
 ): Promise<{ wrappedMasterKey: Uint8Array<ArrayBuffer>; masterKeyIV: Uint8Array<ArrayBuffer> }> {
   const cryptoPasswordKey = await importKey(passwordKey)
-  zeroFill(passwordKey)
 
   const masterKeyIV = generateIV()
   const wrappedMasterKey = await encrypt(masterKey, cryptoPasswordKey, {
@@ -68,23 +64,29 @@ export async function rewrapMasterKey(
   newPassword: string,
   envelope: ServerMasterKeyEnvelope,
 ): Promise<PasswordChangeResult> {
-  const masterKey = await unwrapMasterKeyWithPassword(oldPassword, envelope)
+  const oldPasswordKey = await derivePasswordKey(oldPassword, envelope.kdfSalt)
+  try {
+    const masterKey = await unwrapMasterKeyWithPassword(oldPasswordKey, envelope)
 
-  // Generate new salts and derive new credentials
-  const newCredentials = await deriveAuthCredentials(newPassword)
+    // Generate new salt and derive new credentials
+    const newKdfSalt = generateSalt()
+    const newCredentials = await deriveAuthCredentials(newPassword, newKdfSalt)
 
-  // Re-wrap master key with new password key
-  const { wrappedMasterKey: newWrappedMasterKey, masterKeyIV: newMasterKeyIV } = await wrapMasterKeyWithPassword(
-    masterKey,
-    newCredentials.passwordKey,
-  )
-  zeroFill(masterKey)
+    // Re-wrap master key with new password key
+    const { wrappedMasterKey: newWrappedMasterKey, masterKeyIV: newMasterKeyIV } = await wrapMasterKeyWithPassword(
+      masterKey,
+      newCredentials.passwordKey,
+    )
+    zeroFill(masterKey)
+    zeroFill(newCredentials.passwordKey)
 
-  return {
-    newAuthHash: newCredentials.authHash,
-    newAuthHashSalt: newCredentials.authHashSalt,
-    newPasswordKeySalt: newCredentials.passwordKeySalt,
-    newWrappedMasterKey,
-    newMasterKeyIV,
+    return {
+      newAuthHash: newCredentials.authHash,
+      newKdfSalt,
+      newWrappedMasterKey,
+      newMasterKeyIV,
+    }
+  } finally {
+    zeroFill(oldPasswordKey)
   }
 }

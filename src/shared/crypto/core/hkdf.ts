@@ -6,7 +6,7 @@
 import { CRYPTO_KEY_LENGTH } from '@/shared/types/crypto.types'
 
 /** HKDF info strings — single source of truth for all branches in the codebase. */
-const HKDF_INFO = {
+export const HKDF_INFO = {
   KEK: 'wrap',
   SIGN: 'sign',
   AUTH: 'auth',
@@ -53,12 +53,3 @@ export async function deriveSigningKeySeed(masterKey: Uint8Array<ArrayBuffer>): 
   return hkdfExpand(masterKey, HKDF_INFO.SIGN)
 }
 
-/** Derive the auth hash from a Split KDF master secret. */
-export async function deriveAuthHash(masterSecret: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
-  return hkdfExpand(masterSecret, HKDF_INFO.AUTH)
-}
-
-/** Derive the password key from a Split KDF master secret. */
-export async function derivePasswordKey(masterSecret: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
-  return hkdfExpand(masterSecret, HKDF_INFO.PASSWORD_KEY)
-}

@@ -1,4 +1,4 @@
-import { zeroFill } from '@/shared/crypto/core/crypto-utils'
+import { zeroFill, generateSalt } from '@/shared/crypto/core/crypto-utils'
 import { createRecoveryData } from '@/shared/crypto/keys/mnemonic'
 import { generateAndWrapFieldKeys } from '@/shared/crypto/keys/field-keys'
 import { deriveAuthCredentials } from '@/shared/crypto/keys/split-kdf'
@@ -14,7 +14,8 @@ import type { RegistrationResult } from '@/shared/types/crypto.types'
  * The caller (auth-flow.ts) needs to handle Supabase Auth signup and data upload.
  */
 export async function deriveRegistrationKeys(password: string): Promise<RegistrationResult> {
-  const { authHash, passwordKey, authHashSalt, passwordKeySalt } = await deriveAuthCredentials(password)
+  const kdfSalt = generateSalt()
+  const { authHash, passwordKey } = await deriveAuthCredentials(password, kdfSalt)
   const masterKey = generateMasterKey()
 
   try {
@@ -24,6 +25,7 @@ export async function deriveRegistrationKeys(password: string): Promise<Registra
       wrapMasterKeyWithPassword(masterKey, passwordKey),
       createRecoveryData(masterKey),
     ])
+    zeroFill(passwordKey)
 
     const kek = await importKey(kekBytes)
     zeroFill(kekBytes)
@@ -32,7 +34,7 @@ export async function deriveRegistrationKeys(password: string): Promise<Registra
     return {
       authHash,
       vault: { kek, fieldKeys: cryptoFieldKeys },
-      keyEnvelope: { authHashSalt, passwordKeySalt, wrappedMasterKey, masterKeyIV },
+      keyEnvelope: { kdfSalt, wrappedMasterKey, masterKeyIV },
       wrappedFieldKeys,
       recovery: { ...recoveryData, mnemonic },
     }
