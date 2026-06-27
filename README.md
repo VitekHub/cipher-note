@@ -126,7 +126,7 @@ Cipher Note uses a layered key hierarchy where each layer protects the one below
                                │
                  ┌─────────────┴───────────────┐
                  │                             │
-          HKDF-Expand("auth")      HKDF-Expand("password-key")
+            HKDF │                             │ HKDF
                  │                             │
                  ▼                             ▼
             authHash                    passwordKey
