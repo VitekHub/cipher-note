@@ -17,12 +17,11 @@ import {
 } from '@/shared/types/supabase-schema'
 
 export interface LoginSalts {
-  authHashSalt: string
-  passwordKeySalt: string
+  kdfSalt: string
 }
 
 /**
- * Fetch auth_hash_salt and password_key_salt for a username.
+ * Fetch kdf_salt for a username.
  * Callable before authentication (uses SECURITY DEFINER RPC).
  * Validates username format client-side to avoid wasting rate-limited RPC calls.
  */
@@ -40,41 +39,30 @@ export async function fetchLoginSalts(username: string): Promise<LoginSalts> {
   }
 
   const row = data[0]
-  return { authHashSalt: row.auth_hash_salt, passwordKeySalt: row.password_key_salt }
+  return { kdfSalt: row.kdf_salt }
 }
 
 /**
- * Fetch the user's key material (requires authenticated user).
- * Returns salts, wrapped master key, and IV.
+ * Fetch the user's key envelope (requires authenticated user).
+ * Returns kdf_salt (from login_salts), wrapped master key, and IV (from master_keys).
  */
 export async function fetchMasterKeyEnvelope(userId: string): Promise<ServerMasterKeyEnvelope> {
   const supabase = getSupabase()
 
-  // Fetch salts from login_salts
-  const { data: salts, error: saltsError } = await supabase
-    .from(LOGIN_SALTS_TABLE)
-    .select('auth_hash_salt, password_key_salt')
-    .eq('user_id', userId)
-    .single()
+  const [saltsResult, masterResult] = await Promise.all([
+    supabase.from(LOGIN_SALTS_TABLE).select('kdf_salt').eq('user_id', userId).single(),
+    supabase.from(MASTER_KEYS_TABLE).select('wrapped_master_key, master_key_iv').eq('user_id', userId).single(),
+  ])
 
-  if (saltsError) throw wrapApiError(saltsError)
-  if (!salts) throw new ApiError(ApiErrorCode.NOT_FOUND)
-
-  // Fetch wrapped master key from master_keys
-  const { data: master, error: masterError } = await supabase
-    .from(MASTER_KEYS_TABLE)
-    .select('wrapped_master_key, master_key_iv')
-    .eq('user_id', userId)
-    .single()
-
-  if (masterError) throw wrapApiError(masterError)
-  if (!master) throw new ApiError(ApiErrorCode.NOT_FOUND)
+  if (saltsResult.error) throw wrapApiError(saltsResult.error)
+  if (!saltsResult.data) throw new ApiError(ApiErrorCode.NOT_FOUND)
+  if (masterResult.error) throw wrapApiError(masterResult.error)
+  if (!masterResult.data) throw new ApiError(ApiErrorCode.NOT_FOUND)
 
   return {
-    authHashSalt: salts.auth_hash_salt,
-    passwordKeySalt: salts.password_key_salt,
-    wrappedMasterKey: master.wrapped_master_key,
-    masterKeyIV: master.master_key_iv,
+    kdfSalt: saltsResult.data.kdf_salt,
+    wrappedMasterKey: masterResult.data.wrapped_master_key,
+    masterKeyIV: masterResult.data.master_key_iv,
   }
 }
 
@@ -133,18 +121,17 @@ export async function saveWrappedKey(userId: string, data: SaveWrappedKeyData): 
 }
 
 /**
- * Update the user's key envelope (auth_hash_salt, password_key_salt, wrapped_master_key, master_key_iv).
+ * Update the user's key envelope (kdf_salt, wrapped_master_key, master_key_iv).
  * Used after a password change to store the re-wrapped master key.
  */
 export async function updateMasterKeyEnvelope(userId: string, data: UpdateMasterKeyEnvelopeData): Promise<void> {
   const supabase = getSupabase()
 
-  // Update salts in login_salts
+  // Update salt in login_salts
   const { error: saltsError } = await supabase
     .from(LOGIN_SALTS_TABLE)
     .update({
-      auth_hash_salt: data.authHashSalt,
-      password_key_salt: data.passwordKeySalt,
+      kdf_salt: data.kdfSalt,
     })
     .eq('user_id', userId)
 

@@ -4,6 +4,7 @@ import { fetchFreshEnvelope } from '@/shared/api/supabase-keys'
 import { saveRecoveryData } from '@/shared/api/supabase-recovery'
 import { createRecoveryData } from '@/shared/crypto/keys/mnemonic'
 import { unwrapMasterKeyWithPassword } from '@/shared/crypto/keys/master-key'
+import { derivePasswordKey } from '@/shared/crypto/keys/split-kdf'
 import { hexEncode, zeroFill } from '@/shared/crypto/core/crypto-utils'
 
 /**
@@ -23,19 +24,24 @@ export async function regenerateMnemonic(password: string): Promise<string> {
     useCryptoStore.getState().setCachedEnvelope(envelope)
   }
 
-  const masterKey = await unwrapMasterKeyWithPassword(password, envelope)
-
+  const passwordKey = await derivePasswordKey(password, envelope.kdfSalt)
   try {
-    const { mnemonic, recoveryData } = await createRecoveryData(masterKey)
+    const masterKey = await unwrapMasterKeyWithPassword(passwordKey, envelope)
 
-    await saveRecoveryData(user.id, {
-      recoveryKeySalt: hexEncode(recoveryData.recoveryKeySalt),
-      recoveryWrappedMasterKey: hexEncode(recoveryData.recoveryWrappedMasterKey),
-      recoveryKeyIV: hexEncode(recoveryData.recoveryKeyIV),
-    })
+    try {
+      const { mnemonic, recoveryData } = await createRecoveryData(masterKey)
 
-    return mnemonic
+      await saveRecoveryData(user.id, {
+        recoveryKeySalt: hexEncode(recoveryData.recoveryKeySalt),
+        recoveryWrappedMasterKey: hexEncode(recoveryData.recoveryWrappedMasterKey),
+        recoveryKeyIV: hexEncode(recoveryData.recoveryKeyIV),
+      })
+
+      return mnemonic
+    } finally {
+      zeroFill(masterKey)
+    }
   } finally {
-    zeroFill(masterKey)
+    zeroFill(passwordKey)
   }
 }

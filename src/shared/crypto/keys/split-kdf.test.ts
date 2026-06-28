@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { deriveAuthCredentials, deriveAuthHash, derivePasswordKey } from '@/shared/crypto/keys/split-kdf'
+import { deriveAuthCredentials, derivePasswordKey } from '@/shared/crypto/keys/split-kdf'
+import { HKDF_INFO } from '@/shared/crypto/core/hkdf'
 import type { AuthCredentials } from '@/shared/types/crypto.types'
 
 // Mock argon2id module to avoid WASM/worker dependency in tests
@@ -7,14 +8,32 @@ vi.mock('@/shared/crypto/core/argon2id', () => ({
   deriveKey: vi.fn(),
 }))
 
-import { deriveKey } from '@/shared/crypto/core/argon2id'
+// Mock hkdfExpand to control HKDF branch outputs
+vi.mock('@/shared/crypto/core/hkdf', async () => ({
+  ...(await vi.importActual('@/shared/crypto/core/hkdf')),
+  hkdfExpand: vi.fn(),
+}))
 
-// Mock crypto-utils module — allow generateSalt to be controlled per-test
+// Mock crypto-utils — zeroFill must be tracked
 vi.mock('@/shared/crypto/core/crypto-utils', async () => ({
   ...(await vi.importActual('@/shared/crypto/core/crypto-utils')),
-  generateSalt: vi.fn(),
+  zeroFill: vi.fn(),
+  hexDecode: (hex: string) => {
+    const bytes = new Uint8Array(hex.length / 2)
+    for (let i = 0; i < hex.length; i += 2) {
+      bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16)
+    }
+    return bytes as Uint8Array<ArrayBuffer>
+  },
+  hexEncode: (bytes: Uint8Array<ArrayBuffer>) =>
+    Array.from(bytes)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join(''),
 }))
-import { generateSalt } from '@/shared/crypto/core/crypto-utils'
+
+import { deriveKey } from '@/shared/crypto/core/argon2id'
+import { hkdfExpand } from '@/shared/crypto/core/hkdf'
+import { zeroFill, hexDecode } from '@/shared/crypto/core/crypto-utils'
 
 function mockBytes(length: number, fill: number): Uint8Array<ArrayBuffer> {
   return new Uint8Array(length).fill(fill) as Uint8Array<ArrayBuffer>
@@ -25,70 +44,96 @@ describe('split-kdf', () => {
     vi.clearAllMocks()
   })
 
-  describe('deriveAuthHash', () => {
-    it('returns 64-character hex string from derived key', async () => {
-      vi.mocked(deriveKey).mockResolvedValue(mockBytes(32, 0xab))
+  describe('deriveAuthCredentials', () => {
+    it('derives authHash and passwordKey from a single Argon2id call + HKDF branching', async () => {
+      const kdfSalt = mockBytes(16, 0x01)
+      const masterSecret = mockBytes(32, 0xab)
+      const authHashBytes = mockBytes(32, 0xcd)
+      const passwordKeyBytes = mockBytes(32, 0xef)
 
-      const result = await deriveAuthHash('test-password', mockBytes(16, 0x01))
+      vi.mocked(deriveKey).mockResolvedValue(masterSecret)
+      vi.mocked(hkdfExpand)
+        .mockResolvedValueOnce(authHashBytes) // HKDF_INFO.AUTH
+        .mockResolvedValueOnce(passwordKeyBytes) // HKDF_INFO.PASSWORD_KEY
 
-      expect(deriveKey).toHaveBeenCalledWith('test-password', expect.any(Uint8Array))
-      expect(typeof result).toBe('string')
-      expect(result).toHaveLength(64)
-      expect(result).toMatch(/^[0-9a-f]{64}$/)
+      const result = await deriveAuthCredentials('password123', kdfSalt)
+
+      // Single Argon2id call with the provided salt
+      expect(deriveKey).toHaveBeenCalledWith('password123', kdfSalt)
+
+      // HKDF branches called with the master secret
+      expect(hkdfExpand).toHaveBeenCalledWith(masterSecret, HKDF_INFO.AUTH)
+      expect(hkdfExpand).toHaveBeenCalledWith(masterSecret, HKDF_INFO.PASSWORD_KEY)
+
+      // authHash is hex-encoded, passwordKey is raw bytes, kdfSalt is passed through
+      expect(result).toEqual({
+        authHash: Array.from(authHashBytes)
+          .map((b) => b.toString(16).padStart(2, '0'))
+          .join(''),
+        passwordKey: passwordKeyBytes,
+        kdfSalt,
+      })
+    })
+
+    it('returns AuthCredentials with correct types', async () => {
+      const kdfSalt = mockBytes(16, 0x01)
+      vi.mocked(deriveKey).mockResolvedValue(mockBytes(32, 0xff))
+      vi.mocked(hkdfExpand)
+        .mockResolvedValueOnce(mockBytes(32, 0xaa)) // AUTH branch
+        .mockResolvedValueOnce(mockBytes(32, 0xbb)) // PASSWORD_KEY branch
+
+      const result: AuthCredentials = await deriveAuthCredentials('test', kdfSalt)
+
+      expect(typeof result.authHash).toBe('string')
+      expect(result.authHash).toHaveLength(64) // 32 bytes = 64 hex chars
+      expect(result.passwordKey).toBeInstanceOf(Uint8Array)
+      expect(result.passwordKey.byteLength).toBe(32)
+      expect(result.kdfSalt).toBe(kdfSalt)
+    })
+
+    it('zero-fills the master secret after branching', async () => {
+      const kdfSalt = mockBytes(16, 0x01)
+      const masterSecret = mockBytes(32, 0xab)
+
+      vi.mocked(deriveKey).mockResolvedValue(masterSecret)
+      vi.mocked(hkdfExpand).mockResolvedValueOnce(mockBytes(32, 0xaa)).mockResolvedValueOnce(mockBytes(32, 0xbb))
+
+      await deriveAuthCredentials('test', kdfSalt)
+
+      expect(zeroFill).toHaveBeenCalledWith(masterSecret)
     })
   })
 
   describe('derivePasswordKey', () => {
-    it('returns Uint8Array from derived key', async () => {
-      const keyBytes = mockBytes(32, 0xcd)
-      vi.mocked(deriveKey).mockResolvedValue(keyBytes)
+    it('derives password key from a single Argon2id call + one HKDF branch', async () => {
+      const kdfSaltHex = '01'.repeat(16) // 32 hex chars = 16 bytes
+      const masterSecret = mockBytes(32, 0xab)
+      const passwordKeyBytes = mockBytes(32, 0xef)
 
-      const result = await derivePasswordKey('test-password', mockBytes(16, 0x02))
+      vi.mocked(deriveKey).mockResolvedValue(masterSecret)
+      vi.mocked(hkdfExpand).mockResolvedValue(passwordKeyBytes)
 
-      expect(deriveKey).toHaveBeenCalledWith('test-password', expect.any(Uint8Array))
-      expect(result).toBeInstanceOf(Uint8Array)
-      expect(result.byteLength).toBe(32)
-    })
-  })
+      const result = await derivePasswordKey('test-password', kdfSaltHex)
 
-  describe('deriveAuthCredentials', () => {
-    it('generates two salts and derives authHash and passwordKey in parallel', async () => {
-      const authHashSalt = mockBytes(16, 0x01)
-      const passwordKeySalt = mockBytes(16, 0x02)
-      vi.mocked(generateSalt).mockReturnValueOnce(authHashSalt).mockReturnValueOnce(passwordKeySalt)
-      // deriveAuthHash calls deriveKey first, then derivePasswordKey calls it second
-      vi.mocked(deriveKey)
-        .mockResolvedValueOnce(mockBytes(32, 0xab)) // for deriveAuthHash → hexEncode
-        .mockResolvedValueOnce(mockBytes(32, 0xcd)) // for derivePasswordKey
+      // Argon2id called with password and hex-decoded salt
+      expect(deriveKey).toHaveBeenCalledWith('test-password', hexDecode(kdfSaltHex))
 
-      const result = await deriveAuthCredentials('password123')
+      // HKDF called with master secret and PASSWORD_KEY info
+      expect(hkdfExpand).toHaveBeenCalledWith(masterSecret, HKDF_INFO.PASSWORD_KEY)
 
-      expect(generateSalt).toHaveBeenCalledTimes(2)
-      expect(deriveKey).toHaveBeenCalledWith('password123', authHashSalt)
-      expect(deriveKey).toHaveBeenCalledWith('password123', passwordKeySalt)
-      expect(result).toEqual({
-        authHash: expect.any(String),
-        passwordKey: mockBytes(32, 0xcd),
-        authHashSalt,
-        passwordKeySalt,
-      })
-      expect(result.authHash).toHaveLength(64)
+      expect(result).toBe(passwordKeyBytes)
     })
 
-    it('returns AuthCredentials with correct types', async () => {
-      vi.mocked(generateSalt).mockReturnValue(mockBytes(16, 0x01))
-      vi.mocked(deriveKey).mockResolvedValue(mockBytes(32, 0xff))
+    it('zero-fills the master secret after derivation', async () => {
+      const kdfSaltHex = '01'.repeat(16)
+      const masterSecret = mockBytes(32, 0xab)
 
-      const result: AuthCredentials = await deriveAuthCredentials('test')
+      vi.mocked(deriveKey).mockResolvedValue(masterSecret)
+      vi.mocked(hkdfExpand).mockResolvedValue(mockBytes(32, 0xef))
 
-      expect(typeof result.authHash).toBe('string')
-      expect(result.authHash).toHaveLength(64)
-      expect(result.passwordKey).toBeInstanceOf(Uint8Array)
-      expect(result.passwordKey.byteLength).toBe(32)
-      expect(result.authHashSalt).toBeInstanceOf(Uint8Array)
-      expect(result.authHashSalt.byteLength).toBe(16)
-      expect(result.passwordKeySalt).toBeInstanceOf(Uint8Array)
-      expect(result.passwordKeySalt.byteLength).toBe(16)
+      await derivePasswordKey('test-password', kdfSaltHex)
+
+      expect(zeroFill).toHaveBeenCalledWith(masterSecret)
     })
   })
 })

@@ -148,7 +148,7 @@ Backend abstracted behind interfaces: `IAuthAdapter`, `IRealtimeAdapter`. There 
 | `pnpm supabase:status` | Show Supabase URLs + keys |
 | `pnpm supabase:reset` | Reset DB with migrations + seed |
 
-**Run a single test:** `pnpm test:run -- src/features/auth/model/auth-store.test.ts`
+**Run a single test:** `pnpm test:run src/features/auth/model/auth-store.test.ts`
 
 **Setup:** `pnpm install` → `pnpm supabase:start` → copy `.env.local.example` to `.env.local` → fill `VITE_SUPABASE_ANON_KEY` from `pnpm supabase:status` → `pnpm dev`
 
@@ -204,7 +204,7 @@ Non-obvious decisions not visible from code alone:
 - **Multi-entry architecture**: Each user can have multiple entries. An entry is a group of four encrypted fields (title, note, website, email). The `entries` table stores entry metadata; `encrypted_fields` references `entry_id`. Entry CRUD is in `entry-service.ts` + `use-entry.ts` hooks. The sidebar shows the entry list; the dashboard route `/dashboard` shows `EmptyState` (if no entries) or `DashboardWelcome`, while `/dashboard/$entryId` shows the entry detail.
 - **`useField` and `useSaveField` are entry-aware**: Query keys include `entryId` via the centralized `queryKeys` factory (`src/shared/lib/query-keys.ts`). On entry deletion, `useDeleteEntry` removes field queries for that entry from the cache.
 - **Master key wrapping uses AAD constants**: All key wrapping is done directly with `encrypt`/`decrypt` from `aes-gcm.ts` using `{iv, aad}` options. `rewrapMasterKey` in `master-key.ts` uses `MASTER_KEY_PASSWORD_AAD`, recovery wrapping in `mnemonic.ts` uses `MASTER_KEY_RECOVERY_AAD`, field key wrapping uses `encodeAAD(fieldName, version)` from `crypto-utils.ts`.
-- **HKDF uses `deriveBits`, not `deriveKey`**: `deriveSubKey` in `hkdf.ts` returns raw `Uint8Array` bytes because the KEK bytes need to be imported as an AES-GCM CryptoKey via `importKey()` separately in `deriveFullKeyHierarchy`. HKDF uses empty salt since the master key is already random.
+- **HKDF uses `deriveBits`, not `deriveKey`**: `hkdfExpand` in `hkdf.ts` returns raw `Uint8Array` bytes because the KEK bytes need to be imported as an AES-GCM CryptoKey via `importKey()` separately. `deriveKEK` and `deriveSigningKeySeed` are convenience wrappers. HKDF uses empty salt since the PRK is already random.
 - **BIP-39 mnemonic functions are async**: `generateMnemonic`, `validateMnemonic`, `mnemonicToSeed` in `mnemonic.ts` must be `async` despite the underlying `@scure/bip39` functions being synchronous, because the lazy-loading pattern (`await loadBip39()`) requires it. Same as how `argon2id.ts` wraps sync Argon2 in async.
 - **`deriveRecoveryKEK` uses mnemonic string directly**: In `mnemonic.ts`, the mnemonic phrase is passed as the Argon2id "password" parameter, not the BIP-39 binary seed. The human-readable phrase is the input because it is what the user supplies and remembers; the binary seed is an internal derivation artifact. `mnemonicToSeed` is a utility function not used in the recovery KEK path.
 - **Crypto integration tests mock `deriveKey` re-consumption**: In `crypto-integration.test.ts` (in `shared/crypto/`), `unwrapMasterKeyWithRecovery` requires a fresh `deriveKey` mock even after `wrapMasterKeyWithRecovery` consumed one during setup. The `setupRegistration` helper uses `mockResolvedValueOnce` which is consumed, so the test must re-mock before calling unwrap.

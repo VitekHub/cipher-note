@@ -4,8 +4,8 @@ import { useCryptoStore } from '@/shared/crypto/vault/crypto-store'
 import { authAdapter } from '@/shared/auth/supabase-adapter'
 import { uploadRegistrationData } from '@/shared/api/supabase-registration'
 import { fetchLoginSalts, updateMasterKeyEnvelope, fetchFreshEnvelope } from '@/shared/api/supabase-keys'
-import { hexDecode, hexEncode } from '@/shared/crypto/core/crypto-utils'
-import { deriveAuthHash } from '@/shared/crypto/keys/split-kdf'
+import { hexDecode, hexEncode, zeroFill } from '@/shared/crypto/core/crypto-utils'
+import { deriveAuthCredentials } from '@/shared/crypto/keys/split-kdf'
 import { rewrapMasterKey } from '@/shared/crypto/keys/master-key'
 import { terminateWorker } from '@/shared/crypto/core/argon2id'
 import { keyVault } from '@/shared/crypto/vault/key-vault'
@@ -44,8 +44,7 @@ export async function signUpUser(username: string, password: string): Promise<st
     keyVault.storeFieldKeys(regResult.vault.fieldKeys)
 
     useCryptoStore.getState().setCachedEnvelope({
-      authHashSalt: hexEncode(regResult.keyEnvelope.authHashSalt),
-      passwordKeySalt: hexEncode(regResult.keyEnvelope.passwordKeySalt),
+      kdfSalt: hexEncode(regResult.keyEnvelope.kdfSalt),
       wrappedMasterKey: hexEncode(regResult.keyEnvelope.wrappedMasterKey),
       masterKeyIV: hexEncode(regResult.keyEnvelope.masterKeyIV),
       fieldKeys: regResult.wrappedFieldKeys.map((fk) => ({
@@ -70,13 +69,14 @@ export async function loginUser(username: string, password: string) {
   authStore.setLoading(true)
 
   try {
-    // Fetch salts (pre-auth) → derive credentials → authenticate
-    const { authHashSalt } = await fetchLoginSalts(username)
-    const authHash = await deriveAuthHash(password, hexDecode(authHashSalt))
+    // Fetch salt (pre-auth) → derive credentials → authenticate
+    const { kdfSalt } = await fetchLoginSalts(username)
+    const { authHash, passwordKey } = await deriveAuthCredentials(password, hexDecode(kdfSalt))
     const authResult = await authAdapter.login(username, authHash)
 
     // Fetch wrapped keys (post-auth) → derive KEK → unwrap and store field keys
-    await keyVault.unlockVault(authResult.user.id, password)
+    await keyVault.initVault(authResult.user.id, passwordKey)
+    zeroFill(passwordKey)
 
     authStore.setAuth(authResult.user, authResult.session)
   } finally {
@@ -111,8 +111,7 @@ export async function changeUserPassword(currentPassword: string, newPassword: s
 
   // Step 2: Upload new key envelope to DB
   const updateData = {
-    authHashSalt: hexEncode(result.newAuthHashSalt),
-    passwordKeySalt: hexEncode(result.newPasswordKeySalt),
+    kdfSalt: hexEncode(result.newKdfSalt),
     wrappedMasterKey: hexEncode(result.newWrappedMasterKey),
     masterKeyIV: hexEncode(result.newMasterKeyIV),
   }
@@ -127,8 +126,7 @@ export async function changeUserPassword(currentPassword: string, newPassword: s
     // Attempt rollback of DB update.
     try {
       await updateMasterKeyEnvelope(user.id, {
-        authHashSalt: envelope.authHashSalt,
-        passwordKeySalt: envelope.passwordKeySalt,
+        kdfSalt: envelope.kdfSalt,
         wrappedMasterKey: envelope.wrappedMasterKey,
         masterKeyIV: envelope.masterKeyIV,
       })
@@ -143,8 +141,7 @@ export async function changeUserPassword(currentPassword: string, newPassword: s
   // Step 4: Update cached envelope with new values
   useCryptoStore.getState().setCachedEnvelope({
     ...envelope,
-    authHashSalt: updateData.authHashSalt,
-    passwordKeySalt: updateData.passwordKeySalt,
+    kdfSalt: updateData.kdfSalt,
     wrappedMasterKey: updateData.wrappedMasterKey,
     masterKeyIV: updateData.masterKeyIV,
   })

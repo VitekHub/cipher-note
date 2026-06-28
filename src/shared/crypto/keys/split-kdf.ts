@@ -1,50 +1,39 @@
 /**
- * Implements Split Key Derivation Function (Split KDF):
- *   - authHash = Argon2id(password, authHashSalt) → hex string for Supabase Auth
- *   - passwordKey = Argon2id(password, passwordKeySalt) → Uint8Array for key wrapping
- *
- * The two salts are independent, so compromising authHash reveals nothing
- * about passwordKey, and the server (which stores authHash) cannot
- * derive passwordKey.
+ * Split KDF: single Argon2id + HKDF-Expand.
+ * Argon2id(password, kdfSalt) → masterSecret, then HKDF branches:
+ *   "auth" → authHash, "password-key" → passwordKey.
+ * Caller provides the salt (generated for registration, fetched from server for login).
  */
 
 import { deriveKey } from '@/shared/crypto/core/argon2id'
-import { generateSalt, hexEncode } from '@/shared/crypto/core/crypto-utils'
+import { hkdfExpand, HKDF_INFO } from '@/shared/crypto/core/hkdf'
+import { hexDecode, hexEncode, zeroFill } from '@/shared/crypto/core/crypto-utils'
 import type { AuthCredentials } from '@/shared/types/crypto.types'
 
-/**
- * Derive an auth hash for Supabase Auth verification.
- * Returns a 64-character hex string suitable for use as a "password" in Supabase Auth.
- */
-export async function deriveAuthHash(password: string, authSalt: Uint8Array<ArrayBuffer>): Promise<string> {
-  const hash = await deriveKey(password, authSalt)
-  return hexEncode(hash)
-}
-
-/**
- * Derive a password key for wrapping the master key.
- * Returns a 32-byte Uint8Array for use in AES-256-GCM key wrapping.
- */
-export async function derivePasswordKey(
+/** Derive authHash and passwordKey from a password and salt using a single Argon2id call. */
+export async function deriveAuthCredentials(
   password: string,
-  keySalt: Uint8Array<ArrayBuffer>,
-): Promise<Uint8Array<ArrayBuffer>> {
-  return deriveKey(password, keySalt)
+  kdfSalt: Uint8Array<ArrayBuffer>,
+): Promise<AuthCredentials> {
+  const masterSecret = await deriveKey(password, kdfSalt)
+  try {
+    const [authHash, passwordKey] = await Promise.all([
+      hkdfExpand(masterSecret, HKDF_INFO.AUTH).then(hexEncode),
+      hkdfExpand(masterSecret, HKDF_INFO.PASSWORD_KEY),
+    ])
+
+    return { authHash, passwordKey, kdfSalt }
+  } finally {
+    zeroFill(masterSecret)
+  }
 }
 
-/**
- * Derive authentication credentials for a new registration.
- *
- * Generates random authHashSalt and passwordKeySalt. The caller must persist both
- * salts on the server so they can be retrieved at login time.
- */
-export async function deriveAuthCredentials(password: string): Promise<AuthCredentials> {
-  const authHashSalt = generateSalt()
-  const passwordKeySalt = generateSalt()
-  const [authHash, passwordKey] = await Promise.all([
-    deriveAuthHash(password, authHashSalt),
-    derivePasswordKey(password, passwordKeySalt),
-  ])
-
-  return { authHash, passwordKey, authHashSalt, passwordKeySalt }
+/** Derive only the passwordKey from a password and salt (single Argon2id + one HKDF branch). */
+export async function derivePasswordKey(password: string, kdfSalt: string): Promise<Uint8Array<ArrayBuffer>> {
+  const masterSecret = await deriveKey(password, hexDecode(kdfSalt))
+  try {
+    return hkdfExpand(masterSecret, HKDF_INFO.PASSWORD_KEY)
+  } finally {
+    zeroFill(masterSecret)
+  }
 }

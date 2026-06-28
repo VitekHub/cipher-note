@@ -25,8 +25,7 @@ vi.mock('@/features/auth/model/registration-crypto', () => ({
       ]),
     },
     keyEnvelope: {
-      authHashSalt: new Uint8Array(16).fill(0x01),
-      passwordKeySalt: new Uint8Array(16).fill(0x02),
+      kdfSalt: new Uint8Array(16).fill(0x01),
       wrappedMasterKey: new Uint8Array(48).fill(0x05),
       masterKeyIV: new Uint8Array(12).fill(0x06),
     },
@@ -48,6 +47,7 @@ vi.mock('@/shared/crypto/vault/key-vault', () => ({
   keyVault: {
     lockVault: vi.fn<() => void>(),
     unlockVault: vi.fn<(userId: string, password: string) => void>(),
+    initVault: vi.fn<(userId: string, passwordKey: Uint8Array<ArrayBuffer>) => void>(),
     storeKey: vi.fn<() => void>(),
     storeFieldKeys: vi.fn<(fieldKeys: Map<string, CryptoKey>) => void>(),
     clearVault: mockClearVault,
@@ -62,8 +62,7 @@ vi.mock('@/shared/api/supabase-registration', () => ({
 // Mock Supabase keys
 const { mockFetchedEnvelope } = vi.hoisted(() => ({
   mockFetchedEnvelope: {
-    authHashSalt: 'f1e2d3c4'.repeat(4),
-    passwordKeySalt: 'b5a6g7h8'.repeat(4),
+    kdfSalt: 'f1e2d3c4'.repeat(4),
     wrappedMasterKey: 'ff'.repeat(48),
     masterKeyIV: 'ee'.repeat(12),
     fieldKeys: [] as import('@/shared/types/api.types').ServerFieldKey[],
@@ -72,8 +71,7 @@ const { mockFetchedEnvelope } = vi.hoisted(() => ({
 
 vi.mock('@/shared/api/supabase-keys', () => ({
   fetchLoginSalts: vi.fn().mockResolvedValue({
-    authHashSalt: '01'.repeat(16),
-    passwordKeySalt: '02'.repeat(16),
+    kdfSalt: '01'.repeat(16),
   }),
   fetchMasterKeyEnvelope: vi.fn(),
   fetchFieldKeys: vi.fn(),
@@ -94,6 +92,14 @@ vi.mock('@/shared/crypto/core/crypto-utils', async () => ({
       .map((b: number) => b.toString(16).padStart(2, '0'))
       .join(''),
   ),
+  hexDecode: vi.fn((hex: string) => {
+    const bytes = new Uint8Array(hex.length / 2)
+    for (let i = 0; i < hex.length; i += 2) {
+      bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16)
+    }
+    return bytes as Uint8Array<ArrayBuffer>
+  }),
+  zeroFill: vi.fn(),
 }))
 
 // Mock auth adapter
@@ -153,7 +159,12 @@ vi.mock('@/shared/crypto/keys/split-kdf', async () => {
   )
   return {
     ...actual,
-    deriveAuthHash: vi.fn().mockResolvedValue('a'.repeat(64)),
+    deriveAuthCredentials: vi.fn().mockResolvedValue({
+      authHash: 'a'.repeat(64),
+      passwordKey: new Uint8Array(32).fill(0x04) as Uint8Array<ArrayBuffer>,
+      kdfSalt: new Uint8Array(16).fill(0x01) as Uint8Array<ArrayBuffer>,
+    }),
+    derivePasswordKey: vi.fn().mockResolvedValue(new Uint8Array(32).fill(0x04) as Uint8Array<ArrayBuffer>),
   }
 })
 
@@ -166,8 +177,7 @@ vi.mock('@/shared/crypto/keys/master-key', async () => {
     ...actual,
     rewrapMasterKey: vi.fn().mockResolvedValue({
       newAuthHash: 'newhash'.padEnd(64, '0'),
-      newAuthHashSalt: new Uint8Array(16).fill(0x11),
-      newPasswordKeySalt: new Uint8Array(16).fill(0x22),
+      newKdfSalt: new Uint8Array(16).fill(0x11),
       newWrappedMasterKey: new Uint8Array(48).fill(0x33),
       newMasterKeyIV: new Uint8Array(12).fill(0x44),
     }),
@@ -192,6 +202,8 @@ import type { AuthResult } from '@/shared/auth/auth.types'
 import { keyVault } from '@/shared/crypto/vault/key-vault'
 import { terminateWorker } from '@/shared/crypto/core/argon2id'
 import { rewrapMasterKey } from '@/shared/crypto/keys/master-key'
+import { deriveAuthCredentials } from '@/shared/crypto/keys/split-kdf'
+import { hexDecode } from '@/shared/crypto/core/crypto-utils'
 
 describe('signUpUser', () => {
   beforeEach(() => {
@@ -226,7 +238,13 @@ describe('signUpUser', () => {
 
   it('caches envelope data after signup', async () => {
     await signUpUser('testuser', 'testpass123')
-    expect(mockSetEnvelope).toHaveBeenCalled()
+    expect(mockSetEnvelope).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kdfSalt: expect.any(String),
+        wrappedMasterKey: expect.any(String),
+        masterKeyIV: expect.any(String),
+      }),
+    )
   })
 
   it('sets auth state on success', async () => {
@@ -268,17 +286,18 @@ describe('loginUser', () => {
     vi.clearAllMocks()
   })
 
-  it('fetches salts and authenticates', async () => {
+  it('fetches salt, derives credentials, and authenticates', async () => {
     await loginUser('testuser', 'testpass123')
 
     expect(fetchLoginSalts).toHaveBeenCalledWith('testuser')
+    expect(deriveAuthCredentials).toHaveBeenCalledWith('testpass123', hexDecode('01'.repeat(16)))
     expect(authAdapter.login).toHaveBeenCalledWith('testuser', 'a'.repeat(64))
   })
 
-  it('populates key vault after authentication', async () => {
+  it('initializes vault with derived passwordKey after authentication', async () => {
     await loginUser('testuser', 'testpass123')
 
-    expect(keyVault.unlockVault).toHaveBeenCalledWith('1', 'testpass123')
+    expect(keyVault.initVault).toHaveBeenCalledWith('1', expect.any(Uint8Array))
   })
 
   it('sets auth state on success', async () => {
@@ -302,7 +321,7 @@ describe('loginUser', () => {
 
     await expect(loginUser('testuser', 'wrongpass')).rejects.toThrow()
 
-    expect(keyVault.unlockVault).not.toHaveBeenCalled()
+    expect(keyVault.initVault).not.toHaveBeenCalled()
     expect(mockSetAuth).not.toHaveBeenCalled()
   })
 
@@ -314,8 +333,8 @@ describe('loginUser', () => {
     expect(mockSetLoading).toHaveBeenCalledWith(false)
   })
 
-  it('does not set auth when populateKeyVault fails after auth succeeds', async () => {
-    vi.mocked(keyVault.unlockVault).mockRejectedValueOnce(new Error('Unlock failed'))
+  it('does not set auth when initVault fails after auth succeeds', async () => {
+    vi.mocked(keyVault.initVault).mockRejectedValueOnce(new Error('Unlock failed'))
 
     await expect(loginUser('testuser', 'testpass123')).rejects.toThrow('Unlock failed')
 
@@ -523,8 +542,7 @@ describe('subscribeToAuthChanges', () => {
 
 describe('changeUserPassword', () => {
   const mockEnvelope = {
-    authHashSalt: 'a1b2c3d4'.repeat(4),
-    passwordKeySalt: 'e5f6g7h8'.repeat(4),
+    kdfSalt: 'a1b2c3d4'.repeat(4),
     wrappedMasterKey: 'aa'.repeat(48),
     masterKeyIV: 'bb'.repeat(12),
     fieldKeys: [],
@@ -532,8 +550,7 @@ describe('changeUserPassword', () => {
 
   const mockChangeResult = {
     newAuthHash: 'newhash'.padEnd(64, '0'),
-    newAuthHashSalt: new Uint8Array(16).fill(0x11) as Uint8Array<ArrayBuffer>,
-    newPasswordKeySalt: new Uint8Array(16).fill(0x22) as Uint8Array<ArrayBuffer>,
+    newKdfSalt: new Uint8Array(16).fill(0x11) as Uint8Array<ArrayBuffer>,
     newWrappedMasterKey: new Uint8Array(48).fill(0x33) as Uint8Array<ArrayBuffer>,
     newMasterKeyIV: new Uint8Array(12).fill(0x44) as Uint8Array<ArrayBuffer>,
   }
@@ -575,8 +592,7 @@ describe('changeUserPassword', () => {
     await changeUserPassword('oldPassword', 'newPassword')
 
     expect(updateMasterKeyEnvelope).toHaveBeenCalledWith('user-1', {
-      authHashSalt: '11111111111111111111111111111111',
-      passwordKeySalt: '22222222222222222222222222222222',
+      kdfSalt: '11111111111111111111111111111111',
       wrappedMasterKey: '33'.repeat(48),
       masterKeyIV: '44'.repeat(12),
     })
@@ -601,8 +617,7 @@ describe('changeUserPassword', () => {
 
     expect(mockSetEnvelope).toHaveBeenCalledWith(
       expect.objectContaining({
-        authHashSalt: '11111111111111111111111111111111',
-        passwordKeySalt: '22222222222222222222222222222222',
+        kdfSalt: '11111111111111111111111111111111',
         wrappedMasterKey: '33'.repeat(48),
         masterKeyIV: '44'.repeat(12),
       }),
@@ -657,8 +672,7 @@ describe('changeUserPassword', () => {
     // First call: upload new data; second call: rollback with old data
     expect(updateMasterKeyEnvelope).toHaveBeenCalledTimes(2)
     expect(updateMasterKeyEnvelope).toHaveBeenNthCalledWith(2, 'user-1', {
-      authHashSalt: mockEnvelope.authHashSalt,
-      passwordKeySalt: mockEnvelope.passwordKeySalt,
+      kdfSalt: mockEnvelope.kdfSalt,
       wrappedMasterKey: mockEnvelope.wrappedMasterKey,
       masterKeyIV: mockEnvelope.masterKeyIV,
     })
