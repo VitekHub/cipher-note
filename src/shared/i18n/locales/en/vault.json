@@ -2,6 +2,7 @@
   "locked": "Vault locked",
   "unlocked": "Vault unlocked",
   "lock": "Lock vault",
+  "locking": "Locking...",
   "unlock": "Unlock vault",
   "vaultUnlockDialog": {
     "title": "Vault Locked",

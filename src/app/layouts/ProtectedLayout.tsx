@@ -17,6 +17,7 @@ import { useResizable } from '@/shared/lib/use-resizable'
 import { useVaultTimeout } from '@/features/vault/model/use-vault-timeout'
 import { logoutUser } from '@/features/auth/model/auth-service'
 import { useRealtimeSync } from '@/features/fields/model/use-realtime-sync'
+import { useNavigationBlocker } from '@/features/fields/model/use-navigation-blocker'
 import { useAuth } from '@/shared/auth/auth-context'
 
 /**
@@ -48,6 +49,7 @@ function AuthenticatedLayout() {
 
   useVaultTimeout()
   useRealtimeSync()
+  useNavigationBlocker()
 
   return (
     <div className="text-foreground bg-background flex h-[calc(100vh-var(--banner-height))]">
@@ -86,7 +88,7 @@ function AuthenticatedLayout() {
         <OfflineBanner />
 
         {/* Main content */}
-        <main className="flex flex-1 flex-col overflow-y-auto p-6 pb-20 md:pb-6">
+        <main className="mb-10 flex flex-1 flex-col overflow-y-auto p-6 pb-20 md:pb-6">
           <Outlet />
         </main>
       </div>
