@@ -34,4 +34,21 @@ describe('NoteField', () => {
     await user.type(textarea, 'Hello')
     expect(onChange).toHaveBeenCalled()
   })
+
+  it('sets a minimum height on the textarea', async () => {
+    const onChange = vi.fn()
+    render(<NoteField value="" onChange={onChange} />)
+    const textarea = screen.getByPlaceholderText('Write your note...')
+
+    // Mock scrollHeight to return a small value (below minimum)
+    Object.defineProperty(textarea, 'scrollHeight', { value: 50, configurable: true })
+
+    // Trigger the auto-resize by typing
+    const user = userEvent.setup()
+    await user.type(textarea, 'a')
+
+    // The height should be set (minimum height logic applies)
+    // Note: jsdom cannot measure actual layout, but we verify the height style is set
+    expect(textarea.style.height).not.toBe('')
+  })
 })

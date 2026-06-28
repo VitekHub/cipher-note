@@ -42,10 +42,15 @@ describe('useSaveScheduler', () => {
       }),
     )
 
+    const status = () => useSyncStatusStore.getState().status[ENTRY_ID]?.['note']
+
     // Rapid keystrokes
     act(() => {
       result.current.debounceSave('a')
     })
+    // Status is DIRTY immediately after debounceSave
+    expect(status()).toBe(SYNC_STATUS.DIRTY)
+
     act(() => {
       vi.advanceTimersByTime(300)
     })
@@ -59,6 +64,8 @@ describe('useSaveScheduler', () => {
       result.current.debounceSave('abc')
     })
 
+    // Status remains DIRTY through rapid keystrokes
+    expect(status()).toBe(SYNC_STATUS.DIRTY)
     // Not yet saved
     expect(mockSaveMutate).not.toHaveBeenCalled()
 
@@ -94,12 +101,15 @@ describe('useSaveScheduler', () => {
     act(() => {
       result.current.debounceSave('new content')
     })
-    // Status is still undefined immediately after scheduleSave (not set yet)
+    // Status is DIRTY immediately after debounceSave
+    expect(status()).toBe(SYNC_STATUS.DIRTY)
 
-    // After debounce fires, mockSaveMutate.onSuccess runs → status becomes 'saved'
+    // After debounce fires, mockSaveMutate.onSuccess runs synchronously → SAVING → SAVED
     act(() => {
       vi.advanceTimersByTime(DEBOUNCE_MS)
     })
+    // SAVING is transient here because the mock calls onSuccess immediately,
+    // so we observe SAVED directly
     expect(status()).toBe(SYNC_STATUS.SAVED)
 
     // After SAVED_DISPLAY_MS, auto-transition to idle
@@ -107,6 +117,63 @@ describe('useSaveScheduler', () => {
       vi.advanceTimersByTime(SAVED_DISPLAY_MS)
     })
     expect(status()).toBe(SYNC_STATUS.IDLE)
+  })
+
+  it('sets DIRTY status immediately on debounceSave call', () => {
+    const setStatus = useSyncStatusStore.getState().setStatus
+    const { result } = renderHook(() =>
+      useSaveScheduler({
+        entryId: ENTRY_ID,
+        fieldName: 'note',
+        setSyncStatus: setStatus,
+        saveMutate: mockSaveMutate,
+        isVaultLocked: false,
+      }),
+    )
+
+    const status = () => useSyncStatusStore.getState().status[ENTRY_ID]?.['note']
+
+    // Call debounceSave but don't advance timers
+    act(() => {
+      result.current.debounceSave('abc')
+    })
+
+    // Status should be DIRTY immediately, without waiting for debounce
+    expect(status()).toBe(SYNC_STATUS.DIRTY)
+    // Save should not have been called yet
+    expect(mockSaveMutate).not.toHaveBeenCalled()
+  })
+
+  it('DIRTY transitions to SAVING when debounce fires', () => {
+    // Use a mock that does NOT call onSuccess/error, so we can observe SAVING
+    const pendingMock =
+      vi.fn<(value: string, options?: { onSuccess?: (updatedAt: string) => void; onError?: () => void }) => void>()
+
+    const setStatus = useSyncStatusStore.getState().setStatus
+    const { result } = renderHook(() =>
+      useSaveScheduler({
+        entryId: ENTRY_ID,
+        fieldName: 'note',
+        setSyncStatus: setStatus,
+        saveMutate: pendingMock,
+        isVaultLocked: false,
+      }),
+    )
+
+    const status = () => useSyncStatusStore.getState().status[ENTRY_ID]?.['note']
+
+    act(() => {
+      result.current.debounceSave('test content')
+    })
+
+    // Immediately after debounceSave, status is DIRTY
+    expect(status()).toBe(SYNC_STATUS.DIRTY)
+
+    // After debounce period fires, status transitions to SAVING
+    act(() => {
+      vi.advanceTimersByTime(DEBOUNCE_MS)
+    })
+    expect(status()).toBe(SYNC_STATUS.SAVING)
   })
 
   it('sets sync status to error when save fails', () => {

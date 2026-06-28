@@ -4,9 +4,11 @@ import { render, screen } from '@/test/utils'
 import { useCryptoStore } from '@/shared/crypto/vault/crypto-store'
 import { useVaultDialogStore } from '@/features/vault/model/vault-dialog-store'
 
-const { mockLockVault, mockNavigate } = vi.hoisted(() => ({
+const { mockLockVault, mockNavigate, mockIsSaving, mockSubscribe } = vi.hoisted(() => ({
   mockLockVault: vi.fn(),
   mockNavigate: vi.fn(),
+  mockIsSaving: vi.fn(() => false),
+  mockSubscribe: vi.fn<(callback: () => void) => () => void>().mockImplementation(() => vi.fn()),
 }))
 
 vi.mock('@tanstack/react-router', () => ({
@@ -28,6 +30,18 @@ vi.mock('@/features/fields/model/use-entry', () => ({
 vi.mock('@/features/fields/model/use-field', () => ({
   useField: vi.fn(() => ({ data: undefined })),
 }))
+
+vi.mock('@/features/fields/model/sync-status-store', () => {
+  const storeFn = Object.assign(
+    vi.fn(() => ({ getState: () => ({ resetAll: vi.fn() }) })),
+    { subscribe: mockSubscribe },
+  )
+  return {
+    useSyncStatusStore: storeFn,
+    useFieldSyncStatus: vi.fn(() => 'idle'),
+    isSaving: mockIsSaving,
+  }
+})
 
 import { useEntries } from '@/features/fields/model/use-entry'
 import { useField } from '@/features/fields/model/use-field'
@@ -122,6 +136,38 @@ describe('MobileNav', () => {
     render(<MobileNav />)
     await user.click(screen.getByRole('button', { name: /lock vault/i }))
     expect(mockLockVault).toHaveBeenCalledOnce()
+  })
+
+  it('shows spinner when lock is clicked while saves are in progress', async () => {
+    mockIsSaving.mockReturnValue(true)
+    useCryptoStore.setState({ isVaultLocked: false })
+    const user = userEvent.setup()
+    render(<MobileNav />)
+    await user.click(screen.getByRole('button', { name: /lock vault/i }))
+    expect(screen.getByRole('button', { name: /locking/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /locking/i })).toHaveAttribute('disabled')
+    const spinner = screen.getByRole('button', { name: /locking/i }).querySelector('svg')
+    expect(spinner).toHaveClass('animate-spin')
+    expect(mockLockVault).not.toHaveBeenCalled()
+    mockIsSaving.mockReturnValue(false)
+  })
+
+  it('locks vault when saves complete after deferring', async () => {
+    let saving = true
+    mockIsSaving.mockImplementation(() => saving)
+    useCryptoStore.setState({ isVaultLocked: false })
+    const user = userEvent.setup()
+    render(<MobileNav />)
+    await user.click(screen.getByRole('button', { name: /lock vault/i }))
+    expect(mockLockVault).not.toHaveBeenCalled()
+    // Simulate saves completing
+    saving = false
+    // Trigger the subscription callback registered by VaultLockButton
+    const subscriptionCallback = mockSubscribe.mock.calls[0][0]
+    subscriptionCallback()
+    await vi.waitFor(() => {
+      expect(mockLockVault).toHaveBeenCalledOnce()
+    })
   })
 
   it('opens unlock dialog when unlock button is clicked while locked', async () => {
