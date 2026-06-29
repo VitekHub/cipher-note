@@ -40,6 +40,7 @@ vi.mock('@/features/fields/model/sync-status-store', () => {
     useSyncStatusStore: storeFn,
     useFieldSyncStatus: vi.fn(() => 'idle'),
     isSaving: mockIsSaving,
+    isPaused: vi.fn(() => false),
   }
 })
 
