@@ -10,6 +10,11 @@ describe('SaveIndicator', () => {
     expect(container.firstChild).toBeNull()
   })
 
+  it('renders nothing when status is dirty', () => {
+    const { container } = render(<SaveIndicator status="dirty" />)
+    expect(container.firstChild).toBeNull()
+  })
+
   it('shows spinner and "Saving..." when status is saving', () => {
     render(<SaveIndicator status="saving" />)
     expect(screen.getByText('Saving...')).toBeInTheDocument()

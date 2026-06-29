@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Settings, Lock, Unlock, LogOut, User, X } from 'lucide-react'
+import { Settings, LogOut, User, X } from 'lucide-react'
 import { useNavigate, useParams } from '@tanstack/react-router'
 
 import { cn } from '@/shared/lib/utils'
@@ -9,11 +9,10 @@ import { AppLogo } from '@/shared/ui/brand/AppLogo'
 import { NavLink } from '@/shared/ui/nav/NavLink'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { useCryptoStore } from '@/shared/crypto/vault/crypto-store'
-import { useVaultDialogStore } from '@/features/vault/model/vault-dialog-store'
-import { keyVault } from '@/shared/crypto/vault/key-vault'
 import { useEntries } from '@/features/fields/model/use-entry'
 import { CreateEntryButton } from '@/features/fields/ui/CreateEntryButton'
 import { EntryNavItem } from '@/app/layouts/EntryNavItem'
+import { VaultLockButton } from '@/app/layouts/VaultLockButton'
 
 interface SidebarProps {
   onClose?: () => void
@@ -29,7 +28,6 @@ function Sidebar({ onClose, onLogout, className }: SidebarProps) {
 
   const user = useAuthStore((s) => s.user)
   const isVaultLocked = useCryptoStore((s) => s.isVaultLocked)
-  const openUnlockDialog = useVaultDialogStore((s) => s.openUnlockDialog)
   const { data: entries } = useEntries()
 
   function handleNavClick() {
@@ -40,15 +38,6 @@ function Sidebar({ onClose, onLogout, className }: SidebarProps) {
     onClose?.()
     await onLogout?.()
     navigate({ to: '/login' })
-  }
-
-  function handleVaultLock() {
-    onClose?.()
-    if (isVaultLocked) {
-      openUnlockDialog()
-    } else {
-      keyVault.lockVault()
-    }
   }
 
   return (
@@ -117,10 +106,7 @@ function Sidebar({ onClose, onLogout, className }: SidebarProps) {
         </div>
 
         {/* Vault lock button */}
-        <Button variant="outline" size="sm" className="w-full" onClick={handleVaultLock}>
-          {isVaultLocked ? <Unlock className="size-4" /> : <Lock className="size-4" />}
-          <span>{isVaultLocked ? t('vault:unlock') : t('vault:lock')}</span>
-        </Button>
+        <VaultLockButton variant="label" onBeforeToggle={onClose} className="w-full" />
         {/* Settings */}
         <NavLink to="/settings" onClick={handleNavClick} className="flex items-center justify-center gap-3">
           <Settings className="size-4" />

@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
-import { useSyncStatusStore, useFieldSyncStatus, SYNC_STATUS } from '@/features/fields/model/sync-status-store'
+import {
+  useSyncStatusStore,
+  useFieldSyncStatus,
+  SYNC_STATUS,
+  isSaving,
+} from '@/features/fields/model/sync-status-store'
 
 const ENTRY_ID = 'entry-1'
 
@@ -104,5 +109,69 @@ describe('useFieldSyncStatus', () => {
     })
     // Should still be 'idle' — no re-render for a different field
     expect(result.current).toBe(SYNC_STATUS.IDLE)
+  })
+})
+
+describe('SYNC_STATUS.DIRTY', () => {
+  it('equals "dirty"', () => {
+    expect(SYNC_STATUS.DIRTY).toBe('dirty')
+  })
+
+  it('can be set via setStatus', () => {
+    useSyncStatusStore.getState().setStatus(ENTRY_ID, 'note', SYNC_STATUS.DIRTY)
+    const { status } = useSyncStatusStore.getState()
+    expect(status[ENTRY_ID].note).toBe(SYNC_STATUS.DIRTY)
+  })
+})
+
+describe('isSaving', () => {
+  beforeEach(() => {
+    useSyncStatusStore.getState().resetAll()
+  })
+
+  it('returns false when store is empty', () => {
+    expect(isSaving()).toBe(false)
+  })
+
+  it('returns false when all fields are IDLE', () => {
+    useSyncStatusStore.getState().setStatus(ENTRY_ID, 'note', SYNC_STATUS.IDLE)
+    useSyncStatusStore.getState().setStatus(ENTRY_ID, 'title', SYNC_STATUS.IDLE)
+    expect(isSaving()).toBe(false)
+  })
+
+  it('returns false when all fields are SAVED', () => {
+    useSyncStatusStore.getState().setStatus(ENTRY_ID, 'note', SYNC_STATUS.SAVED)
+    useSyncStatusStore.getState().setStatus(ENTRY_ID, 'title', SYNC_STATUS.SAVED)
+    expect(isSaving()).toBe(false)
+  })
+
+  it('returns true when any field is DIRTY', () => {
+    useSyncStatusStore.getState().setStatus(ENTRY_ID, 'note', SYNC_STATUS.DIRTY)
+    expect(isSaving()).toBe(true)
+  })
+
+  it('returns true when any field is SAVING', () => {
+    useSyncStatusStore.getState().setStatus(ENTRY_ID, 'note', SYNC_STATUS.SAVING)
+    expect(isSaving()).toBe(true)
+  })
+
+  it('returns false when fields are ERROR, PAUSED, or REMOTE_UPDATE', () => {
+    useSyncStatusStore.getState().setStatus(ENTRY_ID, 'note', SYNC_STATUS.ERROR)
+    useSyncStatusStore.getState().setStatus(ENTRY_ID, 'title', SYNC_STATUS.PAUSED)
+    useSyncStatusStore.getState().setStatus(ENTRY_ID, 'website', SYNC_STATUS.REMOTE_UPDATE)
+    expect(isSaving()).toBe(false)
+  })
+
+  it('returns true with mixed statuses across entries (one entry SAVING, another IDLE)', () => {
+    useSyncStatusStore.getState().setStatus('entry-1', 'note', SYNC_STATUS.SAVING)
+    useSyncStatusStore.getState().setStatus('entry-2', 'note', SYNC_STATUS.IDLE)
+    expect(isSaving()).toBe(true)
+  })
+
+  it('returns true when one field is DIRTY and others are IDLE in the same entry', () => {
+    useSyncStatusStore.getState().setStatus(ENTRY_ID, 'note', SYNC_STATUS.DIRTY)
+    useSyncStatusStore.getState().setStatus(ENTRY_ID, 'title', SYNC_STATUS.IDLE)
+    useSyncStatusStore.getState().setStatus(ENTRY_ID, 'website', SYNC_STATUS.IDLE)
+    expect(isSaving()).toBe(true)
   })
 })

@@ -105,7 +105,7 @@ describe('useFieldEditor', () => {
     expect(result.current.fieldValue).toBe('new content')
   })
 
-  it('keeps status idle immediately after setFieldValue', async () => {
+  it('sets status to dirty immediately after saveFieldValue', async () => {
     const { result } = renderHook(() => useFieldEditor('entry-123', 'note'), {
       wrapper: createWrapper(queryClient),
     })
@@ -118,9 +118,8 @@ describe('useFieldEditor', () => {
       result.current.saveFieldValue('new content')
     })
 
-    // Status should still be 'idle' immediately after setFieldValue
-    // (it will transition to 'saving' only when the debounce fires)
-    expect(result.current.fieldSyncStatus).toBe(SYNC_STATUS.IDLE)
+    // Status is 'dirty' immediately after saveFieldValue (before debounce fires)
+    expect(result.current.fieldSyncStatus).toBe(SYNC_STATUS.DIRTY)
   })
 
   it('sets sync status to error when save fails', async () => {
@@ -172,6 +171,22 @@ describe('useFieldEditor', () => {
     await waitFor(() => {
       expect(result.current.fieldValue).toBe('')
     })
+  })
+
+  it('resets DIRTY status to IDLE on mount', async () => {
+    // Pre-set status to DIRTY before rendering the hook
+    useSyncStatusStore.getState().setStatus('entry-123', 'note', SYNC_STATUS.DIRTY)
+
+    const { result } = renderHook(() => useFieldEditor('entry-123', 'note'), {
+      wrapper: createWrapper(queryClient),
+    })
+
+    await waitFor(() => {
+      expect(result.current.fieldValue).toBe('initial content')
+    })
+
+    // On mount, DIRTY status should be reset to IDLE
+    expect(result.current.fieldSyncStatus).toBe(SYNC_STATUS.IDLE)
   })
 
   it('transitions to paused when offline, then saved when back online', async () => {
@@ -344,9 +359,9 @@ describe('useFieldEditor (debounce)', () => {
       result.current.saveFieldValue('abc')
     })
 
-    // Not yet saved, status still idle
+    // Not yet saved, status is dirty (debounce pending)
     expect(mockSaveField).not.toHaveBeenCalled()
-    expect(result.current.fieldSyncStatus).toBe(SYNC_STATUS.IDLE)
+    expect(result.current.fieldSyncStatus).toBe(SYNC_STATUS.DIRTY)
 
     // After debounce period, save fires and status becomes 'saving'
     await act(async () => {
@@ -375,14 +390,14 @@ describe('useFieldEditor (debounce)', () => {
     act(() => {
       result.current.saveFieldValue('new content')
     })
-    // Status is still 'idle' immediately after setFieldValue
-    expect(result.current.fieldSyncStatus).toBe(SYNC_STATUS.IDLE)
+    // Status is 'dirty' immediately after saveFieldValue
+    expect(result.current.fieldSyncStatus).toBe(SYNC_STATUS.DIRTY)
 
-    // Partway through the debounce period, status is still 'idle'
+    // Partway through the debounce period, status is still 'dirty'
     act(() => {
       vi.advanceTimersByTime(300)
     })
-    expect(result.current.fieldSyncStatus).toBe(SYNC_STATUS.IDLE)
+    expect(result.current.fieldSyncStatus).toBe(SYNC_STATUS.DIRTY)
 
     // Advance past debounce: save fires, status becomes 'saving'
     await act(async () => {

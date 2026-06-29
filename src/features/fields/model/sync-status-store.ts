@@ -4,6 +4,7 @@ import type { FieldName } from '@/shared/types/entities/field.types'
 
 export const SYNC_STATUS = {
   IDLE: 'idle',
+  DIRTY: 'dirty',
   SAVING: 'saving',
   PAUSED: 'paused',
   SAVED: 'saved',
@@ -60,4 +61,12 @@ function useFieldSyncStatus(entryId: string, fieldName: FieldName): SyncStatus {
   return useSyncStatusStore((s) => s.status[entryId]?.[fieldName] ?? SYNC_STATUS.IDLE)
 }
 
-export { useSyncStatusStore, useFieldSyncStatus }
+/** Check if any field currently has a save in progress (debounce pending or in flight). */
+function isSaving(): boolean {
+  const { status } = useSyncStatusStore.getState()
+  return Object.values(status).some((fields) =>
+    Object.values(fields).some((s) => s === SYNC_STATUS.DIRTY || s === SYNC_STATUS.SAVING),
+  )
+}
+
+export { useSyncStatusStore, useFieldSyncStatus, isSaving }

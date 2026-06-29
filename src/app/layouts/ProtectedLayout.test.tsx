@@ -25,6 +25,10 @@ vi.mock('@/features/vault/model/vault-timeout', () => ({
   useVaultTimeout: () => {},
 }))
 
+vi.mock('@/features/fields/model/use-navigation-blocker', () => ({
+  useNavigationBlocker: vi.fn(),
+}))
+
 vi.mock('@/features/fields/model/use-entry', () => ({
   useEntries: vi.fn(() => ({ data: [] })),
   useCreateEntry: vi.fn(() => vi.fn()),
@@ -36,6 +40,7 @@ vi.mock('@/shared/realtime/supabase-realtime', () => ({
   realtimeAdapter: { subscribe: vi.fn(() => Promise.resolve()), unsubscribe: vi.fn() },
 }))
 
+import { useNavigationBlocker } from '@/features/fields/model/use-navigation-blocker'
 import { ProtectedLayout } from './ProtectedLayout'
 
 describe('ProtectedLayout', () => {
@@ -79,5 +84,10 @@ describe('ProtectedLayout', () => {
   it('renders change password dialog', () => {
     render(<ProtectedLayout />)
     expect(screen.getByTestId('change-password-dialog')).toBeInTheDocument()
+  })
+
+  it('calls useNavigationBlocker', () => {
+    render(<ProtectedLayout />)
+    expect(useNavigationBlocker).toHaveBeenCalled()
   })
 })

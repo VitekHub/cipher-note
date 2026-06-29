@@ -1,13 +1,12 @@
 import { useTranslation } from 'react-i18next'
-import { Lock, Unlock, Settings } from 'lucide-react'
+import { Settings } from 'lucide-react'
 import { useNavigate, useParams } from '@tanstack/react-router'
 
 import { Button } from '@/shared/ui/button'
 import { useCryptoStore } from '@/shared/crypto/vault/crypto-store'
-import { useVaultDialogStore } from '@/features/vault/model/vault-dialog-store'
-import { keyVault } from '@/shared/crypto/vault/key-vault'
 import { useEntries } from '@/features/fields/model/use-entry'
 import { EntryNavItem } from '@/app/layouts/EntryNavItem'
+import { VaultLockButton } from '@/app/layouts/VaultLockButton'
 import { CreateEntryButton } from '@/features/fields/ui/CreateEntryButton'
 
 function MobileNav() {
@@ -17,16 +16,7 @@ function MobileNav() {
   const activeEntryId = 'entryId' in params ? params.entryId : undefined
 
   const isVaultLocked = useCryptoStore((s) => s.isVaultLocked)
-  const openUnlockDialog = useVaultDialogStore((s) => s.openUnlockDialog)
   const { data: entries } = useEntries()
-
-  function handleVaultLock() {
-    if (isVaultLocked) {
-      openUnlockDialog()
-    } else {
-      keyVault.lockVault()
-    }
-  }
 
   return (
     <nav
@@ -57,15 +47,10 @@ function MobileNav() {
         />
 
         {/* Vault lock/unlock */}
-        <Button
-          variant="ghost"
-          size="icon"
+        <VaultLockButton
+          variant="icon"
           className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-          onClick={handleVaultLock}
-          aria-label={isVaultLocked ? t('vault:unlock') : t('vault:lock')}
-        >
-          {isVaultLocked ? <Unlock className="size-5" /> : <Lock className="size-5" />}
-        </Button>
+        />
 
         {/* Settings */}
         <Button

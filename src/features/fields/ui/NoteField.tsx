@@ -8,7 +8,8 @@ interface NoteFieldProps {
 
 function autoResize(textarea: HTMLTextAreaElement) {
   textarea.style.height = 'auto'
-  textarea.style.height = `${textarea.scrollHeight + 10}px`
+  const minHeight = 6 * 24 + 16
+  textarea.style.height = `${Math.max(textarea.scrollHeight + 10, minHeight)}px`
 }
 
 function NoteField({ value, onChange }: NoteFieldProps) {

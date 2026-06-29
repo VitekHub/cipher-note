@@ -7,6 +7,7 @@ import { cn } from '@/shared/lib/utils'
 // Static keys so i18next-parser can discover them
 const STATUS_I18N_KEYS: Record<SyncStatus, { text: string; retry?: string }> = {
   [SYNC_STATUS.IDLE]: { text: '' },
+  [SYNC_STATUS.DIRTY]: { text: '' },
   [SYNC_STATUS.SAVING]: { text: 'status.saving' },
   [SYNC_STATUS.PAUSED]: { text: 'status.paused' },
   [SYNC_STATUS.SAVED]: { text: 'status.saved' },
@@ -23,7 +24,7 @@ interface SaveIndicatorProps {
 function SaveIndicator({ status, onRetry, className }: SaveIndicatorProps) {
   const { t } = useTranslation('fields')
 
-  if (status === SYNC_STATUS.IDLE) return null
+  if (status === SYNC_STATUS.IDLE || status === SYNC_STATUS.DIRTY) return null
 
   const keys = STATUS_I18N_KEYS[status]
 

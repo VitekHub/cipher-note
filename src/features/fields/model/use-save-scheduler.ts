@@ -108,13 +108,14 @@ function useSaveScheduler(options: UseSaveSchedulerOptions): UseSaveSchedulerRes
     (value: string) => {
       latestValueRef.current = value
       clearTimerRef(debounceTimerRef)
+      setSyncStatus(entryId, fieldName, SYNC_STATUS.DIRTY)
 
       debounceTimerRef.current = setTimeout(() => {
         triggerSave(value)
         debounceTimerRef.current = null
       }, DEBOUNCE_MS)
     },
-    [triggerSave],
+    [triggerSave, entryId, fieldName, setSyncStatus],
   )
 
   const retrySave = useCallback(() => {
