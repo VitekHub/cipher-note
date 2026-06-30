@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { Menu } from 'lucide-react'
-import { Outlet } from '@tanstack/react-router'
+import { Outlet, useBlocker } from '@tanstack/react-router'
 
 import { Button } from '@/shared/ui/button'
 import { Sheet, SheetTrigger, SheetContent, SheetTitle } from '@/shared/ui/sheet'
@@ -49,6 +49,11 @@ function AuthenticatedLayout() {
 
   useVaultTimeout()
   useRealtimeSync()
+  useBlocker({
+    shouldBlockFn: () => !navigator.onLine,
+    enableBeforeUnload: false,
+    withResolver: false,
+  })
   useNavigationBlocker()
 
   return (

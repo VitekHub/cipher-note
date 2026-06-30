@@ -68,15 +68,23 @@ function useFieldEditor(entryId: string, fieldName: FieldName): UseFieldEditorRe
     isVaultLocked,
   })
 
-  // Derive effective sync status from mutation pause state:
-  // When offline, TanStack Query pauses the mutation - reflect this in the UI
-  // by deriving 'paused' during render rather than syncing via effect.
-  const effectiveSyncStatus: SyncStatus =
-    saveMutation.isPaused && syncStatus === SYNC_STATUS.SAVING
-      ? SYNC_STATUS.PAUSED
-      : !saveMutation.isPaused && syncStatus === SYNC_STATUS.PAUSED
-        ? SYNC_STATUS.SAVING
-        : syncStatus
+  // Auto-retry failed saves when vault unlocks.
+  useEffect(() => {
+    const current = useSyncStatusStore.getState().status[entryId]?.[fieldName]
+    if (!isVaultLocked && current === SYNC_STATUS.ERROR) {
+      retrySave()
+    }
+  }, [isVaultLocked, retrySave, entryId, fieldName])
+
+  // Sync mutation pause state to the store so that isSaving() and isPaused()
+  // (which read from the store) reflect the true state of offline mutations.
+  useEffect(() => {
+    if (saveMutation.isPaused && syncStatus === SYNC_STATUS.SAVING) {
+      setSyncStatus(entryId, fieldName, SYNC_STATUS.PAUSED)
+    } else if (!saveMutation.isPaused && syncStatus === SYNC_STATUS.PAUSED) {
+      setSyncStatus(entryId, fieldName, SYNC_STATUS.SAVING)
+    }
+  }, [saveMutation.isPaused, syncStatus, entryId, fieldName, setSyncStatus])
 
   const saveFieldValue = useCallback(
     (value: string) => {
@@ -90,7 +98,7 @@ function useFieldEditor(entryId: string, fieldName: FieldName): UseFieldEditorRe
   const fieldValue = isVaultLocked ? '' : (draft ?? fieldQuery.data ?? '')
   const isOfflineAwaitingData = fieldQuery.isPaused && !fieldQuery.data
 
-  return { fieldValue, saveFieldValue, fieldSyncStatus: effectiveSyncStatus, retrySave, isOfflineAwaitingData }
+  return { fieldValue, saveFieldValue, fieldSyncStatus: syncStatus, retrySave, isOfflineAwaitingData }
 }
 
 export { useFieldEditor }

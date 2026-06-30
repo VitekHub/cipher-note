@@ -36,6 +36,15 @@ vi.mock('react-i18next', () => ({
 }))
 
 const { useNavigationBlocker } = await import('./use-navigation-blocker')
+const { useBlocker } = await import('@tanstack/react-router')
+
+/** Matches the modern UseBlockerOpts shape (the legacy overload lacks these properties). */
+type BlockerOpts = {
+  shouldBlockFn: (...args: unknown[]) => boolean | Promise<boolean>
+  enableBeforeUnload?: boolean | (() => boolean)
+  withResolver?: boolean
+  disabled?: boolean
+}
 
 describe('useNavigationBlocker', () => {
   const ENTRY_ID = 'entry-1'
@@ -46,7 +55,34 @@ describe('useNavigationBlocker', () => {
     mockBlockerStatus.mockReturnValue('idle')
   })
 
-  it('does not block when isSaving() returns false (blocker not active)', () => {
+  // --- shouldBlock function ---
+
+  it('shouldBlockFn returns false when not saving', () => {
+    renderHook(() => useNavigationBlocker())
+
+    const options = vi.mocked(useBlocker).mock.calls.at(-1)![0] as unknown as BlockerOpts
+    expect(options.shouldBlockFn()).toBe(false)
+  })
+
+  it('shouldBlockFn returns true when saving', () => {
+    useSyncStatusStore.getState().setStatus(ENTRY_ID, 'note', SYNC_STATUS.SAVING)
+
+    renderHook(() => useNavigationBlocker())
+
+    const options = vi.mocked(useBlocker).mock.calls.at(-1)![0] as unknown as BlockerOpts
+    expect(options.shouldBlockFn()).toBe(true)
+  })
+
+  it('passes same shouldBlock function for shouldBlockFn and enableBeforeUnload', () => {
+    renderHook(() => useNavigationBlocker())
+
+    const options = vi.mocked(useBlocker).mock.calls.at(-1)![0] as unknown as BlockerOpts
+    expect(options.shouldBlockFn).toBe(options.enableBeforeUnload)
+  })
+
+  // --- Effect behavior ---
+
+  it('does not block when not saving (blocker not active)', () => {
     renderHook(() => useNavigationBlocker())
     expect(mockBlockerStatus()).toBe('idle')
   })
@@ -69,6 +105,8 @@ describe('useNavigationBlocker', () => {
     expect(mockToastLoading).toHaveBeenCalledWith('status.saving', { duration: Infinity })
   })
 
+  // --- Auto-proceed on completion ---
+
   it('auto-proceeds when saves complete (transition from SAVING to IDLE)', () => {
     mockBlockerStatus.mockReturnValue('blocked')
     useSyncStatusStore.getState().setStatus(ENTRY_ID, 'note', SYNC_STATUS.SAVING)
@@ -86,7 +124,7 @@ describe('useNavigationBlocker', () => {
     expect(mockProceed).toHaveBeenCalled()
   })
 
-  it('auto-proceeds immediately if isSaving() returns false when blocker is already active', () => {
+  it('auto-proceeds immediately if not saving when blocker is already active', () => {
     mockBlockerStatus.mockReturnValue('blocked')
     // No saving status set, so isSaving() returns false
 
@@ -95,6 +133,61 @@ describe('useNavigationBlocker', () => {
     expect(mockProceed).toHaveBeenCalled()
     expect(mockToastLoading).not.toHaveBeenCalled()
   })
+
+  // --- Paused behavior ---
+
+  it('auto-proceeds immediately when paused (no save in progress)', () => {
+    mockBlockerStatus.mockReturnValue('blocked')
+    useSyncStatusStore.getState().setStatus(ENTRY_ID, 'note', SYNC_STATUS.PAUSED)
+
+    renderHook(() => useNavigationBlocker())
+
+    // isSaving() is false, isPaused() is true → proceeds immediately
+    expect(mockProceed).toHaveBeenCalled()
+    expect(mockToastLoading).not.toHaveBeenCalled()
+  })
+
+  it('auto-proceeds when save transitions to PAUSED', () => {
+    mockBlockerStatus.mockReturnValue('blocked')
+    useSyncStatusStore.getState().setStatus(ENTRY_ID, 'note', SYNC_STATUS.SAVING)
+
+    renderHook(() => useNavigationBlocker())
+
+    expect(mockToastLoading).toHaveBeenCalled()
+    expect(mockProceed).not.toHaveBeenCalled()
+
+    // Transition to PAUSED — should auto-proceed
+    act(() => {
+      useSyncStatusStore.getState().setStatus(ENTRY_ID, 'note', SYNC_STATUS.PAUSED)
+    })
+
+    expect(mockToastDismiss).toHaveBeenCalledWith('toast-id')
+    expect(mockProceed).toHaveBeenCalled()
+  })
+
+  it('unsubscribes from store before proceeding on pause', () => {
+    mockBlockerStatus.mockReturnValue('blocked')
+    useSyncStatusStore.getState().setStatus(ENTRY_ID, 'note', SYNC_STATUS.SAVING)
+
+    renderHook(() => useNavigationBlocker())
+
+    // Transition to PAUSED triggers unsubscribe + proceed
+    act(() => {
+      useSyncStatusStore.getState().setStatus(ENTRY_ID, 'note', SYNC_STATUS.PAUSED)
+    })
+
+    expect(mockProceed).toHaveBeenCalled()
+
+    // After proceed, further status changes should not trigger another proceed
+    mockProceed.mockClear()
+    act(() => {
+      useSyncStatusStore.getState().setStatus(ENTRY_ID, 'note', SYNC_STATUS.IDLE)
+    })
+
+    expect(mockProceed).not.toHaveBeenCalled()
+  })
+
+  // --- Cleanup ---
 
   it('dismisses toast on cleanup (unmount while blocked)', () => {
     mockBlockerStatus.mockReturnValue('blocked')
@@ -117,7 +210,6 @@ describe('useNavigationBlocker', () => {
 
     const { unmount } = renderHook(() => useNavigationBlocker())
 
-    // Unmount should clean up the subscription
     act(() => {
       unmount()
     })

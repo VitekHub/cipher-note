@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useBlocker } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { useSyncStatusStore, isSaving } from '@/features/fields/model/sync-status-store'
+import { useSyncStatusStore, isSaving, isPaused } from '@/features/fields/model/sync-status-store'
 
 /**
  * Blocks in-app and browser navigation while saves are in progress.
@@ -20,7 +20,7 @@ function useNavigationBlocker() {
     if (status !== 'blocked') return
 
     // Already not saving? Proceed immediately.
-    if (!isSaving()) {
+    if (!isSaving() || isPaused()) {
       proceed()
       return
     }
@@ -31,7 +31,8 @@ function useNavigationBlocker() {
 
     // Subscribe and auto-proceed when saves complete
     const unsubscribe = useSyncStatusStore.subscribe(() => {
-      if (!isSaving()) {
+      if (!isSaving() || isPaused()) {
+        unsubscribe()
         toast.dismiss(toastId)
         proceed()
       }

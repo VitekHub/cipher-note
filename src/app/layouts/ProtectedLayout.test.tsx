@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import React from 'react'
 import { render, screen } from '@/test/utils'
 import { useAuthStore } from '@/features/auth/model/auth-store'
@@ -11,6 +11,7 @@ vi.mock('@tanstack/react-router', () => ({
   Outlet: () => React.createElement('div', { 'data-testid': 'outlet' }),
   useNavigate: () => vi.fn(),
   useParams: vi.fn(() => ({})),
+  useBlocker: vi.fn(() => ({ status: 'idle', proceed: vi.fn() })),
 }))
 
 vi.mock('@/features/vault/ui/VaultUnlockDialog', () => ({
@@ -41,7 +42,16 @@ vi.mock('@/shared/realtime/supabase-realtime', () => ({
 }))
 
 import { useNavigationBlocker } from '@/features/fields/model/use-navigation-blocker'
+import { useBlocker } from '@tanstack/react-router'
 import { ProtectedLayout } from './ProtectedLayout'
+
+/** Matches the modern UseBlockerOpts shape (the legacy overload lacks these properties). */
+type BlockerOpts = {
+  shouldBlockFn: (...args: unknown[]) => boolean | Promise<boolean>
+  enableBeforeUnload?: boolean | (() => boolean)
+  withResolver?: boolean
+  disabled?: boolean
+}
 
 describe('ProtectedLayout', () => {
   beforeEach(() => {
@@ -51,6 +61,11 @@ describe('ProtectedLayout', () => {
     })
     useLayoutStore.setState({ sidebarOpen: false, activeField: null, sidebarWidth: 240 })
     useCryptoStore.setState({ isVaultLocked: false })
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   it('renders vault indicator in header', () => {
@@ -89,5 +104,38 @@ describe('ProtectedLayout', () => {
   it('calls useNavigationBlocker', () => {
     render(<ProtectedLayout />)
     expect(useNavigationBlocker).toHaveBeenCalled()
+  })
+
+  // --- Offline blocker ---
+
+  it('calls useBlocker with offline blocker config', () => {
+    render(<ProtectedLayout />)
+
+    const offlineCall = vi
+      .mocked(useBlocker)
+      .mock.calls.find((call) => (call[0] as unknown as BlockerOpts).enableBeforeUnload === false)
+    expect(offlineCall).toBeDefined()
+    expect((offlineCall![0] as unknown as BlockerOpts).withResolver).toBe(false)
+    expect((offlineCall![0] as unknown as BlockerOpts).shouldBlockFn).toBeInstanceOf(Function)
+  })
+
+  it('offline blocker shouldBlockFn returns false when online', () => {
+    render(<ProtectedLayout />)
+
+    const offlineCall = vi
+      .mocked(useBlocker)
+      .mock.calls.find((call) => (call[0] as unknown as BlockerOpts).enableBeforeUnload === false)
+    expect((offlineCall![0] as unknown as BlockerOpts).shouldBlockFn()).toBe(false)
+  })
+
+  it('offline blocker shouldBlockFn returns true when offline', () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
+
+    render(<ProtectedLayout />)
+
+    const offlineCall = vi
+      .mocked(useBlocker)
+      .mock.calls.find((call) => (call[0] as unknown as BlockerOpts).enableBeforeUnload === false)
+    expect((offlineCall![0] as unknown as BlockerOpts).shouldBlockFn()).toBe(true)
   })
 })

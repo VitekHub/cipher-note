@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { Button } from '@/shared/ui/button'
 import { keyVault } from '@/shared/crypto/vault/key-vault'
 import { useCryptoStore } from '@/shared/crypto/vault/crypto-store'
-import { useSyncStatusStore, isSaving } from '@/features/fields/model/sync-status-store'
+import { useSyncStatusStore, isSaving, isPaused } from '@/features/fields/model/sync-status-store'
 import { useVaultDialogStore } from '@/features/vault/model/vault-dialog-store'
 
 interface VaultLockButtonProps {
@@ -28,7 +28,8 @@ function VaultLockButton({ variant, onBeforeToggle, className }: VaultLockButton
       return
     }
 
-    if (!isSaving()) {
+    // Already not saving or mutation is paused? Proceed immediately.
+    if (!isSaving() || isPaused()) {
       keyVault.lockVault()
       return
     }
@@ -39,7 +40,7 @@ function VaultLockButton({ variant, onBeforeToggle, className }: VaultLockButton
     })
     // Save in progress, subscribe and lock when it completes
     const unsubscribe = useSyncStatusStore.subscribe(() => {
-      if (!isSaving()) {
+      if (!isSaving() || isPaused()) {
         unsubscribe()
         toast.dismiss(toastId)
         keyVault.lockVault()

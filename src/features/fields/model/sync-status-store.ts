@@ -61,12 +61,20 @@ function useFieldSyncStatus(entryId: string, fieldName: FieldName): SyncStatus {
   return useSyncStatusStore((s) => s.status[entryId]?.[fieldName] ?? SYNC_STATUS.IDLE)
 }
 
-/** Check if any field currently has a save in progress (debounce pending or in flight). */
-function isSaving(): boolean {
+function hasSyncStatus(...syncStatuses: SyncStatus[]): boolean {
   const { status } = useSyncStatusStore.getState()
-  return Object.values(status).some((fields) =>
-    Object.values(fields).some((s) => s === SYNC_STATUS.DIRTY || s === SYNC_STATUS.SAVING),
-  )
+  const match = new Set(syncStatuses)
+  return Object.values(status).some((fields) => Object.values(fields).some((s) => match.has(s)))
 }
 
-export { useSyncStatusStore, useFieldSyncStatus, isSaving }
+/** Check if any field currently has a save in progress (debounce pending or in flight). */
+function isSaving(): boolean {
+  return hasSyncStatus(SYNC_STATUS.DIRTY, SYNC_STATUS.SAVING)
+}
+
+/** Check if any field currently has a save in progress that is paused. */
+function isPaused(): boolean {
+  return hasSyncStatus(SYNC_STATUS.PAUSED)
+}
+
+export { useSyncStatusStore, useFieldSyncStatus, isSaving, isPaused }

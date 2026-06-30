@@ -306,6 +306,127 @@ describe('useFieldEditor', () => {
     // Only one save call (the auto-resumed one)
     expect(mockSaveField).toHaveBeenCalledTimes(1)
   })
+
+  it('auto-retries failed save when vault unlocks', async () => {
+    // 1. Edit a field — save fails (simulating vault-locked error)
+    mockSaveField.mockRejectedValueOnce(new Error('Field key not available — vault may be locked'))
+    const { result } = renderHook(() => useFieldEditor('entry-123', 'note'), {
+      wrapper: createWrapper(queryClient),
+    })
+
+    await waitFor(() => {
+      expect(result.current.fieldValue).toBe('initial content')
+    })
+
+    act(() => {
+      result.current.saveFieldValue('edited content')
+    })
+
+    // Wait for debounce + mutation to fail
+    await waitFor(
+      () => {
+        expect(result.current.fieldSyncStatus).toBe(SYNC_STATUS.ERROR)
+      },
+      { timeout: 5000 },
+    )
+
+    // 2. Lock the vault (draft clears, status stays ERROR)
+    act(() => {
+      useCryptoStore.setState({ isVaultLocked: true, loadedFieldKeys: {} })
+    })
+
+    // 3. Unlock the vault — should auto-retry
+    // Reset mock so the retry succeeds
+    mockSaveField.mockResolvedValue('2026-01-01T00:00:00Z')
+
+    act(() => {
+      useCryptoStore.setState({ isVaultLocked: false, loadedFieldKeys: { note: true, website: true, email: true } })
+    })
+
+    // Wait for auto-retry to succeed
+    await waitFor(
+      () => {
+        expect(result.current.fieldSyncStatus).toBe(SYNC_STATUS.SAVED)
+      },
+      { timeout: 5000 },
+    )
+
+    // The retry should have called saveField with the original value
+    expect(mockSaveField).toHaveBeenCalledWith(expect.objectContaining({ plaintext: 'edited content' }))
+  })
+
+  it('does not auto-retry on error while vault is unlocked', async () => {
+    mockSaveField.mockRejectedValue(new Error('Network error'))
+    const { result } = renderHook(() => useFieldEditor('entry-123', 'note'), {
+      wrapper: createWrapper(queryClient),
+    })
+
+    await waitFor(() => {
+      expect(result.current.fieldValue).toBe('initial content')
+    })
+
+    act(() => {
+      result.current.saveFieldValue('content')
+    })
+
+    // Wait for debounce + mutation to fail
+    await waitFor(
+      () => {
+        expect(result.current.fieldSyncStatus).toBe(SYNC_STATUS.ERROR)
+      },
+      { timeout: 5000 },
+    )
+
+    // Vault is already unlocked — isVaultLocked didn't change, so no auto-retry
+    // Verify only one save attempt was made (the original, no retry)
+    expect(mockSaveField).toHaveBeenCalledTimes(1)
+  })
+
+  it('writes PAUSED to the store when mutation is paused (offline)', async () => {
+    const { result } = renderHook(() => useFieldEditor('entry-123', 'note'), {
+      wrapper: createWrapper(queryClient),
+    })
+
+    await waitFor(() => {
+      expect(result.current.fieldValue).toBe('initial content')
+    })
+
+    // Go offline and start a save
+    act(() => {
+      onlineManager.setOnline(false)
+    })
+    act(() => {
+      result.current.saveFieldValue('offline content')
+    })
+
+    // Wait for debounce + mutation pause → status should be PAUSED in store
+    await waitFor(
+      () => {
+        expect(result.current.fieldSyncStatus).toBe(SYNC_STATUS.PAUSED)
+      },
+      { timeout: 5000 },
+    )
+
+    // Verify the store itself has PAUSED (not just the hook's return value)
+    const storeStatus = useSyncStatusStore.getState().status['entry-123']?.['note']
+    expect(storeStatus).toBe(SYNC_STATUS.PAUSED)
+
+    // Go back online → mutation resumes → SAVING → SAVED
+    act(() => {
+      onlineManager.setOnline(true)
+    })
+
+    await waitFor(
+      () => {
+        expect(result.current.fieldSyncStatus).toBe(SYNC_STATUS.SAVED)
+      },
+      { timeout: 5000 },
+    )
+
+    // Store should reflect SAVED, not still PAUSED
+    const updatedStatus = useSyncStatusStore.getState().status['entry-123']?.['note']
+    expect(updatedStatus).toBe(SYNC_STATUS.SAVED)
+  })
 })
 
 describe('useFieldEditor (debounce)', () => {
