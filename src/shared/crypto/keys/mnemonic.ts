@@ -1,6 +1,7 @@
 import { deriveKey } from '@/shared/crypto/core/argon2id'
 import { importKey, encrypt, decrypt } from '@/shared/crypto/core/aes-gcm'
-import { generateIV, generateSalt } from '@/shared/crypto/core/crypto-utils'
+import { generateIV, generateSalt, hexEncode, zeroFill } from '@/shared/crypto/core/crypto-utils'
+import { hkdfExpand, HKDF_INFO } from '@/shared/crypto/core/hkdf'
 import { CRYPTO_KEY_LENGTH, MASTER_KEY_RECOVERY_AAD } from '@/shared/types/crypto.types'
 import { MnemonicError } from '@/shared/crypto/core/errors'
 import type { RecoveryData, RecoveryWrapOptions } from '@/shared/types/crypto.types'
@@ -83,6 +84,9 @@ export async function deriveRecoveryKEK(
 
 /**
  * Wrap a master key with a recovery KEK derived from a BIP-39 mnemonic.
+ * Also derives a recoveryAuthHash (HKDF of the recovery KEK) which is stored
+ * on the server as a bcrypt hash for proof-of-knowledge during account recovery.
+ * The recovery KEK is zero-filled after use.
  */
 export async function wrapMasterKeyWithRecovery(
   masterKey: Uint8Array<ArrayBuffer>,
@@ -90,13 +94,24 @@ export async function wrapMasterKeyWithRecovery(
   { iv, salt }: RecoveryWrapOptions,
 ): Promise<RecoveryData> {
   const recoveryKEK = await deriveRecoveryKEK(mnemonic, salt)
-  const cryptoKey = await importKey(recoveryKEK)
-  const wrappedMasterKey = await encrypt(masterKey, cryptoKey, {
-    iv,
-    aad: MASTER_KEY_RECOVERY_AAD,
-  })
 
-  return { recoveryWrappedMasterKey: wrappedMasterKey, recoveryKeyIV: iv, recoveryKeySalt: salt }
+  try {
+    const cryptoKey = await importKey(recoveryKEK)
+    const recoveryWrappedMasterKey = await encrypt(masterKey, cryptoKey, {
+      iv,
+      aad: MASTER_KEY_RECOVERY_AAD,
+    })
+    const recoveryAuthHash = hexEncode(await hkdfExpand(recoveryKEK, HKDF_INFO.RECOVERY_AUTH))
+
+    return {
+      recoveryWrappedMasterKey,
+      recoveryKeyIV: iv,
+      recoveryKeySalt: salt,
+      recoveryAuthHash,
+    }
+  } finally {
+    zeroFill(recoveryKEK)
+  }
 }
 
 /**

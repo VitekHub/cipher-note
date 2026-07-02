@@ -12,6 +12,15 @@ export const GET_LOGIN_SALTS_RPC = 'get_login_salts'
 /** RPC function name for checking username availability (pre-auth). */
 export const CHECK_USERNAME_AVAILABILITY_RPC = 'check_username_availability'
 
+/** RPC function name for fetching recovery salts (pre-auth). */
+export const GET_RECOVERY_SALTS_RPC = 'get_recovery_salts'
+
+/** RPC function name for account recovery (pre-auth, rate-limited). */
+export const RECOVER_ACCOUNT_RPC = 'recover_account'
+
+/** RPC function name for saving recovery data (authenticated, bcrypt-hashes auth proof). */
+export const SAVE_RECOVERY_DATA_RPC = 'save_recovery_data'
+
 /** Snake_case row delivered by Supabase for an `encrypted_fields` change. */
 export interface EncryptedFieldRow {
   entry_id: string

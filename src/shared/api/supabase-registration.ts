@@ -1,14 +1,9 @@
 import { getSupabase } from '@/shared/api/supabase-client'
 import { wrapApiError } from '@/shared/api/api-errors'
 import { hexEncode } from '@/shared/crypto/core/crypto-utils'
+import { saveRecoveryData } from '@/shared/api/supabase-recovery'
 import type { RegistrationResult } from '@/shared/types/crypto.types'
-import {
-  LOGIN_SALTS_TABLE,
-  MASTER_KEYS_TABLE,
-  ENTRIES_TABLE,
-  FIELD_KEYS_TABLE,
-  RECOVERY_KEYS_TABLE,
-} from '@/shared/types/supabase-schema'
+import { LOGIN_SALTS_TABLE, MASTER_KEYS_TABLE, ENTRIES_TABLE, FIELD_KEYS_TABLE } from '@/shared/types/supabase-schema'
 
 export async function uploadRegistrationData(data: RegistrationResult, userId: string): Promise<void> {
   const supabase = getSupabase()
@@ -45,12 +40,11 @@ export async function uploadRegistrationData(data: RegistrationResult, userId: s
   const { error: fieldKeysError } = await supabase.from(FIELD_KEYS_TABLE).insert(fieldKeysRows)
   if (fieldKeysError) throw wrapApiError(fieldKeysError)
 
-  // 5. Insert recovery row (mnemonic-wrapped master key)
-  const { error: recoveryError } = await supabase.from(RECOVERY_KEYS_TABLE).insert({
-    user_id: userId,
-    recovery_key_salt: hexEncode(data.recovery.recoveryKeySalt),
-    recovery_wrapped_master_key: hexEncode(data.recovery.recoveryWrappedMasterKey),
-    recovery_key_iv: hexEncode(data.recovery.recoveryKeyIV),
+  // 5. Insert recovery row (uses RPC that bcrypt-hashes recoveryAuthHash before storage)
+  await saveRecoveryData(userId, {
+    recoveryKeySalt: hexEncode(data.recovery.recoveryKeySalt),
+    recoveryWrappedMasterKey: hexEncode(data.recovery.recoveryWrappedMasterKey),
+    recoveryKeyIV: hexEncode(data.recovery.recoveryKeyIV),
+    recoveryAuthHash: data.recovery.recoveryAuthHash,
   })
-  if (recoveryError) throw wrapApiError(recoveryError)
 }

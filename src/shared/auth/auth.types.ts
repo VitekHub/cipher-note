@@ -18,17 +18,15 @@ export interface IAuthAdapter {
   logout(): Promise<void>
   getSession(): Promise<AuthResult | null>
   signup(username: string, authHash: string): Promise<AuthResult>
-  recoverPassword(username: string, recoveryData: RecoveryCredentials): Promise<void>
+  recoverPassword(username: string, recoveryData: RecoveryCredentials): Promise<string>
   updatePassword(newAuthHash: string): Promise<void>
   onAuthStateChange(callback: AuthStateChangeCallback): AuthUnsubscribe
 }
 
-/** Credentials needed to recover a forgotten password. */
+/** Credentials for the auth adapter's recoverPassword method. */
 export interface RecoveryCredentials {
-  /** BIP-39 mnemonic used to re-derive the original key salt. */
-  mnemonic: string
-  /** New argon2id hash of the user's new password. */
+  /** New argon2id-derived auth hash for Supabase Auth. */
   newPasswordAuthHash: string
-  /** New salt for re-deriving the master key. */
+  /** New KDF salt for re-deriving the password key. */
   newKeySalt: string
 }

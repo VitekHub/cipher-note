@@ -164,19 +164,21 @@ VALUES
 -- ============================================
 -- Recovery keys for testuser
 -- ============================================
-INSERT INTO public.recovery_keys (user_id, recovery_key_salt, recovery_wrapped_master_key, recovery_key_iv)
+INSERT INTO public.recovery_keys (user_id, recovery_key_salt, recovery_wrapped_master_key, recovery_key_iv, recovery_auth_hash)
 VALUES (
   'a0eebc99-9c0b-4ef8-bb6d-6bb6513e5e0a',
   '677f39e619bd8cb8dfd5477b74ae4bc0',
   '429cebd164ca2acbb6ad61b7aaf0895b23233628beb8b9970570742faef3c8eb86b3a472635e19971b2c64f739284874',
-  'b8948164ce36c6742ecafac7'
+  'b8948164ce36c6742ecafac7',
+  crypt('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', gen_salt('bf'))
 );
 
 -- Recovery keys for alice
-INSERT INTO public.recovery_keys (user_id, recovery_key_salt, recovery_wrapped_master_key, recovery_key_iv)
+INSERT INTO public.recovery_keys (user_id, recovery_key_salt, recovery_wrapped_master_key, recovery_key_iv, recovery_auth_hash)
 VALUES (
   'b1eebc99-9c0b-4ef8-bb6d-6bb6513e5e0b',
   '1ff63f31e36c0259f57fcd842a912819',
   '2fe9ca73258f574a68cd8dbe63e9793833c7f618608a0d72795cf02ad9bda1c905254cfffad60bb86da287e0dbf0c1c5',
-  '76d190a197af06da33bc1cc8'
+  '76d190a197af06da33bc1cc8',
+  crypt('bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', gen_salt('bf'))
 );

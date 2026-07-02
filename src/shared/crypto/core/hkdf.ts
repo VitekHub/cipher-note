@@ -11,6 +11,7 @@ export const HKDF_INFO = {
   SIGN: 'sign',
   AUTH: 'auth',
   PASSWORD_KEY: 'password-key',
+  RECOVERY_AUTH: 'recovery-auth',
 } as const
 
 const HKDF_ALGORITHM = { name: 'HKDF', hash: 'SHA-256' }

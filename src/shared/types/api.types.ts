@@ -49,10 +49,19 @@ export interface SaveRecoveryData {
   recoveryKeySalt: string
   recoveryWrappedMasterKey: string
   recoveryKeyIV: string
+  recoveryAuthHash: string
 }
 
 export interface UpdateMasterKeyEnvelopeData {
   kdfSalt: string
   wrappedMasterKey: string
   masterKeyIV: string
+}
+
+export interface RecoverAccountData {
+  recoveryAuthHash: string
+  newAuthHash: string
+  newKdfSalt: string
+  newWrappedMasterKey: string
+  newMasterKeyIV: string
 }

@@ -35,6 +35,7 @@ export async function regenerateMnemonic(password: string): Promise<string> {
         recoveryKeySalt: hexEncode(recoveryData.recoveryKeySalt),
         recoveryWrappedMasterKey: hexEncode(recoveryData.recoveryWrappedMasterKey),
         recoveryKeyIV: hexEncode(recoveryData.recoveryKeyIV),
+        recoveryAuthHash: recoveryData.recoveryAuthHash,
       })
 
       return mnemonic

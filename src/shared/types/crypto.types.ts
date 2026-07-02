@@ -67,6 +67,7 @@ export interface RecoveryData {
   recoveryWrappedMasterKey: Uint8Array<ArrayBuffer>
   recoveryKeyIV: Uint8Array<ArrayBuffer>
   recoveryKeySalt: Uint8Array<ArrayBuffer>
+  recoveryAuthHash: string
 }
 
 export interface RegistrationResult {
