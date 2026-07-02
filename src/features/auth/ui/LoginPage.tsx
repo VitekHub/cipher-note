@@ -50,6 +50,10 @@ function LoginPage({ redirectUrl }: LoginPageProps) {
           <Link to="/register" className="text-primary underline">
             {t('login.registerLink')}
           </Link>
+          <hr className="border-border my-3" />
+          <Link to="/recover" className="text-primary text-sm underline">
+            {t('login.forgotPassword')}
+          </Link>
         </>
       }
     >

@@ -31,6 +31,19 @@ function loadBip39(): Promise<Bip39Module> {
   return bip39Promise
 }
 
+let cachedWordlistSet: Set<string> | null = null
+
+/**
+ * Get the BIP-39 English wordlist as a Set for O(1) word validation.
+ * Lazy-loads @scure/bip39 on first call, sharing the same cache as other functions.
+ */
+export async function getBip39Wordlist(): Promise<Set<string>> {
+  if (cachedWordlistSet) return cachedWordlistSet
+  const { wordlist } = await loadBip39()
+  cachedWordlistSet = new Set(wordlist)
+  return cachedWordlistSet
+}
+
 /** BIP-39 entropy strength for 12-word mnemonics. */
 const MNEMONIC_STRENGTH = 128
 

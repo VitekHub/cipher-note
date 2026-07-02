@@ -7,7 +7,6 @@ export const recoveryStep1Schema = z.object({
     .string()
     .min(1, 'recover.errors.usernameRequired')
     .regex(USERNAME_PATTERN, 'recover.errors.usernamePattern'),
-  mnemonic: z.string().min(1, 'recover.errors.mnemonicRequired'),
 })
 
 export const recoveryStep2Schema = z
