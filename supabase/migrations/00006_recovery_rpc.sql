@@ -3,7 +3,7 @@
 -- ============================================
 -- Three SECURITY DEFINER RPCs for the account recovery flow:
 --
--- 1. get_recovery_salts — pre-auth, rate-limited (5 req/2 min/IP)
+-- 1. get_recovery_data — pre-auth, rate-limited (5 req/2 min/IP)
 --    Returns recovery key salt, wrapped master key, and IV by username
 --    so the client can derive the recovery KEK and attempt to unwrap.
 --
@@ -21,9 +21,9 @@
 -- 00004_username_availability.sql.
 
 -- ============================================
--- Pre-auth: fetch recovery salts by username
+-- Pre-auth: fetch recovery data by username
 -- ============================================
-CREATE OR REPLACE FUNCTION public.get_recovery_salts(p_username TEXT)
+CREATE OR REPLACE FUNCTION public.get_recovery_data(p_username TEXT)
 RETURNS TABLE(recovery_key_salt TEXT, recovery_wrapped_master_key TEXT, recovery_key_iv TEXT)
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -46,7 +46,7 @@ BEGIN
     ),
     '0.0.0.0'
   );
-  rate_key := 'recovery_salts:' || req_ip;
+  rate_key := 'recovery_data:' || req_ip;
   PERFORM private.check_rate_limit(rate_key, 5, 120);
 
   RETURN QUERY
@@ -61,8 +61,8 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.get_recovery_salts(TEXT) TO anon;
-GRANT EXECUTE ON FUNCTION public.get_recovery_salts(TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_recovery_data(TEXT) TO anon;
+GRANT EXECUTE ON FUNCTION public.get_recovery_data(TEXT) TO authenticated;
 
 -- ============================================
 -- Pre-auth: atomic account recovery

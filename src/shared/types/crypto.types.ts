@@ -70,6 +70,11 @@ export interface RecoveryData {
   recoveryAuthHash: string
 }
 
+export interface RecoveryUnwrapResult {
+  masterKey: Uint8Array<ArrayBuffer>
+  recoveryAuthHash: string
+}
+
 export interface RegistrationResult {
   authHash: string
   vault: {

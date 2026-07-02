@@ -12,8 +12,8 @@ export const GET_LOGIN_SALTS_RPC = 'get_login_salts'
 /** RPC function name for checking username availability (pre-auth). */
 export const CHECK_USERNAME_AVAILABILITY_RPC = 'check_username_availability'
 
-/** RPC function name for fetching recovery salts (pre-auth). */
-export const GET_RECOVERY_SALTS_RPC = 'get_recovery_salts'
+/** RPC function name for fetching recovery data (pre-auth). */
+export const GET_RECOVERY_DATA_RPC = 'get_recovery_data'
 
 /** RPC function name for account recovery (pre-auth, rate-limited). */
 export const RECOVER_ACCOUNT_RPC = 'recover_account'

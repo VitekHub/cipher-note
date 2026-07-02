@@ -2,7 +2,7 @@ import { getSupabase } from '@/shared/api/supabase-client'
 import { ApiError, ApiErrorCode, wrapApiError } from '@/shared/api/api-errors'
 import {
   RECOVERY_KEYS_TABLE,
-  GET_RECOVERY_SALTS_RPC,
+  GET_RECOVERY_DATA_RPC,
   RECOVER_ACCOUNT_RPC,
   SAVE_RECOVERY_DATA_RPC,
 } from '@/shared/types/supabase-schema'
@@ -49,13 +49,13 @@ export async function saveRecoveryData(userId: string, data: SaveRecoveryData): 
 }
 
 /**
- * Fetch recovery salts for a username (pre-auth, rate-limited).
+ * Fetch recovery data for a username (pre-auth, rate-limited).
  * Returns the same fields as ServerRecoveryData.
  * Throws ApiError(NOT_FOUND) if user has no recovery data.
  */
-export async function fetchRecoverySalts(username: string): Promise<ServerRecoveryData> {
+export async function fetchRecoveryDataPreAuth(username: string): Promise<ServerRecoveryData> {
   const supabase = getSupabase()
-  const { data, error } = await supabase.rpc(GET_RECOVERY_SALTS_RPC, {
+  const { data, error } = await supabase.rpc(GET_RECOVERY_DATA_RPC, {
     p_username: username,
   })
 
