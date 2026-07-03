@@ -9,13 +9,13 @@ import { PasswordConfirmDialog } from '@/shared/ui/PasswordConfirmDialog'
 function VaultUnlockDialog() {
   const { t } = useTranslation('vault')
   const { user } = useAuth()
-  const isUnlockDialogOpen = useVaultDialogStore((s) => s.isUnlockDialogOpen)
-  const closeUnlockDialog = useVaultDialogStore((s) => s.closeUnlockDialog)
+  const isOpen = useVaultDialogStore((s) => s.isOpen)
+  const close = useVaultDialogStore((s) => s.close)
 
   async function unlockVault(password: string) {
     if (!user) throw new Error('No authenticated user')
     await keyVault.unlockVault(user.id, password)
-    closeUnlockDialog()
+    close()
   }
 
   function mapError(error: unknown) {
@@ -24,8 +24,8 @@ function VaultUnlockDialog() {
 
   return (
     <PasswordConfirmDialog
-      isOpen={isUnlockDialogOpen}
-      onClose={closeUnlockDialog}
+      isOpen={isOpen}
+      onClose={close}
       onConfirm={unlockVault}
       mapError={mapError}
       title={t('vaultUnlockDialog.title')}

@@ -6,7 +6,7 @@ import { Button } from '@/shared/ui/button'
 
 function LockedVaultCard() {
   const { t } = useTranslation('fields')
-  const openUnlockDialog = useVaultDialogStore((s) => s.openUnlockDialog)
+  const openUnlockDialog = useVaultDialogStore((s) => s.open)
 
   return (
     <div className="flex min-h-full flex-1 items-center justify-center">

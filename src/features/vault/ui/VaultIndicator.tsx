@@ -8,7 +8,7 @@ import { cn } from '@/shared/lib/utils'
 function VaultIndicator() {
   const { t } = useTranslation('vault')
   const isVaultLocked = useCryptoStore((s) => s.isVaultLocked)
-  const openUnlockDialog = useVaultDialogStore((s) => s.openUnlockDialog)
+  const openUnlockDialog = useVaultDialogStore((s) => s.open)
 
   if (isVaultLocked) {
     return (

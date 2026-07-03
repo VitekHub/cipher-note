@@ -173,11 +173,11 @@ describe('MobileNav', () => {
 
   it('opens unlock dialog when unlock button is clicked while locked', async () => {
     useCryptoStore.setState({ isVaultLocked: true })
-    useVaultDialogStore.setState({ isUnlockDialogOpen: false })
+    useVaultDialogStore.setState({ isOpen: false })
     const user = userEvent.setup()
     render(<MobileNav />)
     await user.click(screen.getByRole('button', { name: /unlock vault/i }))
-    expect(useVaultDialogStore.getState().isUnlockDialogOpen).toBe(true)
+    expect(useVaultDialogStore.getState().isOpen).toBe(true)
     expect(mockLockVault).not.toHaveBeenCalled()
   })
 })

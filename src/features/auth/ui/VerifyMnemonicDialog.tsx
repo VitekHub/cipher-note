@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/shared/ui/dialog'
 import { Button } from '@/shared/ui/button'
 import { MnemonicInput } from '@/features/auth/ui/MnemonicInput'
-import { useVerifyMnemonicDialogStore } from '@/shared/auth/verify-mnemonic-dialog-store'
+import { useVerifyMnemonicDialogStore } from '@/shared/auth/auth-dialogs-store'
 import { verifyMnemonic } from '@/features/auth/model/mnemonic-service'
 import { getRecoveryErrorMessage } from '@/features/auth/model/recovery-error-messages'
 
@@ -14,8 +14,8 @@ const EMPTY_WORDS = () => Array.from({ length: 12 }, () => '')
 function VerifyMnemonicDialog() {
   const { t } = useTranslation('auth')
   const { t: tc } = useTranslation('common')
-  const isOpen = useVerifyMnemonicDialogStore((s) => s.isVerifyMnemonicDialogOpen)
-  const closeDialog = useVerifyMnemonicDialogStore((s) => s.closeVerifyMnemonicDialog)
+  const isOpen = useVerifyMnemonicDialogStore((s) => s.isOpen)
+  const closeDialog = useVerifyMnemonicDialogStore((s) => s.close)
   const [words, setWords] = useState<string[]>(EMPTY_WORDS)
   const [isValid, setIsValid] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)

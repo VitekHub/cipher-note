@@ -9,14 +9,14 @@ vi.mock('@/features/auth/model/auth-service', () => ({
 
 import { ChangePasswordDialog } from './ChangePasswordDialog'
 import { changeUserPassword } from '@/features/auth/model/auth-service'
-import { useChangePasswordDialogStore } from '@/shared/auth/change-password-dialog-store'
+import { useChangePasswordDialogStore } from '@/shared/auth/auth-dialogs-store'
 
 const mockChangeUserPassword = vi.mocked(changeUserPassword)
 
 describe('ChangePasswordDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    useChangePasswordDialogStore.setState({ isChangePasswordDialogOpen: true })
+    useChangePasswordDialogStore.setState({ isOpen: true })
   })
 
   it('renders the dialog with all form fields when open', () => {
@@ -29,7 +29,7 @@ describe('ChangePasswordDialog', () => {
   })
 
   it('does not render form fields when closed', () => {
-    useChangePasswordDialogStore.setState({ isChangePasswordDialogOpen: false })
+    useChangePasswordDialogStore.setState({ isOpen: false })
     render(<ChangePasswordDialog />)
 
     expect(screen.queryByLabelText('Current password')).not.toBeInTheDocument()
@@ -80,7 +80,7 @@ describe('ChangePasswordDialog', () => {
     await user.click(submitButton)
 
     await vi.waitFor(() => {
-      expect(useChangePasswordDialogStore.getState().isChangePasswordDialogOpen).toBe(false)
+      expect(useChangePasswordDialogStore.getState().isOpen).toBe(false)
     })
   })
 
@@ -124,7 +124,7 @@ describe('ChangePasswordDialog', () => {
 
     // Escape should not close the dialog
     await user.keyboard('{Escape}')
-    expect(useChangePasswordDialogStore.getState().isChangePasswordDialogOpen).toBe(true)
+    expect(useChangePasswordDialogStore.getState().isOpen).toBe(true)
 
     // Clean up: resolve the promise
     resolveChange()

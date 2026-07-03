@@ -2,14 +2,13 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen } from '@/test/utils'
 import userEvent from '@testing-library/user-event'
 
-import { useChangePasswordDialogStore } from '@/shared/auth/change-password-dialog-store'
-import { useRegenerateMnemonicDialogStore } from '@/shared/auth/regenerate-mnemonic-dialog-store'
+import { useChangePasswordDialogStore, useRegenerateMnemonicDialogStore } from '@/shared/auth/auth-dialogs-store'
 import { SecuritySection } from './SecuritySection'
 
 describe('SecuritySection', () => {
   beforeEach(() => {
-    useChangePasswordDialogStore.setState({ isChangePasswordDialogOpen: false })
-    useRegenerateMnemonicDialogStore.setState({ isRegenerateMnemonicDialogOpen: false })
+    useChangePasswordDialogStore.setState({ isOpen: false })
+    useRegenerateMnemonicDialogStore.setState({ isOpen: false })
   })
 
   it('renders section title and description', () => {
@@ -38,7 +37,7 @@ describe('SecuritySection', () => {
     const changePasswordButton = screen.getByRole('button', { name: /Change password/i })
     await user.click(changePasswordButton)
 
-    expect(useChangePasswordDialogStore.getState().isChangePasswordDialogOpen).toBe(true)
+    expect(useChangePasswordDialogStore.getState().isOpen).toBe(true)
   })
 
   it('opens change password dialog with Space key', async () => {
@@ -49,7 +48,7 @@ describe('SecuritySection', () => {
     changePasswordButton.focus()
     await user.keyboard(' ')
 
-    expect(useChangePasswordDialogStore.getState().isChangePasswordDialogOpen).toBe(true)
+    expect(useChangePasswordDialogStore.getState().isOpen).toBe(true)
   })
 
   it('opens regenerate mnemonic dialog when clicking "Regenerate seed phrase"', async () => {
@@ -59,6 +58,6 @@ describe('SecuritySection', () => {
     const seedPhraseButton = screen.getByRole('button', { name: /Regenerate seed phrase/i })
     await user.click(seedPhraseButton)
 
-    expect(useRegenerateMnemonicDialogStore.getState().isRegenerateMnemonicDialogOpen).toBe(true)
+    expect(useRegenerateMnemonicDialogStore.getState().isOpen).toBe(true)
   })
 })
