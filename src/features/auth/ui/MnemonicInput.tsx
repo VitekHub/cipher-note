@@ -19,19 +19,14 @@ function MnemonicInput({ value, onChange, disabled, error, onValidityChange }: M
   const { t } = useTranslation('auth')
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
   const [invalidWords, setInvalidWords] = useState<Set<number>>(new Set())
-  const prevValidRef = useRef(false)
+
+  const allFilled = value.length === WORD_COUNT && value.every((w) => w.trim() !== '')
+  const valid = allFilled && invalidWords.size === 0
 
   // Notify parent only when validity actually changes
   useEffect(() => {
-    if (!onValidityChange) return
-    const allFilled = value.length === WORD_COUNT && value.every((w) => w.trim() !== '')
-    const allValid = invalidWords.size === 0
-    const valid = allFilled && allValid
-    if (valid !== prevValidRef.current) {
-      prevValidRef.current = valid
-      onValidityChange(valid)
-    }
-  }, [value, invalidWords, onValidityChange])
+    onValidityChange?.(valid)
+  }, [valid, onValidityChange])
 
   function handleChange(index: number, word: string) {
     const newWords = [...value]

@@ -19,6 +19,12 @@ vi.mock('@/features/auth/model/mnemonic-service', () => ({
     setNewPassword: mockSetNewPassword,
     clear: mockClear,
   },
+  RecoveryLoginError: class RecoveryLoginError extends Error {
+    constructor(cause?: Error) {
+      super('Recovery succeeded but automatic login failed', { cause })
+      this.name = 'RecoveryLoginError'
+    }
+  },
 }))
 
 vi.mock('@/shared/crypto/keys/mnemonic', () => ({
@@ -52,6 +58,7 @@ import { RecoverPage } from './RecoverPage'
 import { DecryptionError, MnemonicError } from '@/shared/crypto/core/errors'
 import { ApiError, ApiErrorCode } from '@/shared/api/api-errors'
 import { AuthError, AuthErrorCode } from '@/shared/auth/auth-errors'
+import { RecoveryLoginError } from '@/features/auth/model/mnemonic-service'
 import { toast } from 'sonner'
 
 describe('RecoverPage', () => {
@@ -311,6 +318,37 @@ describe('RecoverPage', () => {
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('Recovery failed. Please try again.')
+    })
+  })
+
+  it('step 2 RecoveryLoginError shows success toast and navigates to login', async () => {
+    mockSetNewPassword.mockRejectedValueOnce(new RecoveryLoginError())
+    const user = userEvent.setup()
+    render(<RecoverPage />)
+
+    // Complete step 1
+    await user.type(screen.getByLabelText(/username/i), 'testuser')
+
+    const firstInput = screen.getByPlaceholderText('1')
+    await user.click(firstInput)
+    await user.paste('abandon ability able about above absent absorb abstract absurd abuse access accident')
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /recover account/i })).toBeEnabled()
+    })
+
+    await user.click(screen.getByRole('button', { name: /recover account/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText(/create a new password/i)).toBeInTheDocument()
+    })
+
+    await user.type(screen.getByLabelText('New password'), 'newpassword123')
+    await user.type(screen.getByLabelText('Confirm new password'), 'newpassword123')
+    await user.click(screen.getByRole('button', { name: /set new password/i }))
+
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith('Password changed successfully. Please log in with your new password.')
     })
   })
 

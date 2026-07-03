@@ -16,6 +16,18 @@ import { authAdapter } from '@/shared/auth/supabase-adapter'
 import { DecryptionError } from '@/shared/crypto/core/errors'
 
 /**
+ * Thrown when account recovery succeeded (password changed on server)
+ * but automatic login or vault initialization failed.
+ * The user should log in manually with their new password.
+ */
+export class RecoveryLoginError extends Error {
+  constructor(cause?: Error) {
+    super('Recovery succeeded but automatic login failed', { cause })
+    this.name = 'RecoveryLoginError'
+  }
+}
+
+/**
  * Regenerate the user's seed phrase for account recovery.
  * Unwraps the master key with the password, re-wraps it with a new recovery KEK,
  * saves the new recovery data to the server, and returns the new mnemonic.
@@ -117,10 +129,16 @@ class RecoveryFlow {
           newMasterKeyIV: hexEncode(newMasterKeyIV),
         })
 
-        const authResult = await authAdapter.login(username, authHash)
-        useAuthStore.getState().setAuth(authResult.user, authResult.session)
+        // recoverAccount succeeded, password is changed on the server.
+        // If login or vault init fails below, the user can still log in manually.
+        try {
+          const authResult = await authAdapter.login(username, authHash)
+          useAuthStore.getState().setAuth(authResult.user, authResult.session)
 
-        await keyVault.initVault(userId, passwordKey)
+          await keyVault.initVault(userId, passwordKey)
+        } catch (loginOrVaultError) {
+          throw new RecoveryLoginError(loginOrVaultError instanceof Error ? loginOrVaultError : undefined)
+        }
       } finally {
         zeroFill(newWrappedMasterKey)
         zeroFill(newMasterKeyIV)

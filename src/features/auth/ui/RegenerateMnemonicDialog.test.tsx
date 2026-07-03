@@ -4,6 +4,12 @@ import userEvent from '@testing-library/user-event'
 
 vi.mock('@/features/auth/model/mnemonic-service', () => ({
   regenerateMnemonic: vi.fn(),
+  RecoveryLoginError: class RecoveryLoginError extends Error {
+    constructor(cause?: Error) {
+      super('Recovery succeeded but automatic login failed', { cause })
+      this.name = 'RecoveryLoginError'
+    }
+  },
 }))
 
 import { RegenerateMnemonicDialog } from './RegenerateMnemonicDialog'

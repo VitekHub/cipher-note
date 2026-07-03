@@ -3,6 +3,7 @@ import { DecryptionError, MnemonicError } from '@/shared/crypto/core/errors'
 import { AuthErrorCode } from '@/shared/auth/auth-errors'
 import { ApiErrorCode } from '@/shared/api/api-errors'
 import { mapErrorToMessage, type ErrorKeySpec } from '@/shared/lib/error-messages'
+import { RecoveryLoginError } from '@/features/auth/model/mnemonic-service'
 
 const REGENERATE_MNEMONIC_ERROR_SPEC: ErrorKeySpec = {
   instanceChecks: [[DecryptionError, 'regenerateMnemonic.errors.wrongPassword']],
@@ -22,6 +23,7 @@ const RECOVERY_ERROR_SPEC: ErrorKeySpec = {
   instanceChecks: [
     [DecryptionError, 'recover.errors.wrongMnemonic'],
     [MnemonicError, 'recover.errors.invalidMnemonic'],
+    [RecoveryLoginError, 'recover.errors.passwordChangedLogin'],
   ],
   authCodes: {
     [AuthErrorCode.INVALID_CREDENTIALS]: 'recover.errors.recoveryFailed',

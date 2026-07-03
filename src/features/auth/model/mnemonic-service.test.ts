@@ -149,7 +149,12 @@ vi.mock('@/shared/crypto/core/crypto-utils', async () => ({
   zeroFill: vi.fn(),
 }))
 
-import { recoveryFlow, verifyMnemonic, regenerateMnemonic } from '@/features/auth/model/mnemonic-service'
+import {
+  recoveryFlow,
+  verifyMnemonic,
+  regenerateMnemonic,
+  RecoveryLoginError,
+} from '@/features/auth/model/mnemonic-service'
 import { createRecoveryData, unwrapMasterKeyWithRecovery } from '@/shared/crypto/keys/mnemonic'
 import { unwrapMasterKeyWithPassword, wrapMasterKeyWithPassword } from '@/shared/crypto/keys/master-key'
 import { derivePasswordKey, deriveAuthCredentials } from '@/shared/crypto/keys/split-kdf'
@@ -396,7 +401,7 @@ describe('recoveryFlow.setNewPassword', () => {
     expect(zeroFill).toHaveBeenCalledWith(mockMasterKey)
   })
 
-  it('propagates error when login fails after recovery and zero-fills sensitive data', async () => {
+  it('throws RecoveryLoginError when login fails after recovery and zero-fills sensitive data', async () => {
     mockFetchRecoveryDataPreAuth.mockResolvedValueOnce(mockServerRecoveryData)
     vi.mocked(unwrapMasterKeyWithRecovery).mockResolvedValueOnce({
       masterKey: mockMasterKey,
@@ -406,9 +411,31 @@ describe('recoveryFlow.setNewPassword', () => {
     await recoveryFlow.validateMnemonic('testuser', mockMnemonic)
 
     mockRecoverAccount.mockResolvedValueOnce('user-1')
-    mockAuthAdapterLogin.mockRejectedValueOnce(new Error('Login failed'))
+    const loginError = new Error('Login failed')
+    mockAuthAdapterLogin.mockRejectedValueOnce(loginError)
 
-    await expect(recoveryFlow.setNewPassword('newpassword123')).rejects.toThrow('Login failed')
+    await expect(recoveryFlow.setNewPassword('newpassword123')).rejects.toThrow(RecoveryLoginError)
+    await expect(recoveryFlow.setNewPassword('newpassword123')).rejects.not.toThrow(ApiError)
+
+    expect(zeroFill).toHaveBeenCalledWith(mockPasswordKey)
+    expect(zeroFill).toHaveBeenCalledWith(mockMasterKey)
+  })
+
+  it('throws RecoveryLoginError when vault init fails after recovery', async () => {
+    mockFetchRecoveryDataPreAuth.mockResolvedValueOnce(mockServerRecoveryData)
+    vi.mocked(unwrapMasterKeyWithRecovery).mockResolvedValueOnce({
+      masterKey: mockMasterKey,
+      recoveryAuthHash: mockRecoveryAuthHash,
+    })
+
+    await recoveryFlow.validateMnemonic('testuser', mockMnemonic)
+
+    mockRecoverAccount.mockResolvedValueOnce('user-1')
+    mockAuthAdapterLogin.mockResolvedValueOnce(mockAuthResult)
+    const vaultError = new Error('Vault init failed')
+    mockKeyVaultInitVault.mockRejectedValueOnce(vaultError)
+
+    await expect(recoveryFlow.setNewPassword('newpassword123')).rejects.toThrow(RecoveryLoginError)
 
     expect(zeroFill).toHaveBeenCalledWith(mockPasswordKey)
     expect(zeroFill).toHaveBeenCalledWith(mockMasterKey)

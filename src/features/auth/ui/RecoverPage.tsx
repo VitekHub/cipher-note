@@ -18,7 +18,7 @@ import {
   type RecoveryStep2FormData,
 } from '@/features/auth/model/recovery-schema'
 import { getRecoveryErrorMessage } from '@/features/auth/model/recovery-error-messages'
-import { recoveryFlow } from '@/features/auth/model/mnemonic-service'
+import { recoveryFlow, RecoveryLoginError } from '@/features/auth/model/mnemonic-service'
 import { DecryptionError, MnemonicError } from '@/shared/crypto/core/errors'
 
 const EMPTY_WORDS = () => Array.from({ length: 12 }, () => '')
@@ -99,7 +99,14 @@ function RecoverPage() {
       await recoveryFlow.setNewPassword(data.newPassword)
       await navigate({ to: '/dashboard' })
     } catch (error) {
-      toast.error(getRecoveryErrorMessage(error, t))
+      if (error instanceof RecoveryLoginError) {
+        // Password was changed on the server but automatic login failed.
+        // Direct the user to log in manually with their new password.
+        toast.success(t('recover.passwordChangedLogin'))
+        await navigate({ to: '/login' })
+      } else {
+        toast.error(getRecoveryErrorMessage(error, t))
+      }
     }
   }
 
