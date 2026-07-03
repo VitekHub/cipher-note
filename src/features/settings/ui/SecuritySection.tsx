@@ -1,11 +1,12 @@
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight, KeyRound, ShieldCheck, Fingerprint, type LucideIcon } from 'lucide-react'
+import { ChevronRight, KeyRound, ShieldCheck, ScanEye, Fingerprint, type LucideIcon } from 'lucide-react'
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/ui/card'
 import { Separator } from '@/shared/ui/separator'
 import { useChangePasswordDialogStore } from '@/shared/auth/change-password-dialog-store'
 import { useRegenerateMnemonicDialogStore } from '@/shared/auth/regenerate-mnemonic-dialog-store'
+import { useVerifyMnemonicDialogStore } from '@/shared/auth/verify-mnemonic-dialog-store'
 
 const ITEMS: { icon: LucideIcon; labelKey: string; onClick?: () => void }[] = [
   {
@@ -17,6 +18,11 @@ const ITEMS: { icon: LucideIcon; labelKey: string; onClick?: () => void }[] = [
     icon: ShieldCheck,
     labelKey: 'security.seedPhrase',
     onClick: () => useRegenerateMnemonicDialogStore.getState().openRegenerateMnemonicDialog(),
+  },
+  {
+    icon: ScanEye,
+    labelKey: 'security.verifySeedPhrase',
+    onClick: () => useVerifyMnemonicDialogStore.getState().openVerifyMnemonicDialog(),
   },
   { icon: Fingerprint, labelKey: 'security.keyVersions' },
 ]

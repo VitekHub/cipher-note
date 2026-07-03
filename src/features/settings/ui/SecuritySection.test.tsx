@@ -25,10 +25,10 @@ describe('SecuritySection', () => {
     expect(screen.getByText('Key versions')).toBeInTheDocument()
   })
 
-  it('renders two separator dividers between action items', () => {
+  it('renders three separator dividers between action items', () => {
     render(<SecuritySection />)
     const separators = screen.getAllByRole('separator')
-    expect(separators).toHaveLength(2)
+    expect(separators).toHaveLength(3)
   })
 
   it('opens change password dialog when clicking "Change password"', async () => {

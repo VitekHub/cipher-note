@@ -5,6 +5,7 @@
     "description": "Manage your password and security settings.",
     "changePassword": "Change password",
     "seedPhrase": "Regenerate seed phrase",
+    "verifySeedPhrase": "Verify seed phrase",
     "keyVersions": "Key versions"
   },
   "preferences": {
