@@ -2,12 +2,11 @@ import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest'
 import { FIELD_KEY_VERSION } from '@/shared/types/crypto.types'
 import type { RegistrationResult } from '@/shared/types/crypto.types'
 import { ApiError, ApiErrorCode } from '@/shared/api/api-errors'
-import {
-  LOGIN_SALTS_TABLE,
-  MASTER_KEYS_TABLE,
-  FIELD_KEYS_TABLE,
-  RECOVERY_KEYS_TABLE,
-} from '@/shared/types/supabase-schema'
+import { LOGIN_SALTS_TABLE, MASTER_KEYS_TABLE, FIELD_KEYS_TABLE } from '@/shared/types/supabase-schema'
+
+const { mockSaveRecoveryData } = vi.hoisted(() => ({
+  mockSaveRecoveryData: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
+}))
 
 vi.mock('@/shared/api/supabase-client', () => {
   const insert = vi.fn().mockResolvedValue({ error: null })
@@ -17,7 +16,12 @@ vi.mock('@/shared/api/supabase-client', () => {
   }
 })
 
+vi.mock('@/shared/api/supabase-recovery', () => ({
+  saveRecoveryData: mockSaveRecoveryData,
+}))
+
 import { getSupabase } from '@/shared/api/supabase-client'
+import { saveRecoveryData } from '@/shared/api/supabase-recovery'
 import { uploadRegistrationData } from '@/shared/api/supabase-registration'
 
 function mockBytes(length: number, fill: number): Uint8Array<ArrayBuffer> {
@@ -66,6 +70,7 @@ function makeRegistrationResult(): RegistrationResult {
       recoveryKeySalt: mockBytes(16, 0xaa),
       recoveryWrappedMasterKey: mockBytes(48, 0xbb),
       recoveryKeyIV: mockBytes(12, 0xcc),
+      recoveryAuthHash: 'c'.repeat(64),
       mnemonic: 'word0 word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11',
     },
   }
@@ -91,7 +96,7 @@ describe('uploadRegistrationData', () => {
     expect(from).toHaveBeenCalledWith(MASTER_KEYS_TABLE)
 
     const insert = getMockInsert()
-    expect(insert).toHaveBeenCalledTimes(5)
+    expect(insert).toHaveBeenCalledTimes(4)
 
     const saltsRow = insert.mock.calls[0][0]
     expect(saltsRow.user_id).toBe(USER_ID)
@@ -128,19 +133,21 @@ describe('uploadRegistrationData', () => {
     }
   })
 
-  it('inserts into recovery table with hex-encoded values', async () => {
+  it('calls saveRecoveryData with hex-encoded values and recoveryAuthHash', async () => {
     const data = makeRegistrationResult()
     await uploadRegistrationData(data, USER_ID)
 
-    const from = vi.mocked(getSupabase)().from
-    expect(from).toHaveBeenCalledWith(RECOVERY_KEYS_TABLE)
+    expect(saveRecoveryData).toHaveBeenCalledWith(USER_ID, {
+      recoveryKeySalt: expect.any(String),
+      recoveryWrappedMasterKey: expect.any(String),
+      recoveryKeyIV: expect.any(String),
+      recoveryAuthHash: data.recovery.recoveryAuthHash,
+    })
 
-    const insert = getMockInsert()
-    const recoveryRow = insert.mock.calls[4][0]
-    expect(recoveryRow.user_id).toBe(USER_ID)
-    expect(recoveryRow.recovery_key_salt).toHaveLength(32)
-    expect(recoveryRow.recovery_wrapped_master_key).toHaveLength(96)
-    expect(recoveryRow.recovery_key_iv).toHaveLength(24)
+    const callArgs = vi.mocked(saveRecoveryData).mock.calls[0][1]
+    expect(callArgs.recoveryKeySalt).toHaveLength(32)
+    expect(callArgs.recoveryWrappedMasterKey).toHaveLength(96)
+    expect(callArgs.recoveryKeyIV).toHaveLength(24)
   })
 
   it('throws ApiError on keys insert error', async () => {
@@ -175,14 +182,8 @@ describe('uploadRegistrationData', () => {
     }
   })
 
-  it('throws ApiError on recovery insert error', async () => {
-    const insert = getMockInsert()
-    insert
-      .mockResolvedValueOnce({ error: null })
-      .mockResolvedValueOnce({ error: null })
-      .mockResolvedValueOnce({ error: null })
-      .mockResolvedValueOnce({ error: null })
-      .mockResolvedValueOnce({ error: new Error('recovery insert failed') })
+  it('throws ApiError on recovery data save error', async () => {
+    vi.mocked(saveRecoveryData).mockRejectedValueOnce(new ApiError(ApiErrorCode.UNEXPECTED))
     const data = makeRegistrationResult()
 
     try {

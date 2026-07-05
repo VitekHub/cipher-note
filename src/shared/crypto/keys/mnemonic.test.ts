@@ -168,13 +168,18 @@ describe('mnemonic', () => {
       const masterKey = generateMasterKey()
       const salt = mockBytes(16, 0x01)
       const iv = generateIV()
-      vi.mocked(deriveKey).mockResolvedValue(mockBytes(32, RECOVERY_KEK_FILL))
+      // Each call must return a fresh copy since zeroFill modifies the array in-place
+      vi.mocked(deriveKey).mockImplementation(() => Promise.resolve(mockBytes(32, RECOVERY_KEK_FILL)))
 
       const wrapped = await wrapMasterKeyWithRecovery(masterKey, MOCK_VALID_MNEMONIC, { iv, salt })
-      const unwrapped = await unwrapMasterKeyWithRecovery(wrapped.recoveryWrappedMasterKey, MOCK_VALID_MNEMONIC, {
-        iv: wrapped.recoveryKeyIV,
-        salt: wrapped.recoveryKeySalt,
-      })
+      const { masterKey: unwrapped } = await unwrapMasterKeyWithRecovery(
+        wrapped.recoveryWrappedMasterKey,
+        MOCK_VALID_MNEMONIC,
+        {
+          iv: wrapped.recoveryKeyIV,
+          salt: wrapped.recoveryKeySalt,
+        },
+      )
 
       expect(unwrapped).toEqual(masterKey)
     })
@@ -270,13 +275,18 @@ describe('mnemonic', () => {
 
     it('wraps the master key so it can be unwrapped with the returned mnemonic', async () => {
       const masterKey = generateMasterKey()
-      vi.mocked(deriveKey).mockResolvedValue(mockBytes(32, RECOVERY_KEK_FILL))
+      // Each call must return a fresh copy since zeroFill modifies the array in-place
+      vi.mocked(deriveKey).mockImplementation(() => Promise.resolve(mockBytes(32, RECOVERY_KEK_FILL)))
 
       const { mnemonic, recoveryData } = await createRecoveryData(masterKey)
-      const unwrapped = await unwrapMasterKeyWithRecovery(recoveryData.recoveryWrappedMasterKey, mnemonic, {
-        iv: recoveryData.recoveryKeyIV,
-        salt: recoveryData.recoveryKeySalt,
-      })
+      const { masterKey: unwrapped } = await unwrapMasterKeyWithRecovery(
+        recoveryData.recoveryWrappedMasterKey,
+        mnemonic,
+        {
+          iv: recoveryData.recoveryKeyIV,
+          salt: recoveryData.recoveryKeySalt,
+        },
+      )
 
       expect(unwrapped).toEqual(masterKey)
     })

@@ -59,7 +59,7 @@ class SupabaseAuthAdapter implements IAuthAdapter {
     return mapSupabaseToAuthResult(data.session.user, data.session)
   }
 
-  async recoverPassword(_username: string, _recoveryData: RecoveryCredentials): Promise<void> {
+  async recoverPassword(_username: string, _recoveryData: RecoveryCredentials): Promise<string> {
     throw new AuthError(AuthErrorCode.UNEXPECTED)
   }
 

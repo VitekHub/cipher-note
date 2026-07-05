@@ -148,7 +148,7 @@ describe('crypto integration', () => {
 
       // Unwrap master key with recovery (re-mock deriveKey since it was consumed during setup)
       vi.mocked(deriveKey).mockResolvedValueOnce(mockBytes(32, RECOVERY_KEK_FILL))
-      const recoveredMasterKey = await unwrapMasterKeyWithRecovery(
+      const { masterKey: recoveredMasterKey } = await unwrapMasterKeyWithRecovery(
         recoveryData.recoveryWrappedMasterKey,
         MOCK_VALID_MNEMONIC,
         {
@@ -278,7 +278,7 @@ describe('crypto integration', () => {
       vi.clearAllMocks()
 
       vi.mocked(deriveKey).mockResolvedValue(mockBytes(32, RECOVERY_KEK_FILL))
-      const recoveredMasterKey = await unwrapMasterKeyWithRecovery(
+      const { masterKey: recoveredMasterKey } = await unwrapMasterKeyWithRecovery(
         recoveryData.recoveryWrappedMasterKey,
         MOCK_VALID_MNEMONIC,
         {

@@ -6,7 +6,7 @@ import { PasswordConfirmDialog } from '@/shared/ui/PasswordConfirmDialog'
 import { MnemonicDialog } from '@/features/auth/ui/MnemonicDialog'
 import { useRegenerateMnemonicDialogStore } from '@/shared/auth/regenerate-mnemonic-dialog-store'
 import { regenerateMnemonic } from '@/features/auth/model/mnemonic-service'
-import { getRegenerateMnemonicErrorMessage } from '@/features/auth/model/regenerate-mnemonic-error-messages'
+import { getRegenerateMnemonicErrorMessage } from '@/features/auth/model/recovery-error-messages'
 
 function RegenerateMnemonicDialog() {
   const { t } = useTranslation('auth')

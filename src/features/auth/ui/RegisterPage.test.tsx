@@ -90,4 +90,56 @@ describe('RegisterPage', () => {
       expect(toast.error).toHaveBeenCalledWith('Username already taken')
     })
   })
+
+  it('shows validation error for short password', async () => {
+    const user = userEvent.setup()
+    render(<RegisterPage onSubmit={vi.fn().mockResolvedValue(undefined)} />)
+
+    await user.type(screen.getByLabelText(/username/i), 'testuser')
+    await waitFor(() => {
+      expect(screen.getByText(/username is available/i)).toBeInTheDocument()
+    })
+    await user.type(screen.getByLabelText(/^password$/i), 'short')
+    await user.click(screen.getByRole('button', { name: /create account/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Password must be at least 8 characters')).toBeInTheDocument()
+    })
+  })
+
+  it('shows validation error for password mismatch', async () => {
+    const user = userEvent.setup()
+    render(<RegisterPage onSubmit={vi.fn().mockResolvedValue(undefined)} />)
+
+    await user.type(screen.getByLabelText(/username/i), 'testuser')
+    await waitFor(() => {
+      expect(screen.getByText(/username is available/i)).toBeInTheDocument()
+    })
+    await user.type(screen.getByLabelText(/^password$/i), 'testpass123')
+    await user.type(screen.getByLabelText(/confirm password/i), 'different123')
+    await user.click(screen.getByRole('button', { name: /create account/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText(/passwords do not match/i)).toBeInTheDocument()
+    })
+  })
+
+  it('shows validation error for invalid username pattern', async () => {
+    const user = userEvent.setup()
+    render(<RegisterPage onSubmit={vi.fn().mockResolvedValue(undefined)} />)
+
+    await user.type(screen.getByLabelText(/username/i), 'Bad Username!')
+    await user.type(screen.getByLabelText(/^password$/i), 'testpass123')
+    await user.type(screen.getByLabelText(/confirm password/i), 'testpass123')
+    await user.click(screen.getByRole('button', { name: /create account/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText(/letters/i)).toBeInTheDocument()
+    })
+  })
+
+  it('displays link to login page', () => {
+    render(<RegisterPage onSubmit={vi.fn().mockResolvedValue(undefined)} />)
+    expect(screen.getByText(/log in/i)).toBeInTheDocument()
+  })
 })

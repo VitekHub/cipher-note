@@ -17,7 +17,7 @@ vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => vi.fn(),
 }))
 
-import { LoginPage } from '@/features/auth/ui/LoginPage'
+import { LoginPage } from './LoginPage'
 import { loginUser } from '@/features/auth/model/auth-service'
 import { AuthError, AuthErrorCode } from '@/shared/auth/auth-errors'
 import { useAuthStore } from '@/features/auth/model/auth-store'
@@ -106,5 +106,10 @@ describe('LoginPage', () => {
   it('displays link to register page', () => {
     render(<LoginPage />)
     expect(screen.getByText(/create one/i)).toBeInTheDocument()
+  })
+
+  it('displays link to recover account page', () => {
+    render(<LoginPage />)
+    expect(screen.getByText(/forgot password/i)).toBeInTheDocument()
   })
 })

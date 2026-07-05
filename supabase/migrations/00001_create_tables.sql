@@ -104,6 +104,7 @@ CREATE TABLE public.recovery_keys (
   recovery_key_salt TEXT NOT NULL CHECK (length(recovery_key_salt) = 32),
   recovery_wrapped_master_key TEXT NOT NULL CHECK (length(recovery_wrapped_master_key) = 96),
   recovery_key_iv TEXT NOT NULL CHECK (length(recovery_key_iv) = 24),
+  recovery_auth_hash TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

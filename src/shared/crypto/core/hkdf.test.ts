@@ -83,6 +83,29 @@ describe('hkdf', () => {
     })
   })
 
+  describe('HKDF_INFO.RECOVERY_AUTH', () => {
+    it('equals "recovery-auth"', () => {
+      expect(HKDF_INFO.RECOVERY_AUTH).toBe('recovery-auth')
+    })
+
+    it('produces a 32-byte output via hkdfExpand', async () => {
+      const masterKey = generateKey()
+      const result = await hkdfExpand(masterKey, HKDF_INFO.RECOVERY_AUTH)
+      expect(result.length).toBe(32)
+    })
+
+    it('produces different output from other HKDF branches', async () => {
+      const masterKey = generateKey()
+      const recoveryAuthHash = await hkdfExpand(masterKey, HKDF_INFO.RECOVERY_AUTH)
+      const kek = await hkdfExpand(masterKey, HKDF_INFO.KEK)
+      const sign = await hkdfExpand(masterKey, HKDF_INFO.SIGN)
+      const auth = await hkdfExpand(masterKey, HKDF_INFO.AUTH)
+      expect(recoveryAuthHash).not.toEqual(kek)
+      expect(recoveryAuthHash).not.toEqual(sign)
+      expect(recoveryAuthHash).not.toEqual(auth)
+    })
+  })
+
   describe('deriveSigningKeySeed', () => {
     it('returns 32-byte derived key', async () => {
       const masterKey = generateKey()

@@ -113,6 +113,45 @@ describe('deriveRegistrationKeys', () => {
     expect(result.recovery.recoveryKeyIV).toHaveLength(12)
   })
 
+  it('returns recoveryAuthHash as a 64-char hex string', () => {
+    expect(result.recovery.recoveryAuthHash).toHaveLength(64)
+    expect(result.recovery.recoveryAuthHash).toMatch(/^[0-9a-f]{64}$/)
+  })
+
+  it('produces same recoveryAuthHash with same mnemonic and salt', async () => {
+    // Re-derive with the same mocked deriveKey output → same recovery KEK → same recoveryAuthHash
+    const kdfSalt2 = mockBytes(16, 0x01)
+    const recoverySalt2 = mockBytes(16, 0x03)
+    vi.mocked(generateSalt).mockReturnValueOnce(kdfSalt2).mockReturnValueOnce(recoverySalt2)
+    vi.mocked(deriveAuthCredentials).mockResolvedValue({
+      authHash: 'a'.repeat(64),
+      passwordKey: mockBytes(32, PASSWORD_KEY_FILL),
+      kdfSalt: kdfSalt2,
+    })
+    vi.mocked(deriveKey).mockResolvedValue(mockBytes(32, RECOVERY_KEK_FILL))
+
+    const result2 = await deriveRegistrationKeys(PASSWORD)
+
+    expect(result2.recovery.recoveryAuthHash).toBe(result.recovery.recoveryAuthHash)
+  })
+
+  it('produces different recoveryAuthHash with different recovery KEK', async () => {
+    const kdfSalt2 = mockBytes(16, 0x01)
+    const recoverySalt2 = mockBytes(16, 0x03)
+    vi.mocked(generateSalt).mockReturnValueOnce(kdfSalt2).mockReturnValueOnce(recoverySalt2)
+    vi.mocked(deriveAuthCredentials).mockResolvedValue({
+      authHash: 'a'.repeat(64),
+      passwordKey: mockBytes(32, PASSWORD_KEY_FILL),
+      kdfSalt: kdfSalt2,
+    })
+    // Different fill value → different recovery KEK → different recoveryAuthHash
+    vi.mocked(deriveKey).mockResolvedValue(mockBytes(32, 0x44))
+
+    const result2 = await deriveRegistrationKeys(PASSWORD)
+
+    expect(result2.recovery.recoveryAuthHash).not.toBe(result.recovery.recoveryAuthHash)
+  })
+
   it('returns 12-word mnemonic', () => {
     expect(result.recovery.mnemonic.split(' ')).toHaveLength(12)
   })
@@ -156,7 +195,7 @@ describe('deriveRegistrationKeys', () => {
   })
 
   it('unwraps master key with recovery mnemonic', async () => {
-    const masterKey = await unwrapMasterKeyWithRecovery(
+    const { masterKey } = await unwrapMasterKeyWithRecovery(
       result.recovery.recoveryWrappedMasterKey,
       result.recovery.mnemonic,
       {
