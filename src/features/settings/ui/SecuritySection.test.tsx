@@ -2,13 +2,18 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen } from '@/test/utils'
 import userEvent from '@testing-library/user-event'
 
-import { useChangePasswordDialogStore, useRegenerateMnemonicDialogStore } from '@/shared/auth/auth-dialogs-store'
+import {
+  useChangePasswordDialogStore,
+  useRegenerateMnemonicDialogStore,
+  useVerifyMnemonicDialogStore,
+} from '@/shared/auth/auth-dialogs-store'
 import { SecuritySection } from './SecuritySection'
 
 describe('SecuritySection', () => {
   beforeEach(() => {
     useChangePasswordDialogStore.setState({ isOpen: false })
     useRegenerateMnemonicDialogStore.setState({ isOpen: false })
+    useVerifyMnemonicDialogStore.setState({ isOpen: false })
   })
 
   it('renders section title and description', () => {
@@ -59,5 +64,15 @@ describe('SecuritySection', () => {
     await user.click(seedPhraseButton)
 
     expect(useRegenerateMnemonicDialogStore.getState().isOpen).toBe(true)
+  })
+
+  it('opens verify mnemonic dialog when clicking "Verify seed phrase"', async () => {
+    const user = userEvent.setup()
+    render(<SecuritySection />)
+
+    const verifyButton = screen.getByRole('button', { name: /Verify seed phrase/i })
+    await user.click(verifyButton)
+
+    expect(useVerifyMnemonicDialogStore.getState().isOpen).toBe(true)
   })
 })
