@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { QueryClient } from '@tanstack/react-query'
-import type { CachedVaultEnvelope } from '@/shared/types/api.types'
+import type { CachedVaultEnvelope, ServerFieldKey } from '@/shared/types/api.types'
 import { queryKeys } from '@/shared/lib/query-keys'
 import { clearEchoMarkers } from '@/shared/realtime/realtime-echo'
 
@@ -12,9 +12,18 @@ interface CryptoState {
   cachedEnvelope: CachedVaultEnvelope | null
 }
 
+/** Inputs to replace one field key in the cached envelope. */
+export interface UpdateCachedFieldKeyInput {
+  fieldName: string
+  newVersion: number
+  newWrappedFieldKey: string
+  newFieldKeyIv: string
+}
+
 interface CryptoActions {
   markKeysLoaded: (fieldKeyNames: string[]) => void
   setCachedEnvelope: (envelope: CachedVaultEnvelope) => void
+  updateCachedFieldKey: (input: UpdateCachedFieldKeyInput) => void
   lockVault: () => void
   clearVault: () => void
   updateActivity: () => void
@@ -50,6 +59,18 @@ const useCryptoStore = create<CryptoState & CryptoActions>()((set) => ({
       lastActivity: Date.now(),
     }),
   setCachedEnvelope: (envelope) => set({ cachedEnvelope: envelope }),
+  updateCachedFieldKey: (input) =>
+    set((state) => {
+      if (!state.cachedEnvelope) return {}
+      const others = state.cachedEnvelope.fieldKeys.filter((k) => k.fieldName !== input.fieldName)
+      const rotated: ServerFieldKey = {
+        fieldName: input.fieldName,
+        version: input.newVersion,
+        wrappedFieldKey: input.newWrappedFieldKey,
+        fieldKeyIV: input.newFieldKeyIv,
+      }
+      return { cachedEnvelope: { ...state.cachedEnvelope, fieldKeys: [...others, rotated] } }
+    }),
   lockVault: () => {
     set({
       loadedFieldKeys: {},
