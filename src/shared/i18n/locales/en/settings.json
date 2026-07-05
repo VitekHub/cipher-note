@@ -23,5 +23,30 @@
     "description": "Manage your account settings.",
     "username": "Username",
     "deleteAccount": "Delete account"
+  },
+  "keyRotation": {
+    "description": "Rotate the encryption key for a single field. Re-encrypts that field's data across all entries.",
+    "field": {
+      "title": "Title",
+      "note": "Note",
+      "website": "Website",
+      "email": "Email"
+    },
+    "version": "v{{version}}",
+    "rotate": "Rotate",
+    "rotateAll": "Rotate all field keys",
+    "rotating": "Rotating...",
+    "confirm": {
+      "title": "Rotate {{field}} key?",
+      "body": "This re-encrypts your {{field}} data across all entries. This cannot be undone."
+    },
+    "confirmAll": {
+      "title": "Rotate all field keys?",
+      "body": "This re-encrypts all of your data. This cannot be undone."
+    },
+    "success": "{{field}} key rotated to v{{version}}",
+    "successAll": "All field keys rotated",
+    "locked": "Unlock the vault to rotate keys",
+    "progress": "Rotating {{field}}... ({{done}}/{{total}})"
   }
 }

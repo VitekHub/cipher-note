@@ -9,7 +9,7 @@ import { queryKeys } from '@/shared/lib/query-keys'
 import { keyVault } from '@/shared/crypto/vault/key-vault'
 import { DecryptionError } from '@/shared/crypto/core/errors'
 import { useCryptoStore } from '@/shared/crypto/vault/crypto-store'
-import { isLocalEcho, scheduleRemoteUpdateClear } from '@/shared/realtime/realtime-echo'
+import { isLocalEcho, scheduleRemoteUpdateClear, isLocalKeyRotationEcho } from '@/shared/realtime/realtime-echo'
 import type { ServerEncryptedField } from '@/shared/types/api.types'
 import type { FieldName } from '@/shared/types/entities/field.types'
 
@@ -83,11 +83,16 @@ function useRealtimeSync(): void {
         // Promise. Any unhandled rejection is caught here, not by the adapter
         void (async () => {
           const { t, queryClient } = cbRef.current
+          // Echo of our own rotation: skip the toast (we already toasted
+          // locally) but still sync + invalidate so the vault matches.
+          const isEcho = isLocalKeyRotationEcho(fieldName, newVersion)
           try {
             await keyVault.syncFieldKeys(userId)
             // Invalidate all field queries: any entry's field could be affected
             queryClient.invalidateQueries({ queryKey: queryKeys.field.all })
-            toast.success(t('realtime.keyRotationApplied', { field: fieldName, version: newVersion }))
+            if (!isEcho) {
+              toast.success(t('realtime.keyRotationApplied', { field: fieldName, version: newVersion }))
+            }
           } catch (error) {
             if (error instanceof DecryptionError) {
               toast.error(t('realtime.keyRotationFailed'))

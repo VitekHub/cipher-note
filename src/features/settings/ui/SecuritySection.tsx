@@ -1,6 +1,6 @@
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight, KeyRound, ShieldCheck, ScanEye, Fingerprint, type LucideIcon } from 'lucide-react'
+import { ChevronRight, KeyRound, ShieldCheck, ScanEye, type LucideIcon } from 'lucide-react'
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/ui/card'
 import { Separator } from '@/shared/ui/separator'
@@ -26,7 +26,6 @@ const ITEMS: { icon: LucideIcon; labelKey: string; onClick?: () => void }[] = [
     labelKey: 'security.verifySeedPhrase',
     onClick: () => useVerifyMnemonicDialogStore.getState().open(),
   },
-  { icon: Fingerprint, labelKey: 'security.keyVersions' },
 ]
 
 function SecurityItem({ icon: Icon, label, onClick }: { icon: LucideIcon; label: string; onClick?: () => void }) {

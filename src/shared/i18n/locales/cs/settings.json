@@ -23,5 +23,30 @@
     "description": "Správa nastavení účtu.",
     "username": "Uživatelské jméno",
     "deleteAccount": "Smazat účet"
+  },
+  "keyRotation": {
+    "description": "Rotuje šifrovací klíč jednoho pole. Znovu zašifruje data tohoto pole napříč všemi záznamy.",
+    "field": {
+      "title": "Název",
+      "note": "Poznámka",
+      "website": "Webová stránka",
+      "email": "E-mail"
+    },
+    "version": "v{{version}}",
+    "rotate": "Rotovat",
+    "rotateAll": "Rotovat všechny klíče polí",
+    "rotating": "Rotuji...",
+    "confirm": {
+      "title": "Rotovat klíč pole {{field}}?",
+      "body": "Toto znovu zašifruje data pole {{field}} napříč všemi záznamy. Tuto akci nelze vrátit zpět."
+    },
+    "confirmAll": {
+      "title": "Rotovat všechny klíče polí?",
+      "body": "Toto znovu zašifruje všechna vaše data. Tuto akci nelze vrátit zpět."
+    },
+    "success": "Klíč pole {{field}} rotován na v{{version}}",
+    "successAll": "Všechny klíče polí rotovány",
+    "locked": "Odemkněte trezor pro rotaci klíčů",
+    "progress": "Rotuji {{field}}... ({{done}}/{{total}})"
   }
 }

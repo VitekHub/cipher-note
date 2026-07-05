@@ -5,6 +5,9 @@ import type { FieldName } from '@/shared/types/entities/field.types'
 /** Maps "entryId:fieldName" → updatedAt timestamp from local save. */
 const localSaveTimestamps = new Map<string, string>()
 
+/** Maps fieldName → the wrapped-key version we just rotated to locally. */
+const localKeyRotations = new Map<string, number>()
+
 /** Timer IDs for auto-clearing 'remote-update' status. */
 const remoteUpdateTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
@@ -37,6 +40,7 @@ export function isLocalEcho(entryId: string, fieldName: FieldName, updatedAt: st
 /** Clear all echo markers and remote-update timers (for logout/vault lock). */
 export function clearEchoMarkers(): void {
   localSaveTimestamps.clear()
+  localKeyRotations.clear()
   for (const timer of remoteUpdateTimers.values()) {
     clearTimeout(timer)
   }
@@ -60,4 +64,27 @@ export function scheduleRemoteUpdateClear(entryId: string, fieldName: FieldName,
     remoteUpdateTimers.delete(key)
   }, 3000)
   remoteUpdateTimers.set(key, timer)
+}
+
+/**
+ * Mark that we just rotated a field key locally to `version`. The realtime
+ * broadcast of our own rotation will bounce back as an `onKeyRotation` event;
+ * the receiver uses `isLocalKeyRotationEcho` to suppress the redundant toast
+ * while still syncing the vault. Call this right before the rotation RPC.
+ */
+export function markLocalKeyRotation(fieldName: FieldName, version: number): void {
+  localKeyRotations.set(fieldName, version)
+}
+
+/**
+ * True if an `onKeyRotation` event matches a rotation we initiated locally.
+ * Consumes the marker on a match so it only suppresses the first matching echo.
+ */
+export function isLocalKeyRotationEcho(fieldName: FieldName, version: number): boolean {
+  const marked = localKeyRotations.get(fieldName)
+  if (marked === version) {
+    localKeyRotations.delete(fieldName)
+    return true
+  }
+  return false
 }
