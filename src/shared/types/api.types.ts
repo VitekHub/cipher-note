@@ -65,3 +65,19 @@ export interface RecoverAccountData {
   newWrappedMasterKey: string
   newMasterKeyIV: string
 }
+
+/** One re-encrypted ciphertext in the rotation RPC payload. */
+export interface ReEncryptedField {
+  entryId: string
+  ciphertext: string
+  ciphertextIv: string
+}
+
+/** Inputs to the field-key rotation RPC. */
+export interface RotateFieldKeyRpcInput {
+  fieldName: FieldName
+  newVersion: number
+  newWrappedFieldKey: string // 96 hex chars
+  newFieldKeyIv: string // 24 hex chars
+  reEncryptedFields: ReEncryptedField[]
+}

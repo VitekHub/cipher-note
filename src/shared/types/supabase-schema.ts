@@ -21,6 +21,9 @@ export const RECOVER_ACCOUNT_RPC = 'recover_account'
 /** RPC function name for saving recovery data (authenticated, bcrypt-hashes auth proof). */
 export const SAVE_RECOVERY_DATA_RPC = 'save_recovery_data'
 
+/** RPC function name for atomic field-key rotation (authenticated, SECURITY DEFINER). */
+export const ROTATE_FIELD_KEY_RPC = 'rotate_field_key'
+
 /** Snake_case row delivered by Supabase for an `encrypted_fields` change. */
 export interface EncryptedFieldRow {
   entry_id: string
