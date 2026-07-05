@@ -22,17 +22,18 @@ describe('SecuritySection', () => {
     expect(screen.getByText('Manage your password and security settings.')).toBeInTheDocument()
   })
 
-  it('renders three action items', () => {
+  it('renders the security action items (key versions moved to KeyRotationSection)', () => {
     render(<SecuritySection />)
     expect(screen.getByText('Change password')).toBeInTheDocument()
     expect(screen.getByText('Regenerate seed phrase')).toBeInTheDocument()
-    expect(screen.getByText('Key versions')).toBeInTheDocument()
+    expect(screen.getByText('Verify seed phrase')).toBeInTheDocument()
+    expect(screen.queryByText('Key versions')).not.toBeInTheDocument()
   })
 
-  it('renders three separator dividers between action items', () => {
+  it('renders two separator dividers between action items', () => {
     render(<SecuritySection />)
     const separators = screen.getAllByRole('separator')
-    expect(separators).toHaveLength(3)
+    expect(separators).toHaveLength(2)
   })
 
   it('opens change password dialog when clicking "Change password"', async () => {

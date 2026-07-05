@@ -6,6 +6,7 @@ import {
   MASTER_KEYS_TABLE,
   FIELD_KEYS_TABLE,
   GET_LOGIN_SALTS_RPC,
+  ROTATE_FIELD_KEY_RPC,
 } from '@/shared/types/supabase-schema'
 
 // Mock Supabase client
@@ -30,6 +31,7 @@ import {
   fetchFreshEnvelope,
   saveWrappedKey,
   updateMasterKeyEnvelope,
+  rotateFieldKeyRpc,
 } from '@/shared/api/supabase-keys'
 
 describe('fetchLoginSalts', () => {
@@ -536,6 +538,80 @@ describe('updateMasterKeyEnvelope', () => {
         kdfSalt: 'a1b2c3d4'.repeat(4),
         wrappedMasterKey: 'aa'.repeat(48),
         masterKeyIV: 'bb'.repeat(12),
+      })
+      expect.unreachable('should have thrown')
+    } catch (e) {
+      expect(e).toBeInstanceOf(ApiError)
+      expect((e as ApiError).code).toBe(ApiErrorCode.UNEXPECTED)
+    }
+  })
+})
+
+describe('rotateFieldKeyRpc', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('calls the rotation RPC with a correctly-shaped JSONB payload', async () => {
+    mockRpc.mockResolvedValueOnce({ data: null, error: null })
+
+    await rotateFieldKeyRpc({
+      fieldName: 'note',
+      newVersion: 2,
+      newWrappedFieldKey: 'aa'.repeat(48),
+      newFieldKeyIv: 'bb'.repeat(12),
+      reEncryptedFields: [
+        { entryId: 'entry-1', ciphertext: 'cc'.repeat(16), ciphertextIv: 'dd'.repeat(12) },
+        { entryId: 'entry-2', ciphertext: 'ee'.repeat(16), ciphertextIv: 'ff'.repeat(12) },
+      ],
+    })
+
+    expect(mockRpc).toHaveBeenCalledWith(ROTATE_FIELD_KEY_RPC, {
+      p_payload: {
+        field_name: 'note',
+        new_version: 2,
+        new_wrapped_field_key: 'aa'.repeat(48),
+        new_field_key_iv: 'bb'.repeat(12),
+        re_encrypted_fields: [
+          { entry_id: 'entry-1', ciphertext: 'cc'.repeat(16), ciphertext_iv: 'dd'.repeat(12) },
+          { entry_id: 'entry-2', ciphertext: 'ee'.repeat(16), ciphertext_iv: 'ff'.repeat(12) },
+        ],
+      },
+    })
+  })
+
+  it('passes an empty re_encrypted_fields array when there are no entries', async () => {
+    mockRpc.mockResolvedValueOnce({ data: null, error: null })
+
+    await rotateFieldKeyRpc({
+      fieldName: 'note',
+      newVersion: 2,
+      newWrappedFieldKey: 'aa'.repeat(48),
+      newFieldKeyIv: 'bb'.repeat(12),
+      reEncryptedFields: [],
+    })
+
+    expect(mockRpc).toHaveBeenCalledWith(ROTATE_FIELD_KEY_RPC, {
+      p_payload: {
+        field_name: 'note',
+        new_version: 2,
+        new_wrapped_field_key: 'aa'.repeat(48),
+        new_field_key_iv: 'bb'.repeat(12),
+        re_encrypted_fields: [],
+      },
+    })
+  })
+
+  it('throws ApiError on RPC error', async () => {
+    mockRpc.mockResolvedValueOnce({ data: null, error: { message: 'RPC error' } })
+
+    try {
+      await rotateFieldKeyRpc({
+        fieldName: 'note',
+        newVersion: 2,
+        newWrappedFieldKey: 'aa'.repeat(48),
+        newFieldKeyIv: 'bb'.repeat(12),
+        reEncryptedFields: [],
       })
       expect.unreachable('should have thrown')
     } catch (e) {

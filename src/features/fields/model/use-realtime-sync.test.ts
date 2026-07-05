@@ -53,7 +53,7 @@ vi.mock('@/shared/crypto/vault/crypto-store', () => ({
 
 import { useRealtimeSync } from '@/features/fields/model/use-realtime-sync'
 import { useSyncStatusStore, SYNC_STATUS } from '@/features/fields/model/sync-status-store'
-import { markLocalSave, clearEchoMarkers } from '@/shared/realtime/realtime-echo'
+import { markLocalSave, markLocalKeyRotation, clearEchoMarkers } from '@/shared/realtime/realtime-echo'
 import { queryKeys } from '@/shared/lib/query-keys'
 import { DecryptionError } from '@/shared/crypto/core/errors'
 import type { RealtimeCallbacks } from '@/shared/realtime/realtime.types'
@@ -268,6 +268,34 @@ describe('useRealtimeSync', () => {
       expect(ctx.toastSuccess).toHaveBeenCalledTimes(1)
     })
     expect(ctx.toastSuccess.mock.calls[0][0]).toEqual(expect.any(String))
+  })
+
+  it('suppresses the toast for a locally-initiated rotation echo but still syncs and invalidates', async () => {
+    markLocalKeyRotation('note', 2)
+
+    renderHook(() => useRealtimeSync(), { wrapper: createWrapper(queryClient) })
+
+    callbacks().onKeyRotation('note', 2)
+
+    await waitFor(() => {
+      expect(ctx.mockSyncFieldKeys).toHaveBeenCalledWith('user-123')
+    })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.field.all })
+    // No toast: the initiator already toasted locally.
+    expect(ctx.toastSuccess).not.toHaveBeenCalled()
+    expect(ctx.toastError).not.toHaveBeenCalled()
+  })
+
+  it('still toasts when the marker version does not match (not a true echo)', async () => {
+    markLocalKeyRotation('note', 3)
+
+    renderHook(() => useRealtimeSync(), { wrapper: createWrapper(queryClient) })
+
+    callbacks().onKeyRotation('note', 2)
+
+    await waitFor(() => {
+      expect(ctx.toastSuccess).toHaveBeenCalledTimes(1)
+    })
   })
 
   it('shows keyRotationFailed toast on DecryptionError (stale KEK)', async () => {

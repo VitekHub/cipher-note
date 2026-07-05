@@ -56,7 +56,7 @@ class SupabaseRealtimeAdapter implements IRealtimeAdapter {
         // row (UPDATE), never deleting one
         if (payload.eventType === 'DELETE') return
         const row = payload.new as FieldKeyRow
-        callbacks.onKeyRotation(row.field_name, row.version)
+        callbacks.onKeyRotation(row.field_name as FieldName, row.version)
       })
       .subscribe((status, error) => {
         // Realtime is best-effort: surface errors but never reject the promise or block the UI.

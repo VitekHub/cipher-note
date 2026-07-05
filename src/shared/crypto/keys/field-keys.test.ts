@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { DecryptionError } from '@/shared/crypto/core/errors'
-import { hexEncode } from '@/shared/crypto/core/crypto-utils'
+import { hexEncode, generateKey, generateIV, encodeAAD, zeroFill } from '@/shared/crypto/core/crypto-utils'
 import { generateMasterKey } from '@/shared/crypto/keys/master-key'
 import { deriveKEK } from '@/shared/crypto/core/hkdf'
-import { importKey } from '@/shared/crypto/core/aes-gcm'
+import { importKey, encrypt } from '@/shared/crypto/core/aes-gcm'
 import { generateAndWrapFieldKeys, unwrapFieldKeys } from '@/shared/crypto/keys/field-keys'
 import type { ServerFieldKey } from '@/shared/types/api.types'
 
@@ -114,6 +114,45 @@ describe('field-keys', () => {
       const { kek } = await setupKEK()
       const unwrapped = await unwrapFieldKeys([], kek)
       expect(unwrapped.size).toBe(0)
+    })
+
+    it('keeps the last key when two versions are present for a field (atomic-swap guard)', async () => {
+      // After an atomic rotation the server holds exactly one version per
+      // field. If a multi-version state were ever reintroduced, unwrapFieldKeys
+      // builds a Map keyed by fieldName so the last entry wins — this test
+      // pins that behavior as a regression guard.
+      const { kek } = await setupKEK()
+
+      const v1Raw = generateKey()
+      const v1Crypto = await importKey(v1Raw)
+      const v1IV = generateIV()
+      const v1Wrapped = await encrypt(v1Raw, kek, { iv: v1IV, aad: encodeAAD('note', 1) })
+
+      const v2Raw = generateKey()
+      const v2Crypto = await importKey(v2Raw)
+      const v2IV = generateIV()
+      const v2Wrapped = await encrypt(v2Raw, kek, { iv: v2IV, aad: encodeAAD('note', 2) })
+      zeroFill([v1Raw, v2Raw])
+
+      const serverFieldKeys: ServerFieldKey[] = [
+        { fieldName: 'note', version: 1, wrappedFieldKey: hexEncode(v1Wrapped), fieldKeyIV: hexEncode(v1IV) },
+        { fieldName: 'note', version: 2, wrappedFieldKey: hexEncode(v2Wrapped), fieldKeyIV: hexEncode(v2IV) },
+      ]
+
+      const unwrapped = await unwrapFieldKeys(serverFieldKeys, kek)
+      expect(unwrapped.size).toBe(1)
+
+      const noteKey = unwrapped.get('note')!
+      const plaintext = new Uint8Array(32).fill(0x42)
+      const iv = new Uint8Array(12).fill(0x00)
+
+      const cipherV2 = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, v2Crypto, plaintext)
+      const cipherMap = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, noteKey, plaintext)
+      // The map holds the v2 key (last entry wins) — not the v1 key.
+      expect(new Uint8Array(cipherMap)).toEqual(new Uint8Array(cipherV2))
+
+      const cipherV1 = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, v1Crypto, plaintext)
+      expect(new Uint8Array(cipherMap)).not.toEqual(new Uint8Array(cipherV1))
     })
   })
 })

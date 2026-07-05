@@ -350,6 +350,26 @@ describe('syncFieldKeys', () => {
     })
   })
 
+  it('handles a post-atomic-swap server state: exactly one version per field', async () => {
+    // After an atomic rotation, the server has a single version per field
+    // (the old version is deleted in the same transaction). This is a regression
+    // guard against accidentally reintroducing a multi-version server state.
+    const postRotation: ServerFieldKey[] = [
+      { fieldName: 'title', version: 2, wrappedFieldKey: 't2', fieldKeyIV: 'ti2' },
+      { fieldName: 'note', version: 2, wrappedFieldKey: 'n2', fieldKeyIV: 'ni2' },
+      { fieldName: 'website', version: 2, wrappedFieldKey: 'w2', fieldKeyIV: 'wi2' },
+      { fieldName: 'email', version: 2, wrappedFieldKey: 'e2', fieldKeyIV: 'ei2' },
+    ]
+    vi.mocked(fetchFieldKeys).mockResolvedValueOnce(postRotation)
+    vi.mocked(unwrapFieldKeys).mockResolvedValueOnce(makeUnwrappedKeys(['title', 'note', 'website', 'email']))
+
+    await keyVault.syncFieldKeys('user-1')
+
+    expect(unwrapFieldKeys).toHaveBeenCalledWith(postRotation, FAKE_KEK)
+    expect(mockMarkKeysLoaded).toHaveBeenCalledWith(['title', 'note', 'website', 'email'])
+    expect(mockSetEnvelope).toHaveBeenCalledWith({ ...cachedEnvelope, fieldKeys: postRotation })
+  })
+
   it('throws when KEK is not in vault (vault locked)', async () => {
     keyVault.zeroKeys()
 

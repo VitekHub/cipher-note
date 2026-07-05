@@ -203,6 +203,7 @@ describe('regenerateMnemonic', () => {
       lockVault: vi.fn(),
       clearVault: vi.fn(),
       updateActivity: vi.fn(),
+      updateCachedFieldKey: vi.fn(),
     } as ReturnType<typeof useCryptoStore.getState>)
 
     await regenerateMnemonic('password')
