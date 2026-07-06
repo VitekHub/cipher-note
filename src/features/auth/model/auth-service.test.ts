@@ -141,6 +141,7 @@ const cryptoStoreState = {
   lastActivity: 0,
   cachedEnvelope: null as import('@/shared/types/api.types').CachedVaultEnvelope | null,
   setCachedEnvelope: mockSetEnvelope,
+  clearCachedEnvelope: vi.fn(),
   lockVault: vi.fn<() => void>(),
   clearVault: mockClearVault,
 }

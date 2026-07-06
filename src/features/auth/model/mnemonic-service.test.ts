@@ -199,6 +199,7 @@ describe('regenerateMnemonic', () => {
       lastActivity: 0,
       cachedEnvelope: null,
       setCachedEnvelope: mockSetCachedEnvelope,
+      clearCachedEnvelope: vi.fn(),
       markKeysLoaded: vi.fn(),
       lockVault: vi.fn(),
       clearVault: vi.fn(),

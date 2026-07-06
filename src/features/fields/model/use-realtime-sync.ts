@@ -74,10 +74,13 @@ function useRealtimeSync(): void {
         }
       },
       onKeyRotation: (fieldName, newVersion) => {
-        // Vault is locked: no KEK to refresh field keys. A locked vault
-        // will fetch fresh keys on the next unlock, so skip processing
-        // and avoid a misleading "network error" toast.
-        if (useCryptoStore.getState().isVaultLocked) return
+        // Vault is locked: no KEK to refresh field keys. Clear the cached
+        // envelope so the next unlock fetches fresh key material from the
+        // server (the rotation may have changed field keys).
+        if (useCryptoStore.getState().isVaultLocked) {
+          useCryptoStore.getState().clearCachedEnvelope()
+          return
+        }
 
         // Void IIFE: the type contract says void, so we must not return the
         // Promise. Any unhandled rejection is caught here, not by the adapter

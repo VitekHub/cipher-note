@@ -39,6 +39,7 @@ const cryptoStoreState = {
   lockVault: mockLockVault,
   clearVault: mockClearVault,
   setCachedEnvelope: mockSetEnvelope,
+  clearCachedEnvelope: vi.fn(),
   updateActivity: vi.fn(),
 }
 

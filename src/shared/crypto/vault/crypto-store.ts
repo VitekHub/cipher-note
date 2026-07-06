@@ -15,6 +15,7 @@ interface CryptoState {
 interface CryptoActions {
   markKeysLoaded: (fieldKeyNames: string[]) => void
   setCachedEnvelope: (envelope: CachedVaultEnvelope) => void
+  clearCachedEnvelope: () => void
   updateCachedFieldKey: (fieldKey: ServerFieldKey) => void
   lockVault: () => void
   clearVault: () => void
@@ -51,6 +52,7 @@ const useCryptoStore = create<CryptoState & CryptoActions>()((set) => ({
       lastActivity: Date.now(),
     }),
   setCachedEnvelope: (envelope) => set({ cachedEnvelope: envelope }),
+  clearCachedEnvelope: () => set({ cachedEnvelope: null }),
   updateCachedFieldKey: (fieldKey) =>
     set((state) => {
       if (!state.cachedEnvelope) return {}
