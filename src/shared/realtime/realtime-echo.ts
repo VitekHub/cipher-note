@@ -24,7 +24,7 @@ export function markLocalSave(entryId: string, fieldName: FieldName, updatedAt: 
  * Check whether a realtime event is an echo of our own save.
  * If the updatedAt matches, it's an echo — removes the entry and returns true.
  */
-export function isLocalEcho(entryId: string, fieldName: FieldName, updatedAt: string): boolean {
+export function isLocalSaveEcho(entryId: string, fieldName: FieldName, updatedAt: string): boolean {
   const key = echoKey(entryId, fieldName)
   const localTs = localSaveTimestamps.get(key)
   if (localTs === updatedAt) {
@@ -66,12 +66,7 @@ export function scheduleRemoteUpdateClear(entryId: string, fieldName: FieldName,
   remoteUpdateTimers.set(key, timer)
 }
 
-/**
- * Mark that we just rotated a field key locally to `version`. The realtime
- * broadcast of our own rotation will bounce back as an `onKeyRotation` event;
- * the receiver uses `isLocalKeyRotationEcho` to suppress the redundant toast
- * while still syncing the vault. Call this right before the rotation RPC.
- */
+/** Record a local key rotation so the echo can be suppressed. Call before the rotation RPC. */
 export function markLocalKeyRotation(fieldName: FieldName, version: number): void {
   localKeyRotations.set(fieldName, version)
 }

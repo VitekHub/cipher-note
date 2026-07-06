@@ -275,18 +275,18 @@ describe('useRealtimeSync', () => {
     expect(ctx.mockClearCachedEnvelope).not.toHaveBeenCalled()
   })
 
-  it('suppresses the toast for a locally-initiated rotation echo but still syncs and invalidates', async () => {
+  it('skips onKeyRotation entirely when it is a local echo', async () => {
     markLocalKeyRotation('note', 2)
 
     renderHook(() => useRealtimeSync(), { wrapper: createWrapper(queryClient) })
 
     callbacks().onKeyRotation('note', 2)
 
+    // Give the async IIFE a chance to run (it shouldn't)
     await waitFor(() => {
-      expect(ctx.mockSyncFieldKeys).toHaveBeenCalledWith('user-123')
+      expect(ctx.mockSyncFieldKeys).not.toHaveBeenCalled()
     })
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.field.all })
-    // No toast: the initiator already toasted locally.
+    expect(invalidateSpy).not.toHaveBeenCalled()
     expect(ctx.toastSuccess).not.toHaveBeenCalled()
     expect(ctx.toastError).not.toHaveBeenCalled()
   })
