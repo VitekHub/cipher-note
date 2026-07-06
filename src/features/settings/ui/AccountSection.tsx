@@ -1,10 +1,11 @@
 import { useTranslation } from 'react-i18next'
-import { Trash2 } from 'lucide-react'
+import { KeyRound, Trash2, User } from 'lucide-react'
 
 import { useCurrentUser } from '@/shared/auth/use-current-user'
-import { Button } from '@/shared/ui/button'
+import { useChangePasswordDialogStore } from '@/shared/auth/auth-dialogs-store'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/ui/card'
 import { Separator } from '@/shared/ui/separator'
+import { SettingsItem } from '@/features/settings/ui/SettingsItem'
 
 function AccountSection() {
   const { t } = useTranslation('settings')
@@ -18,14 +19,20 @@ function AccountSection() {
       </CardHeader>
       <CardContent className="flex flex-col gap-0">
         <div className="flex items-center justify-between py-2">
-          <span className="text-muted-foreground text-sm">{t('account.username')}</span>
+          <span className="flex items-center gap-3 text-sm">
+            <User className="size-4" />
+            {t('account.username')}
+          </span>
           <span className="text-sm font-medium">{user?.username ?? '—'}</span>
         </div>
         <Separator />
-        <Button variant="destructive" disabled className="mt-4 self-start">
-          <Trash2 className="size-4" />
-          {t('account.deleteAccount')}
-        </Button>
+        <SettingsItem
+          icon={KeyRound}
+          label={t('account.changePassword')}
+          onClick={() => useChangePasswordDialogStore.getState().open()}
+        />
+        <Separator />
+        <SettingsItem icon={Trash2} label={t('account.deleteAccount')} variant="destructive" />
       </CardContent>
     </Card>
   )

@@ -1,7 +1,8 @@
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ChevronRight, KeyRound } from 'lucide-react'
 
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/shared/ui/card'
+import { CollapsibleRoot, CollapsibleTrigger, CollapsiblePanel } from '@/shared/ui/collapsible'
 import { Button } from '@/shared/ui/button'
 import { Separator } from '@/shared/ui/separator'
 import { useCryptoStore } from '@/shared/crypto/vault/crypto-store'
@@ -23,19 +24,23 @@ function versionFor(fieldKeys: { fieldName: string; version: number }[] | undefi
   return versions.length > 0 ? Math.max(...versions) : 1
 }
 
-function KeyRotationSection() {
+function KeyManagementSubsection() {
   const { t } = useTranslation('settings')
   const isVaultLocked = useCryptoStore((s) => s.isVaultLocked)
   const fieldKeys = useCryptoStore((s) => s.cachedEnvelope?.fieldKeys)
   const openDialog = useRotateFieldKeyDialogStore((s) => s.open)
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t('security.keyVersions')}</CardTitle>
-        <CardDescription>{t('keyRotation.description')}</CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-0">
+    <CollapsibleRoot defaultOpen={false}>
+      <CollapsibleTrigger className="group hover:bg-muted/50 -mx-1 flex w-full cursor-pointer items-center justify-between rounded-md px-1 py-2 text-left">
+        <span className="flex items-center gap-3 text-sm">
+          <KeyRound className="size-4" />
+          {t('security.keyManagement')}
+        </span>
+        <ChevronRight className="text-muted-foreground size-4 transition-transform duration-200 group-data-panel-open:rotate-90" />
+      </CollapsibleTrigger>
+      <CollapsiblePanel keepMounted className="flex flex-col gap-0 pl-7">
+        <Separator />
         {FIELD_NAMES.map((fieldName, i) => (
           <Fragment key={fieldName}>
             {i > 0 && <Separator />}
@@ -52,20 +57,19 @@ function KeyRotationSection() {
             </div>
           </Fragment>
         ))}
-      </CardContent>
-      <CardFooter className="flex flex-col items-stretch gap-2">
+        <Separator />
         <Button
           variant="default"
-          className="w-full"
+          className="mt-2 w-full"
           disabled={isVaultLocked}
           onClick={() => openDialog({ fieldName: null })}
         >
           {t('keyRotation.rotateAll')}
         </Button>
-        {isVaultLocked && <p className="text-muted-foreground text-center text-xs">{t('keyRotation.locked')}</p>}
-      </CardFooter>
-    </Card>
+        {isVaultLocked && <p className="text-muted-foreground mt-1 text-center text-xs">{t('keyRotation.locked')}</p>}
+      </CollapsiblePanel>
+    </CollapsibleRoot>
   )
 }
 
-export { KeyRotationSection }
+export { KeyManagementSubsection }

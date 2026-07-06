@@ -2,11 +2,10 @@
   "title": "Settings",
   "security": {
     "title": "Security",
-    "description": "Manage your password and security settings.",
-    "changePassword": "Change password",
+    "description": "Manage your encryption keys and seed phrase.",
     "seedPhrase": "Regenerate seed phrase",
     "verifySeedPhrase": "Verify seed phrase",
-    "keyVersions": "Key versions"
+    "keyManagement": "Key management"
   },
   "preferences": {
     "title": "Preferences",
@@ -20,12 +19,12 @@
   },
   "account": {
     "title": "Account",
-    "description": "Manage your account settings.",
+    "description": "Manage your account and login credentials.",
     "username": "Username",
+    "changePassword": "Change password",
     "deleteAccount": "Delete account"
   },
   "keyRotation": {
-    "description": "Rotate the encryption key for a single field. Re-encrypts that field's data across all entries.",
     "field": {
       "title": "Title",
       "note": "Note",

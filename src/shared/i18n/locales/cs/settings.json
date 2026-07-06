@@ -2,11 +2,10 @@
   "title": "Nastavení",
   "security": {
     "title": "Zabezpečení",
-    "description": "Správa hesla a nastavení zabezpečení.",
-    "changePassword": "Změnit heslo",
+    "description": "Správa šifrovacích klíčů a seed fráze.",
     "seedPhrase": "Znovu vygenerovat seed frázi",
     "verifySeedPhrase": "Ověřit seed frázi",
-    "keyVersions": "Verze klíčů"
+    "keyManagement": "Správa klíčů"
   },
   "preferences": {
     "title": "Předvolby",
@@ -20,12 +19,12 @@
   },
   "account": {
     "title": "Účet",
-    "description": "Správa nastavení účtu.",
+    "description": "Správa účtu a přihlašovacích údajů.",
     "username": "Uživatelské jméno",
+    "changePassword": "Změnit heslo",
     "deleteAccount": "Smazat účet"
   },
   "keyRotation": {
-    "description": "Rotuje šifrovací klíč jednoho pole. Znovu zašifruje data tohoto pole napříč všemi záznamy.",
     "field": {
       "title": "Název",
       "note": "Poznámka",
