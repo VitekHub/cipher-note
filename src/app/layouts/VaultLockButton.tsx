@@ -18,7 +18,7 @@ interface VaultLockButtonProps {
 function VaultLockButton({ variant, onBeforeToggle, className }: VaultLockButtonProps) {
   const { t } = useTranslation('vault')
   const isVaultLocked = useCryptoStore((s) => s.isVaultLocked)
-  const openUnlockDialog = useVaultDialogStore((s) => s.openUnlockDialog)
+  const openUnlockDialog = useVaultDialogStore((s) => s.open)
   const [isLocking, setIsLocking] = useState(false)
 
   function handleVaultLock() {

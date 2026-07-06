@@ -34,7 +34,7 @@ describe('VaultUnlockDialog', () => {
     vi.clearAllMocks()
     useCryptoStore.getState().clearVault()
     useCryptoStore.setState({ isVaultLocked: true })
-    useVaultDialogStore.setState({ isUnlockDialogOpen: true })
+    useVaultDialogStore.setState({ isOpen: true })
     vi.mocked(useAuth).mockReturnValue({
       isAuthenticated: true,
       user: mockUser,
@@ -44,13 +44,13 @@ describe('VaultUnlockDialog', () => {
     })
   })
 
-  it('renders dialog when isUnlockDialogOpen is true', () => {
+  it('renders dialog when isOpen is true', () => {
     render(<VaultUnlockDialog />)
     expect(screen.getByText('Vault Locked')).toBeInTheDocument()
   })
 
-  it('does not render dialog content when isUnlockDialogOpen is false', () => {
-    useVaultDialogStore.setState({ isUnlockDialogOpen: false })
+  it('does not render dialog content when isOpen is false', () => {
+    useVaultDialogStore.setState({ isOpen: false })
     render(<VaultUnlockDialog />)
     expect(screen.queryByText('Vault Locked')).not.toBeInTheDocument()
   })

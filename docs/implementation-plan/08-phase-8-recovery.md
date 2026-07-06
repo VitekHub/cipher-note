@@ -63,40 +63,59 @@
 
 ---
 
-## Step 31 — Seed Phrase Recovery Flow + UI
+## Step 31 — Seed Phrase Recovery Flow + UI ✅
 
 **Goal:** Recover account using seed phrase when password is lost.
 
 **Code:**
-- `src/app/routes/_public.recover.tsx` — replace placeholder with full recovery form:
-  - Username input + `MnemonicInput` (12-word input with BIP-39 validation)
-  - On submit:
-    1. Fetch recovery salts via `get_recovery_salts(p_username)` RPC (pre-auth, rate-limited)
-    2. Derive recovery KEK from mnemonic + recovery salt via `deriveRecoveryKEK`
-    3. Unwrap master key with `unwrapMasterKeyWithRecovery`
-    4. Derive full key hierarchy, unlock vault
-    5. Prompt user to set a new password (required — old auth hash is invalid after recovery)
-  - Error states: invalid mnemonic (BIP-39 validation), wrong mnemonic (DecryptionError), network error
+- `src/app/routes/_public.recover.tsx` — route renders `RecoverPage` component
+- `src/features/auth/ui/RecoverPage.tsx` — two-step form (mnemonic → new password):
+  - Step 1: username input + `MnemonicInput`; calls `recoveryFlow.validateMnemonic()`
+  - Step 2: new password + confirm; calls `recoveryFlow.setNewPassword()`
+  - On success, navigates to `/dashboard`; on `RecoveryLoginError`, navigates to `/login` with toast
+  - Zero-fills recovery state on unmount via `recoveryFlow.clear()`
 - `src/features/auth/ui/MnemonicInput.tsx`:
-  - 12 individual word inputs with BIP-39 word validation
-  - Auto-advance to next word on space/tab; paste support (split pasted text into words)
-  - Highlight invalid words in red; disable submit until all 12 words are valid BIP-39 words
+  - Controlled component with `value`, `onChange`, `onValidityChange` props
+  - 12 individual word inputs with BIP-39 word validation (async via `getBip39Wordlist()`)
+  - Auto-advance on space/tab; paste support (multi-word paste splits into inputs)
+  - Invalid words highlighted with `border-destructive`; submit disabled until all valid
 - `src/features/auth/ui/VerifyMnemonicDialog.tsx`:
-  - From SecuritySection, let user verify their stored mnemonic can unwrap the master key
-  - Uses `MnemonicInput` → derive recovery KEK → `unwrapMasterKeyWithRecovery` with cached envelope
-  - Success: "Your recovery phrase is valid" / Failure: "Recovery phrase does not match"
-- `src/features/auth/model/recovery-service.ts`:
-  - Orchestrates: fetch salts → derive KEK → unwrap master key → derive key hierarchy → set new password
-  - Reuses `deriveFullKeyHierarchy` and password-setting logic from `changeUserPassword`
-- `src/shared/api/supabase-recovery.ts` — add `get_recovery_salts(p_username)` RPC call for pre-auth salt fetch
-- Add i18n strings to `auth.json` for recovery flow
+  - From SecuritySection, verify mnemonic can unwrap the master key
+  - Uses `verifyMnemonic()` from `mnemonic-service.ts` → returns true/false
+  - Success toast / failure error message
+- `src/features/auth/model/mnemonic-service.ts` — `RecoveryFlow` class:
+  - `validateMnemonic(username, mnemonic)` → fetches recovery data pre-auth, unwraps master key, stores state
+  - `setNewPassword(newPassword)` → re-wraps master key, calls `recoverAccount` RPC, logs in, unlocks vault
+  - `clear()` → zero-fills master key and clears state
+  - `RecoveryLoginError` thrown when recovery succeeds but auto-login fails
+  - `verifyMnemonic(mnemonic)` → standalone function for verifying mnemonic from SecuritySection
+- `src/features/auth/model/recovery-schema.ts` — Zod schemas for both steps
+- `src/features/auth/model/recovery-error-messages.ts` — error mapping for recovery + regenerate mnemonic flows
+- `src/shared/api/supabase-recovery.ts` — three RPCs:
+  - `fetchRecoveryDataPreAuth(username)` — `get_recovery_data` RPC (pre-auth, rate-limited 5 req/2 min/IP)
+  - `recoverAccount(username, data)` — `recover_account` RPC (atomic: verify proof + update auth/salts/keys, rate-limited 3 req/15 min/IP)
+  - `saveRecoveryData` — changed from direct table insert to `save_recovery_data` RPC (bcrypt-hashes `recoveryAuthHash`)
+- `supabase/migrations/00006_recovery_rpc.sql` — migration with all three RPCs
+- Recovery uses `recoveryAuthHash` (HKDF of recovery KEK) as proof-of-knowledge:
+  - `wrapMasterKeyWithRecovery` and `unwrapMasterKeyWithRecovery` now return `recoveryAuthHash`
+  - Server stores bcrypt hash of `recoveryAuthHash`; `recover_account` verifies it before updating
+  - `RecoveryCredentials` type: `{newPasswordAuthHash, newKeySalt}` (no `mnemonic` field)
+- `src/shared/ui/create-dialog-store.ts` — factory for simple open/close dialog stores
+- `src/shared/auth/auth-dialogs-store.ts` — consolidated auth dialog stores using factory
+- Dialog stores refactored: `change-password-dialog-store`, `regenerate-mnemonic-dialog-store`, `vault-dialog-store` → use `createDialogStore` with `isOpen/open/close` API
+- Login page: "Forgot password?" link to `/recover`
+- Add i18n strings to `auth.json` (recovery, verify mnemonic) and `settings.json` (verify seed phrase)
 
 **Tests:**
-- Integration: register → write down mnemonic → recover with mnemonic → set new password → login with new password
+- Integration: register → recover with mnemonic → set new password → login with new password
 - Component: MnemonicInput validates BIP-39 words, highlights invalid, supports paste
 - Unit: wrong mnemonic → `unwrapMasterKeyWithRecovery` throws `DecryptionError`
-- Unit: recovery + new password → vault unlocks with new credentials
+- Unit: `RecoveryFlow` class — validate mnemonic, set new password, clear
 - Component: VerifyMnemonicDialog shows success/failure based on mnemonic validity
+- Component: RecoverPage — step transitions, error handling
+- Unit: `recovery-schema` validation
+- Unit: `recovery-error-messages` covers all error types
+- Unit: `getBip39Wordlist()` caching, HKDF `RECOVERY_AUTH` branch
 
 ---
 

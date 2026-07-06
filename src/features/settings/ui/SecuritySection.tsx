@@ -1,22 +1,30 @@
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight, KeyRound, ShieldCheck, Fingerprint, type LucideIcon } from 'lucide-react'
+import { ChevronRight, KeyRound, ShieldCheck, ScanEye, Fingerprint, type LucideIcon } from 'lucide-react'
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/ui/card'
 import { Separator } from '@/shared/ui/separator'
-import { useChangePasswordDialogStore } from '@/shared/auth/change-password-dialog-store'
-import { useRegenerateMnemonicDialogStore } from '@/shared/auth/regenerate-mnemonic-dialog-store'
+import {
+  useChangePasswordDialogStore,
+  useRegenerateMnemonicDialogStore,
+  useVerifyMnemonicDialogStore,
+} from '@/shared/auth/auth-dialogs-store'
 
 const ITEMS: { icon: LucideIcon; labelKey: string; onClick?: () => void }[] = [
   {
     icon: KeyRound,
     labelKey: 'security.changePassword',
-    onClick: () => useChangePasswordDialogStore.getState().openChangePasswordDialog(),
+    onClick: () => useChangePasswordDialogStore.getState().open(),
   },
   {
     icon: ShieldCheck,
     labelKey: 'security.seedPhrase',
-    onClick: () => useRegenerateMnemonicDialogStore.getState().openRegenerateMnemonicDialog(),
+    onClick: () => useRegenerateMnemonicDialogStore.getState().open(),
+  },
+  {
+    icon: ScanEye,
+    labelKey: 'security.verifySeedPhrase',
+    onClick: () => useVerifyMnemonicDialogStore.getState().open(),
   },
   { icon: Fingerprint, labelKey: 'security.keyVersions' },
 ]

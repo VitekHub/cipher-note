@@ -114,18 +114,18 @@ describe('Sidebar', () => {
 
   it('opens unlock dialog when unlock button is clicked while locked', async () => {
     useCryptoStore.setState({ isVaultLocked: true })
-    useVaultDialogStore.setState({ isUnlockDialogOpen: false })
+    useVaultDialogStore.setState({ isOpen: false })
     const user = userEvent.setup()
     render(<Sidebar />)
     await user.click(screen.getByRole('button', { name: /unlock vault/i }))
-    expect(useVaultDialogStore.getState().isUnlockDialogOpen).toBe(true)
+    expect(useVaultDialogStore.getState().isOpen).toBe(true)
     expect(mockLockVault).not.toHaveBeenCalled()
   })
 
   it('calls onClose when unlock button is clicked while locked', async () => {
     const onClose = vi.fn()
     useCryptoStore.setState({ isVaultLocked: true })
-    useVaultDialogStore.setState({ isUnlockDialogOpen: false })
+    useVaultDialogStore.setState({ isOpen: false })
     const user = userEvent.setup()
     render(<Sidebar onClose={onClose} />)
     await user.click(screen.getByRole('button', { name: /unlock vault/i }))

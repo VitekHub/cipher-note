@@ -2,14 +2,18 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen } from '@/test/utils'
 import userEvent from '@testing-library/user-event'
 
-import { useChangePasswordDialogStore } from '@/shared/auth/change-password-dialog-store'
-import { useRegenerateMnemonicDialogStore } from '@/shared/auth/regenerate-mnemonic-dialog-store'
+import {
+  useChangePasswordDialogStore,
+  useRegenerateMnemonicDialogStore,
+  useVerifyMnemonicDialogStore,
+} from '@/shared/auth/auth-dialogs-store'
 import { SecuritySection } from './SecuritySection'
 
 describe('SecuritySection', () => {
   beforeEach(() => {
-    useChangePasswordDialogStore.setState({ isChangePasswordDialogOpen: false })
-    useRegenerateMnemonicDialogStore.setState({ isRegenerateMnemonicDialogOpen: false })
+    useChangePasswordDialogStore.setState({ isOpen: false })
+    useRegenerateMnemonicDialogStore.setState({ isOpen: false })
+    useVerifyMnemonicDialogStore.setState({ isOpen: false })
   })
 
   it('renders section title and description', () => {
@@ -25,10 +29,10 @@ describe('SecuritySection', () => {
     expect(screen.getByText('Key versions')).toBeInTheDocument()
   })
 
-  it('renders two separator dividers between action items', () => {
+  it('renders three separator dividers between action items', () => {
     render(<SecuritySection />)
     const separators = screen.getAllByRole('separator')
-    expect(separators).toHaveLength(2)
+    expect(separators).toHaveLength(3)
   })
 
   it('opens change password dialog when clicking "Change password"', async () => {
@@ -38,7 +42,7 @@ describe('SecuritySection', () => {
     const changePasswordButton = screen.getByRole('button', { name: /Change password/i })
     await user.click(changePasswordButton)
 
-    expect(useChangePasswordDialogStore.getState().isChangePasswordDialogOpen).toBe(true)
+    expect(useChangePasswordDialogStore.getState().isOpen).toBe(true)
   })
 
   it('opens change password dialog with Space key', async () => {
@@ -49,7 +53,7 @@ describe('SecuritySection', () => {
     changePasswordButton.focus()
     await user.keyboard(' ')
 
-    expect(useChangePasswordDialogStore.getState().isChangePasswordDialogOpen).toBe(true)
+    expect(useChangePasswordDialogStore.getState().isOpen).toBe(true)
   })
 
   it('opens regenerate mnemonic dialog when clicking "Regenerate seed phrase"', async () => {
@@ -59,6 +63,16 @@ describe('SecuritySection', () => {
     const seedPhraseButton = screen.getByRole('button', { name: /Regenerate seed phrase/i })
     await user.click(seedPhraseButton)
 
-    expect(useRegenerateMnemonicDialogStore.getState().isRegenerateMnemonicDialogOpen).toBe(true)
+    expect(useRegenerateMnemonicDialogStore.getState().isOpen).toBe(true)
+  })
+
+  it('opens verify mnemonic dialog when clicking "Verify seed phrase"', async () => {
+    const user = userEvent.setup()
+    render(<SecuritySection />)
+
+    const verifyButton = screen.getByRole('button', { name: /Verify seed phrase/i })
+    await user.click(verifyButton)
+
+    expect(useVerifyMnemonicDialogStore.getState().isOpen).toBe(true)
   })
 })

@@ -33,10 +33,10 @@ describe('VaultIndicator', () => {
 
   it('opens unlock dialog when clicked while locked', async () => {
     useCryptoStore.setState({ isVaultLocked: true })
-    useVaultDialogStore.setState({ isUnlockDialogOpen: false })
+    useVaultDialogStore.setState({ isOpen: false })
     const user = userEvent.setup()
     render(<VaultIndicator />)
     await user.click(screen.getByRole('button', { name: /unlock vault/i }))
-    expect(useVaultDialogStore.getState().isUnlockDialogOpen).toBe(true)
+    expect(useVaultDialogStore.getState().isOpen).toBe(true)
   })
 })

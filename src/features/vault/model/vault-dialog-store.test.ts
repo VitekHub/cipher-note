@@ -3,17 +3,17 @@ import { useVaultDialogStore } from './vault-dialog-store'
 
 describe('vault-dialog-store', () => {
   it('initializes with dialog closed', () => {
-    expect(useVaultDialogStore.getState().isUnlockDialogOpen).toBe(false)
+    expect(useVaultDialogStore.getState().isOpen).toBe(false)
   })
 
-  it('openUnlockDialog sets isUnlockDialogOpen to true', () => {
-    useVaultDialogStore.getState().openUnlockDialog()
-    expect(useVaultDialogStore.getState().isUnlockDialogOpen).toBe(true)
+  it('open sets isOpen to true', () => {
+    useVaultDialogStore.getState().open()
+    expect(useVaultDialogStore.getState().isOpen).toBe(true)
   })
 
-  it('closeUnlockDialog sets isUnlockDialogOpen to false', () => {
-    useVaultDialogStore.getState().openUnlockDialog()
-    useVaultDialogStore.getState().closeUnlockDialog()
-    expect(useVaultDialogStore.getState().isUnlockDialogOpen).toBe(false)
+  it('close sets isOpen to false', () => {
+    useVaultDialogStore.getState().open()
+    useVaultDialogStore.getState().close()
+    expect(useVaultDialogStore.getState().isOpen).toBe(false)
   })
 })

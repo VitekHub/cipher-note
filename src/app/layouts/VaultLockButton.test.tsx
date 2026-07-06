@@ -22,7 +22,7 @@ vi.mock('@/shared/crypto/vault/crypto-store', () => ({
 const mockOpenUnlockDialog = vi.fn()
 
 vi.mock('@/features/vault/model/vault-dialog-store', () => ({
-  useVaultDialogStore: vi.fn((selector) => selector({ openUnlockDialog: mockOpenUnlockDialog })),
+  useVaultDialogStore: vi.fn((selector) => selector({ open: mockOpenUnlockDialog })),
 }))
 
 // Mock sync-status-store
@@ -124,7 +124,7 @@ describe('VaultLockButton', () => {
     expect(mockLockVault).toHaveBeenCalledOnce()
   })
 
-  it('calls openUnlockDialog when clicked while vault is locked', async () => {
+  it('calls open when clicked while vault is locked', async () => {
     mockIsVaultLocked.mockReturnValue(true)
     const user = userEvent.setup()
     render(<VaultLockButton variant="label" />)

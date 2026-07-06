@@ -11,6 +11,7 @@ import { VaultIndicator } from '@/features/vault/ui/VaultIndicator'
 import { VaultUnlockDialog } from '@/features/vault/ui/VaultUnlockDialog'
 import { ChangePasswordDialog } from '@/features/auth/ui/ChangePasswordDialog'
 import { RegenerateMnemonicDialog } from '@/features/auth/ui/RegenerateMnemonicDialog'
+import { VerifyMnemonicDialog } from '@/features/auth/ui/VerifyMnemonicDialog'
 import { OfflineBanner } from '@/shared/ui/OfflineBanner'
 import { useLayoutStore } from './layout-store'
 import { useResizable } from '@/shared/lib/use-resizable'
@@ -105,6 +106,7 @@ function AuthenticatedLayout() {
       <VaultUnlockDialog />
       <ChangePasswordDialog />
       <RegenerateMnemonicDialog />
+      <VerifyMnemonicDialog />
     </div>
   )
 }

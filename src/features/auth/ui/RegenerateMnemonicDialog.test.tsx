@@ -14,7 +14,7 @@ vi.mock('@/features/auth/model/mnemonic-service', () => ({
 
 import { RegenerateMnemonicDialog } from './RegenerateMnemonicDialog'
 import { regenerateMnemonic } from '@/features/auth/model/mnemonic-service'
-import { useRegenerateMnemonicDialogStore } from '@/shared/auth/regenerate-mnemonic-dialog-store'
+import { useRegenerateMnemonicDialogStore } from '@/shared/auth/auth-dialogs-store'
 
 const mockRegenerateMnemonic = vi.mocked(regenerateMnemonic)
 
@@ -23,7 +23,7 @@ const MNEMONIC = 'abandon ability able about above absent absorb abstract absurd
 describe('RegenerateMnemonicDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    useRegenerateMnemonicDialogStore.setState({ isRegenerateMnemonicDialogOpen: true })
+    useRegenerateMnemonicDialogStore.setState({ isOpen: true })
   })
 
   it('renders password confirm dialog when open and in password-confirm step', () => {
@@ -34,7 +34,7 @@ describe('RegenerateMnemonicDialog', () => {
   })
 
   it('does not render password dialog when closed', () => {
-    useRegenerateMnemonicDialogStore.setState({ isRegenerateMnemonicDialogOpen: false })
+    useRegenerateMnemonicDialogStore.setState({ isOpen: false })
     render(<RegenerateMnemonicDialog />)
 
     expect(screen.queryByLabelText(/password/i)).not.toBeInTheDocument()
@@ -110,7 +110,7 @@ describe('RegenerateMnemonicDialog', () => {
 
     // Dialog should close and success toast should fire
     await vi.waitFor(() => {
-      expect(useRegenerateMnemonicDialogStore.getState().isRegenerateMnemonicDialogOpen).toBe(false)
+      expect(useRegenerateMnemonicDialogStore.getState().isOpen).toBe(false)
     })
   })
 
@@ -123,7 +123,7 @@ describe('RegenerateMnemonicDialog', () => {
     // Click the close button on the PasswordConfirmDialog
     await user.click(screen.getByRole('button', { name: /close/i }))
 
-    expect(useRegenerateMnemonicDialogStore.getState().isRegenerateMnemonicDialogOpen).toBe(false)
+    expect(useRegenerateMnemonicDialogStore.getState().isOpen).toBe(false)
   })
 
   it('shows network error when saveRecoveryData fails', async () => {

@@ -11,12 +11,12 @@ import { PasswordStrength } from '@/features/auth/ui/PasswordStrength'
 import { changePasswordSchema, type ChangePasswordFormData } from '@/features/auth/model/change-password-schema'
 import { changeUserPassword } from '@/features/auth/model/auth-service'
 import { getChangePasswordErrorMessage } from '@/features/auth/model/change-password-error-messages'
-import { useChangePasswordDialogStore } from '@/shared/auth/change-password-dialog-store'
+import { useChangePasswordDialogStore } from '@/shared/auth/auth-dialogs-store'
 
 function ChangePasswordDialog() {
   const { t } = useTranslation('auth')
-  const isChangePasswordDialogOpen = useChangePasswordDialogStore((s) => s.isChangePasswordDialogOpen)
-  const closeChangePasswordDialog = useChangePasswordDialogStore((s) => s.closeChangePasswordDialog)
+  const isOpen = useChangePasswordDialogStore((s) => s.isOpen)
+  const close = useChangePasswordDialogStore((s) => s.close)
   const cardRef = useRef<HTMLDivElement>(null)
 
   const methods = useForm<ChangePasswordFormData>({
@@ -42,7 +42,7 @@ function ChangePasswordDialog() {
       await changeUserPassword(data.currentPassword, data.newPassword)
       toast.success(t('changePassword.success'))
       reset()
-      closeChangePasswordDialog()
+      close()
     } catch (error) {
       toast.error(getChangePasswordErrorMessage(error, t))
     }
@@ -50,12 +50,12 @@ function ChangePasswordDialog() {
 
   return (
     <Dialog
-      open={isChangePasswordDialogOpen}
+      open={isOpen}
       preventClose={isSubmitting}
       onOpenChange={(open) => {
         if (!open) {
           reset()
-          closeChangePasswordDialog()
+          close()
         }
       }}
     >
