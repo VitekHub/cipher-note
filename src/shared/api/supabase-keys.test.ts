@@ -559,10 +559,10 @@ describe('rotateFieldKeyRpc', () => {
       fieldName: 'note',
       newVersion: 2,
       newWrappedFieldKey: 'aa'.repeat(48),
-      newFieldKeyIv: 'bb'.repeat(12),
+      newFieldKeyIV: 'bb'.repeat(12),
       reEncryptedFields: [
-        { entryId: 'entry-1', ciphertext: 'cc'.repeat(16), ciphertextIv: 'dd'.repeat(12) },
-        { entryId: 'entry-2', ciphertext: 'ee'.repeat(16), ciphertextIv: 'ff'.repeat(12) },
+        { entryId: 'entry-1', ciphertext: 'cc'.repeat(16), ciphertextIV: 'dd'.repeat(12) },
+        { entryId: 'entry-2', ciphertext: 'ee'.repeat(16), ciphertextIV: 'ff'.repeat(12) },
       ],
     })
 
@@ -587,7 +587,7 @@ describe('rotateFieldKeyRpc', () => {
       fieldName: 'note',
       newVersion: 2,
       newWrappedFieldKey: 'aa'.repeat(48),
-      newFieldKeyIv: 'bb'.repeat(12),
+      newFieldKeyIV: 'bb'.repeat(12),
       reEncryptedFields: [],
     })
 
@@ -610,7 +610,7 @@ describe('rotateFieldKeyRpc', () => {
         fieldName: 'note',
         newVersion: 2,
         newWrappedFieldKey: 'aa'.repeat(48),
-        newFieldKeyIv: 'bb'.repeat(12),
+        newFieldKeyIV: 'bb'.repeat(12),
         reEncryptedFields: [],
       })
       expect.unreachable('should have thrown')

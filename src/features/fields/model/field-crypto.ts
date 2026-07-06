@@ -1,6 +1,6 @@
 import { decrypt, encrypt } from '@/shared/crypto/core/aes-gcm'
 import { encodeAAD, generateIV, hexDecode, hexEncode } from '@/shared/crypto/core/crypto-utils'
-import { FIELD_KEY_VERSION } from '@/shared/types/crypto.types'
+import { FIELD_CONTENT_VERSION } from '@/shared/types/crypto.types'
 import type { EncryptedFieldData } from '@/shared/types/crypto.types'
 import type { FieldName } from '@/shared/types/entities/field.types'
 import type { SaveFieldData, ServerEncryptedField } from '@/shared/types/api.types'
@@ -8,7 +8,7 @@ import type { SaveFieldData, ServerEncryptedField } from '@/shared/types/api.typ
 /**
  * Encrypt a plaintext field value using AES-256-GCM with the field's CryptoKey.
  *
- * AAD binds the ciphertext to the field name and key version, preventing ciphertext
+ * AAD binds the ciphertext to the field name and content version, preventing ciphertext
  * swapping between fields. A fresh random IV is generated each call.
  */
 export async function encryptField(
@@ -18,7 +18,7 @@ export async function encryptField(
 ): Promise<EncryptedFieldData> {
   const plaintextBytes = new TextEncoder().encode(plaintext) as Uint8Array<ArrayBuffer>
   const ciphertextIV = generateIV()
-  const aad = encodeAAD(fieldName, FIELD_KEY_VERSION)
+  const aad = encodeAAD(fieldName, FIELD_CONTENT_VERSION)
   const ciphertext = await encrypt(plaintextBytes, fieldKey, { iv: ciphertextIV, aad })
   return { ciphertext, ciphertextIV }
 }
@@ -26,7 +26,7 @@ export async function encryptField(
 /**
  * Decrypt an encrypted field value back to a plaintext string.
  *
- * The AAD is reconstructed from fieldName + FIELD_KEY_VERSION, so the caller
+ * The AAD is reconstructed from fieldName + FIELD_CONTENT_VERSION, so the caller
  * must pass the same field name used during encryption.
  */
 export async function decryptField(
@@ -34,7 +34,7 @@ export async function decryptField(
   fieldKey: CryptoKey,
   fieldName: FieldName,
 ): Promise<string> {
-  const aad = encodeAAD(fieldName, FIELD_KEY_VERSION)
+  const aad = encodeAAD(fieldName, FIELD_CONTENT_VERSION)
   const plaintextBytes = await decrypt(encryptedData.ciphertext, fieldKey, { iv: encryptedData.ciphertextIV, aad })
   return new TextDecoder().decode(plaintextBytes)
 }

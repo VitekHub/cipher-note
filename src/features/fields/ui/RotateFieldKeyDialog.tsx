@@ -15,7 +15,6 @@ import {
 } from '@/shared/ui/alert-dialog'
 import { useRotateFieldKeyDialogStore } from '@/shared/auth/auth-dialogs-store'
 import { useRequiredUserId } from '@/shared/auth/use-current-user'
-import { useCryptoStore } from '@/shared/crypto/vault/crypto-store'
 import { queryKeys } from '@/shared/lib/query-keys'
 import { FIELD_NAMES } from '@/shared/types/entities/field.types'
 import type { FieldName } from '@/shared/types/entities/field.types'
@@ -28,13 +27,6 @@ const FIELD_LABEL_KEYS: Record<FieldName, string> = {
   note: 'keyRotation.field.note',
   website: 'keyRotation.field.website',
   email: 'keyRotation.field.email',
-}
-
-/** Highest wrapped-key version stored for a field, from the cached envelope. */
-function currentVersionFor(fieldName: FieldName): number {
-  const fieldKeys = useCryptoStore.getState().cachedEnvelope?.fieldKeys
-  const versions = (fieldKeys ?? []).filter((k) => k.fieldName === fieldName).map((k) => k.version)
-  return versions.length > 0 ? Math.max(...versions) : 1
 }
 
 type Progress = { field: FieldName; done: number; total: number } | null
@@ -70,9 +62,8 @@ function RotateFieldKeyDialog() {
   async function handleConfirmSingle(name: FieldName) {
     setIsSubmitting(true)
     try {
-      await rotateFieldKey(userId, name)
+      const newVersion = await rotateFieldKey(userId, name)
       queryClient.invalidateQueries({ queryKey: queryKeys.field.all })
-      const newVersion = currentVersionFor(name)
       toast.success(t('keyRotation.success', { field: t(FIELD_LABEL_KEYS[name]), version: newVersion }))
       closeDialog()
     } catch (error) {
@@ -92,8 +83,8 @@ function RotateFieldKeyDialog() {
     for (const name of FIELD_NAMES) {
       setProgress({ field: name, done, total })
       try {
-        await rotateFieldKey(userId, name)
-        succeeded.push({ name, version: currentVersionFor(name) })
+        const newVersion = await rotateFieldKey(userId, name)
+        succeeded.push({ name, version: newVersion })
       } catch (error) {
         failed.push({ name, error })
       }

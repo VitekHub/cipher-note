@@ -1,13 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { ServerEncryptedField, CachedVaultEnvelope } from '@/shared/types/api.types'
 import type { FieldName } from '@/shared/types/entities/field.types'
+import type { GeneratedFieldKey } from '@/shared/crypto/keys/field-keys'
+import type { EncryptedFieldData } from '@/shared/types/crypto.types'
 
 const {
   mockGetKey,
   mockStoreKey,
   mockFetchAll,
   mockRotateRpc,
-  mockRotateCrypto,
+  mockGenerateFieldKey,
+  mockDecryptField,
+  mockEncryptField,
   mockMarkLocal,
   mockUpdateCachedFieldKey,
   mockEnvelope,
@@ -19,7 +23,9 @@ const {
   mockStoreKey: vi.fn<(id: string, key: CryptoKey) => void>(),
   mockFetchAll: vi.fn<(userId: string, fieldName: FieldName) => Promise<ServerEncryptedField[]>>(),
   mockRotateRpc: vi.fn<(input: unknown) => Promise<void>>(),
-  mockRotateCrypto: vi.fn<(input: unknown) => Promise<unknown>>(),
+  mockGenerateFieldKey: vi.fn<(kek: CryptoKey, fieldName: FieldName, version: number) => Promise<GeneratedFieldKey>>(),
+  mockDecryptField: vi.fn<(data: EncryptedFieldData, key: CryptoKey, fieldName: FieldName) => Promise<string>>(),
+  mockEncryptField: vi.fn<(plaintext: string, key: CryptoKey, fieldName: FieldName) => Promise<EncryptedFieldData>>(),
   mockMarkLocal: vi.fn<(fieldName: FieldName, version: number) => void>(),
   mockUpdateCachedFieldKey: vi.fn<(input: unknown) => void>(),
   mockEnvelope: {
@@ -59,8 +65,13 @@ vi.mock('@/shared/api/supabase-keys', () => ({
   rotateFieldKeyRpc: mockRotateRpc,
 }))
 
-vi.mock('@/shared/crypto/keys/key-rotation', () => ({
-  rotateFieldKeyCrypto: mockRotateCrypto,
+vi.mock('@/shared/crypto/keys/field-keys', () => ({
+  generateFieldKey: mockGenerateFieldKey,
+}))
+
+vi.mock('@/features/fields/model/field-crypto', () => ({
+  decryptField: mockDecryptField,
+  encryptField: mockEncryptField,
 }))
 
 vi.mock('@/shared/realtime/realtime-echo', () => ({
@@ -90,29 +101,28 @@ function twoServerFields(): ServerEncryptedField[] {
   ]
 }
 
+function setupCryptoMocks() {
+  mockGenerateFieldKey.mockResolvedValue({
+    cryptoKey: mockNewKey,
+    wrappedFieldKey: new Uint8Array(48).fill(0xff),
+    fieldKeyIV: new Uint8Array(12).fill(0xee),
+  })
+
+  mockDecryptField.mockResolvedValue('decrypted')
+
+  mockEncryptField.mockResolvedValue({
+    ciphertext: new Uint8Array(16).fill(0xcc),
+    ciphertextIV: new Uint8Array(12).fill(0xdd),
+  })
+}
+
 describe('rotateFieldKey', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockGetKey.mockImplementation((id: string) => (id === 'kek' ? mockKek : mockOldKey))
     mockFetchAll.mockResolvedValue(twoServerFields())
     mockRotateRpc.mockResolvedValue(undefined)
-    mockRotateCrypto.mockImplementation((input: unknown) => {
-      const { currentVersion, currentCiphertexts } = input as {
-        currentVersion: number
-        currentCiphertexts: { entryId: string }[]
-      }
-      return Promise.resolve({
-        newCryptoKey: mockNewKey,
-        newVersion: currentVersion + 1,
-        newWrappedFieldKey: 'ff'.repeat(48),
-        newFieldKeyIv: 'ee'.repeat(12),
-        reEncryptedFields: currentCiphertexts.map((c) => ({
-          entryId: c.entryId,
-          ciphertext: 'cc'.repeat(16),
-          ciphertextIv: 'dd'.repeat(12),
-        })),
-      })
-    })
+    setupCryptoMocks()
   })
 
   it('happy path: fetches ciphertexts, rotates, calls RPC, updates vault and cache', async () => {
@@ -125,31 +135,26 @@ describe('rotateFieldKey', () => {
     // All ciphertexts for the field fetched across entries.
     expect(mockFetchAll).toHaveBeenCalledWith(USER_ID, 'note')
 
-    // Pure crypto called with vault inputs + current version from the cached envelope.
-    expect(mockRotateCrypto).toHaveBeenCalledWith({
-      kek: mockKek,
-      oldFieldKey: mockOldKey,
-      fieldName: 'note',
-      currentVersion: 1,
-      currentCiphertexts: [
-        { entryId: 'entry-1', ciphertext: 'aa'.repeat(16), ciphertextIv: 'bb'.repeat(12) },
-        { entryId: 'entry-2', ciphertext: 'cc'.repeat(16), ciphertextIv: 'dd'.repeat(12) },
-      ],
-    })
+    // Crypto called with vault inputs + current version from the cached envelope.
+    expect(mockGenerateFieldKey).toHaveBeenCalledWith(mockKek, 'note', 2)
+
+    // Each ciphertext decrypted with the old key, then re-encrypted with the new key.
+    expect(mockDecryptField).toHaveBeenCalledTimes(2)
+    expect(mockEncryptField).toHaveBeenCalledTimes(2)
 
     // Local-echo marker set before the RPC fires.
     expect(mockMarkLocal).toHaveBeenCalledWith('note', 2)
     expect(mockMarkLocal.mock.invocationCallOrder[0]).toBeLessThan(mockRotateRpc.mock.invocationCallOrder[0]!)
 
-    // Atomic server swap called with the crypto result.
+    // Atomic server swap called with hex-encoded crypto results.
     expect(mockRotateRpc).toHaveBeenCalledWith({
       fieldName: 'note',
       newVersion: 2,
       newWrappedFieldKey: 'ff'.repeat(48),
-      newFieldKeyIv: 'ee'.repeat(12),
+      newFieldKeyIV: 'ee'.repeat(12),
       reEncryptedFields: [
-        { entryId: 'entry-1', ciphertext: 'cc'.repeat(16), ciphertextIv: 'dd'.repeat(12) },
-        { entryId: 'entry-2', ciphertext: 'cc'.repeat(16), ciphertextIv: 'dd'.repeat(12) },
+        { entryId: 'entry-1', ciphertext: 'cc'.repeat(16), ciphertextIV: 'dd'.repeat(12) },
+        { entryId: 'entry-2', ciphertext: 'cc'.repeat(16), ciphertextIV: 'dd'.repeat(12) },
       ],
     })
 
@@ -157,9 +162,9 @@ describe('rotateFieldKey', () => {
     expect(mockStoreKey).toHaveBeenCalledWith('note', mockNewKey)
     expect(mockUpdateCachedFieldKey).toHaveBeenCalledWith({
       fieldName: 'note',
-      newVersion: 2,
-      newWrappedFieldKey: 'ff'.repeat(48),
-      newFieldKeyIv: 'ee'.repeat(12),
+      version: 2,
+      wrappedFieldKey: 'ff'.repeat(48),
+      fieldKeyIV: 'ee'.repeat(12),
     })
   })
 
@@ -169,7 +174,7 @@ describe('rotateFieldKey', () => {
     await expect(rotateFieldKey(USER_ID, 'note')).rejects.toThrow('Vault is locked — cannot rotate')
 
     expect(mockFetchAll).not.toHaveBeenCalled()
-    expect(mockRotateCrypto).not.toHaveBeenCalled()
+    expect(mockGenerateFieldKey).not.toHaveBeenCalled()
     expect(mockRotateRpc).not.toHaveBeenCalled()
     expect(mockStoreKey).not.toHaveBeenCalled()
     expect(mockUpdateCachedFieldKey).not.toHaveBeenCalled()
@@ -181,18 +186,19 @@ describe('rotateFieldKey', () => {
     await expect(rotateFieldKey(USER_ID, 'note')).rejects.toThrow('rpc failed')
 
     // Crypto ran and the marker was set, but the local state was NOT updated.
-    expect(mockRotateCrypto).toHaveBeenCalledTimes(1)
+    expect(mockGenerateFieldKey).toHaveBeenCalledTimes(1)
     expect(mockRotateRpc).toHaveBeenCalledTimes(1)
     expect(mockStoreKey).not.toHaveBeenCalled()
     expect(mockUpdateCachedFieldKey).not.toHaveBeenCalled()
   })
 
-  it('still calls the RPC with an empty ciphertext list when there are no entries', async () => {
+  it('still calls the RPC with an empty re-encrypted fields list when there are no entries', async () => {
     mockFetchAll.mockResolvedValueOnce([])
 
     await rotateFieldKey(USER_ID, 'note')
 
-    expect(mockRotateCrypto).toHaveBeenCalledWith(expect.objectContaining({ currentCiphertexts: [] }))
+    expect(mockDecryptField).not.toHaveBeenCalled()
+    expect(mockEncryptField).not.toHaveBeenCalled()
     expect(mockRotateRpc).toHaveBeenCalledWith(expect.objectContaining({ reEncryptedFields: [] }))
     expect(mockStoreKey).toHaveBeenCalledWith('note', mockNewKey)
     expect(mockUpdateCachedFieldKey).toHaveBeenCalledTimes(1)
@@ -205,23 +211,14 @@ describe('rotateAllFields', () => {
     mockGetKey.mockImplementation((id: string) => (id === 'kek' ? mockKek : mockOldKey))
     mockFetchAll.mockResolvedValue([])
     mockRotateRpc.mockResolvedValue(undefined)
-    mockRotateCrypto.mockImplementation((input: unknown) => {
-      const { currentVersion } = input as { currentVersion: number }
-      return Promise.resolve({
-        newCryptoKey: mockNewKey,
-        newVersion: currentVersion + 1,
-        newWrappedFieldKey: 'ff'.repeat(48),
-        newFieldKeyIv: 'ee'.repeat(12),
-        reEncryptedFields: [],
-      })
-    })
-    // Reflect successful rotations in the cached envelope so maxVersionForField
-    // reports the new version for the per-field outcome.
+    setupCryptoMocks()
+    // Reflect successful rotations in the cached envelope so currentVersionFor
+    // reports the new version for subsequent rotations in the loop.
     mockUpdateCachedFieldKey.mockImplementation((input: unknown) => {
-      const { fieldName, newVersion } = input as { fieldName: FieldName; newVersion: number }
+      const { fieldName, version } = input as { fieldName: FieldName; version: number }
       const others = mockEnvelope.fieldKeys.filter((k) => k.fieldName !== fieldName)
       const rotated = mockEnvelope.fieldKeys.find((k) => k.fieldName === fieldName)
-      if (rotated) others.push({ ...rotated, version: newVersion })
+      if (rotated) others.push({ ...rotated, version })
       mockEnvelope.fieldKeys = others
     })
   })

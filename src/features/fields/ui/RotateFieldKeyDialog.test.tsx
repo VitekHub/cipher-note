@@ -6,7 +6,7 @@ import type { CachedVaultEnvelope } from '@/shared/types/api.types'
 
 const { mockInvalidateQueries, mockRotateFieldKey } = vi.hoisted(() => ({
   mockInvalidateQueries: vi.fn(),
-  mockRotateFieldKey: vi.fn<(userId: string, fieldName: FieldName) => Promise<void>>(),
+  mockRotateFieldKey: vi.fn<(userId: string, fieldName: FieldName) => Promise<number>>(),
 }))
 
 vi.mock('@tanstack/react-query', async () => {
@@ -48,8 +48,11 @@ function envelopeWith(versions: Partial<Record<string, number>> = {}): CachedVau
 }
 
 /** Mock rotation that simulates the service bumping the cached-envelope version. */
-function rotatingMock() {
+function rotatingMock(failingFields: Set<FieldName> = new Set()) {
   mockRotateFieldKey.mockImplementation(async (_userId: string, fieldName: FieldName) => {
+    if (failingFields.has(fieldName)) throw new ApiError(ApiErrorCode.NETWORK_ERROR)
+    const key = useCryptoStore.getState().cachedEnvelope?.fieldKeys.find((k) => k.fieldName === fieldName)
+    const newVersion = (key?.version ?? 1) + 1
     useCryptoStore.setState((s) => {
       if (!s.cachedEnvelope) return {}
       return {
@@ -61,6 +64,7 @@ function rotatingMock() {
         },
       }
     })
+    return newVersion
   })
 }
 
@@ -144,20 +148,7 @@ describe('RotateFieldKeyDialog', () => {
     useRotateFieldKeyDialogStore.setState({ isOpen: true, payload: { fieldName: null } })
 
     // 3rd field (website) fails; first two and the 4th succeed.
-    mockRotateFieldKey.mockImplementation(async (_userId: string, fieldName: FieldName) => {
-      if (fieldName === 'website') throw new ApiError(ApiErrorCode.NETWORK_ERROR)
-      useCryptoStore.setState((s) => {
-        if (!s.cachedEnvelope) return {}
-        return {
-          cachedEnvelope: {
-            ...s.cachedEnvelope,
-            fieldKeys: s.cachedEnvelope.fieldKeys.map((k) =>
-              k.fieldName === fieldName ? { ...k, version: k.version + 1 } : k,
-            ),
-          },
-        }
-      })
-    })
+    rotatingMock(new Set(['website']))
 
     render(<RotateFieldKeyDialog />)
 

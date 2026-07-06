@@ -70,7 +70,7 @@ export interface RecoverAccountData {
 export interface ReEncryptedField {
   entryId: string
   ciphertext: string
-  ciphertextIv: string
+  ciphertextIV: string
 }
 
 /** Inputs to the field-key rotation RPC. */
@@ -78,6 +78,6 @@ export interface RotateFieldKeyRpcInput {
   fieldName: FieldName
   newVersion: number
   newWrappedFieldKey: string // 96 hex chars
-  newFieldKeyIv: string // 24 hex chars
+  newFieldKeyIV: string // 24 hex chars
   reEncryptedFields: ReEncryptedField[]
 }

@@ -1,14 +1,77 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { DecryptionError } from '@/shared/crypto/core/errors'
+import * as cryptoUtils from '@/shared/crypto/core/crypto-utils'
 import { hexEncode, generateKey, generateIV, encodeAAD, zeroFill } from '@/shared/crypto/core/crypto-utils'
 import { generateMasterKey } from '@/shared/crypto/keys/master-key'
 import { deriveKEK } from '@/shared/crypto/core/hkdf'
 import { importKey, encrypt } from '@/shared/crypto/core/aes-gcm'
-import { generateAndWrapFieldKeys, unwrapFieldKeys } from '@/shared/crypto/keys/field-keys'
+import { generateFieldKey, generateAllFieldKeys, unwrapFieldKeys } from '@/shared/crypto/keys/field-keys'
 import type { ServerFieldKey } from '@/shared/types/api.types'
 
 describe('field-keys', () => {
-  describe('generateAndWrapFieldKeys', () => {
+  describe('generateFieldKey', () => {
+    async function setupKEK() {
+      const masterKey = generateMasterKey()
+      const kekBytes = await deriveKEK(masterKey)
+      const kek = await importKey(kekBytes)
+      return { kek }
+    }
+
+    it('returns a CryptoKey and correctly wrapped key material', async () => {
+      const { kek } = await setupKEK()
+      const { cryptoKey, wrappedFieldKey, fieldKeyIV } = await generateFieldKey(kek, 'note', 1)
+
+      expect(cryptoKey).toBeInstanceOf(CryptoKey)
+      expect(wrappedFieldKey.length).toBe(48) // 32 bytes + 16-byte GCM tag
+      expect(fieldKeyIV.length).toBe(12)
+    })
+
+    it('round-trips through wrap and unwrap', async () => {
+      const { kek } = await setupKEK()
+      const { cryptoKey, wrappedFieldKey, fieldKeyIV } = await generateFieldKey(kek, 'note', 1)
+
+      const aad = encodeAAD('note', 1)
+      const unwrappedRaw = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: fieldKeyIV, additionalData: aad },
+        kek,
+        wrappedFieldKey,
+      )
+      const unwrappedKey = await importKey(new Uint8Array(unwrappedRaw))
+
+      // Both keys produce identical ciphertext for the same plaintext/IV.
+      const plaintext = new Uint8Array(32).fill(0x42)
+      const iv = new Uint8Array(12).fill(0x00)
+      const cipher1 = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, cryptoKey, plaintext)
+      const cipher2 = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, unwrappedKey, plaintext)
+      expect(new Uint8Array(cipher1)).toEqual(new Uint8Array(cipher2))
+    })
+
+    it('uses the provided version in the AAD (rollback protection)', async () => {
+      const { kek } = await setupKEK()
+      const { wrappedFieldKey, fieldKeyIV } = await generateFieldKey(kek, 'note', 3)
+
+      // Unwrapping with a different version must fail.
+      const staleAad = encodeAAD('note', 2)
+      await expect(
+        crypto.subtle.decrypt({ name: 'AES-GCM', iv: fieldKeyIV, additionalData: staleAad }, kek, wrappedFieldKey),
+      ).rejects.toThrow()
+    })
+
+    it('zero-fills the raw key material', async () => {
+      const { kek } = await setupKEK()
+      const rawKey = new Uint8Array(32).fill(0xab)
+      const spy = vi.spyOn(cryptoUtils, 'generateKey').mockReturnValue(rawKey)
+
+      try {
+        await generateFieldKey(kek, 'note', 1)
+        expect(Array.from(rawKey)).toEqual(new Array(32).fill(0))
+      } finally {
+        spy.mockRestore()
+      }
+    })
+  })
+
+  describe('generateAllFieldKeys', () => {
     async function setupKEK() {
       const masterKey = generateMasterKey()
       const kekBytes = await deriveKEK(masterKey)
@@ -18,7 +81,7 @@ describe('field-keys', () => {
 
     it('returns cryptoFieldKeys and wrappedFieldKeys for all four fields', async () => {
       const { kek } = await setupKEK()
-      const { cryptoFieldKeys, wrappedFieldKeys } = await generateAndWrapFieldKeys(kek)
+      const { cryptoFieldKeys, wrappedFieldKeys } = await generateAllFieldKeys(kek)
 
       expect(cryptoFieldKeys.size).toBe(4)
       expect(wrappedFieldKeys).toHaveLength(4)
@@ -34,7 +97,7 @@ describe('field-keys', () => {
 
     it('produces CryptoKey instances for each field', async () => {
       const { kek } = await setupKEK()
-      const { cryptoFieldKeys } = await generateAndWrapFieldKeys(kek)
+      const { cryptoFieldKeys } = await generateAllFieldKeys(kek)
       for (const key of cryptoFieldKeys.values()) {
         expect(key).toBeInstanceOf(CryptoKey)
       }
@@ -42,7 +105,7 @@ describe('field-keys', () => {
 
     it('produces wrapped keys of correct size with version', async () => {
       const { kek } = await setupKEK()
-      const { wrappedFieldKeys } = await generateAndWrapFieldKeys(kek)
+      const { wrappedFieldKeys } = await generateAllFieldKeys(kek)
       for (const w of wrappedFieldKeys) {
         expect(w.wrappedFieldKey.length).toBe(48) // 32 bytes + 16 byte GCM tag
         expect(w.fieldKeyIV.length).toBe(12)
@@ -52,7 +115,7 @@ describe('field-keys', () => {
 
     it('round-trips through wrap and unwrap', async () => {
       const { kek } = await setupKEK()
-      const { cryptoFieldKeys, wrappedFieldKeys } = await generateAndWrapFieldKeys(kek)
+      const { cryptoFieldKeys, wrappedFieldKeys } = await generateAllFieldKeys(kek)
 
       const serverFieldKeys: ServerFieldKey[] = wrappedFieldKeys.map((w) => ({
         fieldName: w.fieldName,
@@ -78,7 +141,7 @@ describe('field-keys', () => {
 
     it('throws DecryptionError when unwrapping with wrong KEK', async () => {
       const { kek } = await setupKEK()
-      const { wrappedFieldKeys } = await generateAndWrapFieldKeys(kek)
+      const { wrappedFieldKeys } = await generateAllFieldKeys(kek)
       const serverFieldKeys: ServerFieldKey[] = wrappedFieldKeys.map((w) => ({
         fieldName: w.fieldName,
         version: w.version,
@@ -94,7 +157,7 @@ describe('field-keys', () => {
 
     it('throws DecryptionError when unwrapping with wrong version (rollback protection)', async () => {
       const { kek } = await setupKEK()
-      const { wrappedFieldKeys } = await generateAndWrapFieldKeys(kek)
+      const { wrappedFieldKeys } = await generateAllFieldKeys(kek)
 
       const tampered = wrappedFieldKeys.map((w) => ({
         ...w,

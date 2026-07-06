@@ -12,18 +12,10 @@ interface CryptoState {
   cachedEnvelope: CachedVaultEnvelope | null
 }
 
-/** Inputs to replace one field key in the cached envelope. */
-export interface UpdateCachedFieldKeyInput {
-  fieldName: string
-  newVersion: number
-  newWrappedFieldKey: string
-  newFieldKeyIv: string
-}
-
 interface CryptoActions {
   markKeysLoaded: (fieldKeyNames: string[]) => void
   setCachedEnvelope: (envelope: CachedVaultEnvelope) => void
-  updateCachedFieldKey: (input: UpdateCachedFieldKeyInput) => void
+  updateCachedFieldKey: (fieldKey: ServerFieldKey) => void
   lockVault: () => void
   clearVault: () => void
   updateActivity: () => void
@@ -59,17 +51,11 @@ const useCryptoStore = create<CryptoState & CryptoActions>()((set) => ({
       lastActivity: Date.now(),
     }),
   setCachedEnvelope: (envelope) => set({ cachedEnvelope: envelope }),
-  updateCachedFieldKey: (input) =>
+  updateCachedFieldKey: (fieldKey) =>
     set((state) => {
       if (!state.cachedEnvelope) return {}
-      const others = state.cachedEnvelope.fieldKeys.filter((k) => k.fieldName !== input.fieldName)
-      const rotated: ServerFieldKey = {
-        fieldName: input.fieldName,
-        version: input.newVersion,
-        wrappedFieldKey: input.newWrappedFieldKey,
-        fieldKeyIV: input.newFieldKeyIv,
-      }
-      return { cachedEnvelope: { ...state.cachedEnvelope, fieldKeys: [...others, rotated] } }
+      const others = state.cachedEnvelope.fieldKeys.filter((k) => k.fieldName !== fieldKey.fieldName)
+      return { cachedEnvelope: { ...state.cachedEnvelope, fieldKeys: [...others, fieldKey] } }
     }),
   lockVault: () => {
     set({

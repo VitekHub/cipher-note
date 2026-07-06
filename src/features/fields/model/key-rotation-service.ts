@@ -9,10 +9,13 @@ import { keyVault } from '@/shared/crypto/vault/key-vault'
 import { useCryptoStore } from '@/shared/crypto/vault/crypto-store'
 import { fetchAllEncryptedFieldsForUser } from '@/shared/api/supabase-fields'
 import { rotateFieldKeyRpc } from '@/shared/api/supabase-keys'
-import { rotateFieldKeyCrypto } from '@/shared/crypto/keys/key-rotation'
 import { markLocalKeyRotation } from '@/shared/realtime/realtime-echo'
 import { FIELD_NAMES } from '@/shared/types/entities/field.types'
 import type { FieldName } from '@/shared/types/entities/field.types'
+import { generateFieldKey } from '@/shared/crypto/keys/field-keys'
+import { hexEncode, hexDecode } from '@/shared/crypto/core/crypto-utils'
+import { encryptField, decryptField } from '@/features/fields/model/field-crypto'
+import type { ServerEncryptedField } from '@/shared/types/api.types'
 
 /** A field that rotated successfully. */
 export type RotationSuccess = { fieldName: FieldName; ok: true; newVersion: number }
@@ -22,16 +25,39 @@ export type RotationFailure = { fieldName: FieldName; ok: false; error: unknown 
 
 export type RotationOutcome = RotationSuccess | RotationFailure
 
-/**
- * Highest wrapped-key version currently stored for a field, from the cached
- * envelope. After an atomic swap there is exactly one version per field.
- */
-function maxVersionForField(fieldName: FieldName): number {
+/** Next version number for a field key (current version + 1). */
+function nextVersionFor(fieldName: FieldName): number {
   const envelope = useCryptoStore.getState().cachedEnvelope
   if (!envelope) throw new Error('No cached envelope — vault is locked')
-  const versions = envelope.fieldKeys.filter((k) => k.fieldName === fieldName).map((k) => k.version)
-  if (versions.length === 0) throw new Error(`No field key found for "${fieldName}"`)
-  return Math.max(...versions)
+  const key = envelope.fieldKeys.find((k) => k.fieldName === fieldName)
+  if (!key) throw new Error(`No field key found for "${fieldName}"`)
+  return key.version + 1
+}
+
+/** Re-encrypt all ciphertexts for a field from the old key to the new key. */
+async function reEncryptCiphertexts(
+  ciphertexts: ServerEncryptedField[],
+  newFieldKey: CryptoKey,
+  fieldName: FieldName,
+): Promise<{ entryId: string; ciphertext: string; ciphertextIV: string }[]> {
+  const oldFieldKey = keyVault.getKey(fieldName)
+  if (!oldFieldKey) throw new Error('Vault is locked — cannot re-encrypt')
+
+  return Promise.all(
+    ciphertexts.map(async ({ entryId, ciphertext, ciphertextIV }) => {
+      const plaintext = await decryptField(
+        { ciphertext: hexDecode(ciphertext), ciphertextIV: hexDecode(ciphertextIV) },
+        oldFieldKey,
+        fieldName,
+      )
+      const newEncrypted = await encryptField(plaintext, newFieldKey, fieldName)
+      return {
+        entryId,
+        ciphertext: hexEncode(newEncrypted.ciphertext),
+        ciphertextIV: hexEncode(newEncrypted.ciphertextIV),
+      }
+    }),
+  )
 }
 
 /**
@@ -39,47 +65,38 @@ function maxVersionForField(fieldName: FieldName): number {
  * that field and swap the wrapped key server-side in a single transaction,
  * then update the local vault + cache.
  */
-export async function rotateFieldKey(userId: string, fieldName: FieldName): Promise<void> {
+export async function rotateFieldKey(userId: string, fieldName: FieldName): Promise<number> {
   const kek = keyVault.getKey('kek')
-  const oldFieldKey = keyVault.getKey(fieldName)
-  if (!kek || !oldFieldKey) throw new Error('Vault is locked — cannot rotate')
+  if (!kek || !keyVault.getKey(fieldName)) throw new Error('Vault is locked — cannot rotate')
 
-  const currentVersion = maxVersionForField(fieldName)
   const currentCiphertexts = await fetchAllEncryptedFieldsForUser(userId, fieldName)
 
-  const result = await rotateFieldKeyCrypto({
-    kek,
-    oldFieldKey,
-    fieldName,
-    currentVersion,
-    currentCiphertexts: currentCiphertexts.map((f) => ({
-      entryId: f.entryId,
-      ciphertext: f.ciphertext,
-      ciphertextIv: f.ciphertextIV,
-    })),
-  })
+  // --- Pure crypto: generate, wrap, and re-encrypt ---
+  const newVersion = nextVersionFor(fieldName)
+  const { cryptoKey: newFieldKey, wrappedFieldKey, fieldKeyIV } = await generateFieldKey(kek, fieldName, newVersion)
+  const reEncryptedFields = await reEncryptCiphertexts(currentCiphertexts, newFieldKey, fieldName)
 
-  // Mark this rotation as locally initiated so the realtime echo of our own
-  // write doesn't double-toast. Placed right before the RPC so the marker
-  // is set before the DB write can trigger the broadcast.
-  markLocalKeyRotation(fieldName, result.newVersion)
+  markLocalKeyRotation(fieldName, newVersion)
 
+  // --- Server commit ---
   await rotateFieldKeyRpc({
     fieldName,
-    newVersion: result.newVersion,
-    newWrappedFieldKey: result.newWrappedFieldKey,
-    newFieldKeyIv: result.newFieldKeyIv,
-    reEncryptedFields: result.reEncryptedFields,
+    newVersion,
+    newWrappedFieldKey: hexEncode(wrappedFieldKey),
+    newFieldKeyIV: hexEncode(fieldKeyIV),
+    reEncryptedFields,
   })
 
   // Local state update only. Store the new key and update the cached envelope.
-  keyVault.storeKey(fieldName, result.newCryptoKey)
+  keyVault.storeKey(fieldName, newFieldKey)
   useCryptoStore.getState().updateCachedFieldKey({
     fieldName,
-    newVersion: result.newVersion,
-    newWrappedFieldKey: result.newWrappedFieldKey,
-    newFieldKeyIv: result.newFieldKeyIv,
+    version: newVersion,
+    wrappedFieldKey: hexEncode(wrappedFieldKey),
+    fieldKeyIV: hexEncode(fieldKeyIV),
   })
+
+  return newVersion
 }
 
 /**
@@ -92,8 +109,8 @@ export async function rotateAllFields(userId: string): Promise<RotationOutcome[]
   const outcomes: RotationOutcome[] = []
   for (const fieldName of FIELD_NAMES) {
     try {
-      await rotateFieldKey(userId, fieldName)
-      outcomes.push({ fieldName, ok: true, newVersion: maxVersionForField(fieldName) })
+      const newVersion = await rotateFieldKey(userId, fieldName)
+      outcomes.push({ fieldName, ok: true, newVersion })
     } catch (error) {
       outcomes.push({ fieldName, ok: false, error })
     }

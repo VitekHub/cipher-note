@@ -7,8 +7,11 @@ export const CRYPTO_SALT_LENGTH = 16 as const
 /** System-wide cryptographic iv length in bytes (96 bits). */
 export const CRYPTO_IV_LENGTH = 12 as const
 
-/** System-wide cryptographic field key version number. */
+/** Key version for field key wrapping — increments on each rotation. */
 export const FIELD_KEY_VERSION = 1 as const
+
+/** Content/cipher scheme version for field encryption — only changes if the encryption scheme changes. */
+export const FIELD_CONTENT_VERSION = 1 as const
 
 /** AAD context strings for master key wrapping — prevent cross-context decryption. */
 export const MASTER_KEY_PASSWORD_AAD = new TextEncoder().encode('master-key-password')

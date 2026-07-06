@@ -152,11 +152,11 @@ export async function updateMasterKeyEnvelope(userId: string, data: UpdateMaster
 }
 
 /**
- * Atomically rotate a field key and re-encrypted ciphertexts server-side.
- * The SECURITY DEFINER RPC inserts the new wrapped key version, replaces
- * every entry's ciphertext for that field, and deletes the old version —
- * all in one transaction. The user id is read from auth.uid() inside the
- * function, so it is not part of the payload (no impersonation surface).
+ * Atomically rotate a field key: inserts the new wrapped key version,
+ * replaces every entry's ciphertext for that field (re-encrypted client-side),
+ * and deletes all older wrapped-key versions — all in one transaction.
+ * The SECURITY DEFINER RPC reads the user id from auth.uid(), so it is
+ * not part of the payload (no impersonation surface).
  */
 export async function rotateFieldKeyRpc(input: RotateFieldKeyRpcInput): Promise<void> {
   const supabase = getSupabase()
@@ -165,11 +165,11 @@ export async function rotateFieldKeyRpc(input: RotateFieldKeyRpcInput): Promise<
       field_name: input.fieldName,
       new_version: input.newVersion,
       new_wrapped_field_key: input.newWrappedFieldKey,
-      new_field_key_iv: input.newFieldKeyIv,
+      new_field_key_iv: input.newFieldKeyIV,
       re_encrypted_fields: input.reEncryptedFields.map((f) => ({
         entry_id: f.entryId,
         ciphertext: f.ciphertext,
-        ciphertext_iv: f.ciphertextIv,
+        ciphertext_iv: f.ciphertextIV,
       })),
     },
   })
