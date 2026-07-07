@@ -18,7 +18,7 @@ describe('SecuritySection', () => {
   it('renders section title and description', () => {
     render(<SecuritySection />)
     expect(screen.getByText('Security')).toBeInTheDocument()
-    expect(screen.getByText('Manage your encryption keys and seed phrase.')).toBeInTheDocument()
+    expect(screen.getByText('Manage vault, encryption keys, and seed phrase.')).toBeInTheDocument()
   })
 
   it('renders the seed phrase action items', () => {

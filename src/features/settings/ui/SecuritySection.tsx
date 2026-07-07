@@ -13,14 +13,14 @@ import { KeyManagementSubsection } from '@/features/settings/ui/KeyManagementSub
 
 const ITEMS: { icon: LucideIcon; labelKey: string; onClick?: () => void }[] = [
   {
-    icon: ShieldCheck,
-    labelKey: 'security.seedPhrase',
-    onClick: () => useRegenerateMnemonicDialogStore.getState().open(),
-  },
-  {
     icon: ScanEye,
     labelKey: 'security.verifySeedPhrase',
     onClick: () => useVerifyMnemonicDialogStore.getState().open(),
+  },
+  {
+    icon: ShieldCheck,
+    labelKey: 'security.seedPhrase',
+    onClick: () => useRegenerateMnemonicDialogStore.getState().open(),
   },
 ]
 
@@ -51,17 +51,6 @@ function SecuritySection() {
         <CardDescription>{t('security.description')}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-0">
-        {ITEMS.map((item, i) => (
-          <Fragment key={item.labelKey}>
-            {i > 0 && <Separator />}
-            <SettingsItem icon={item.icon} label={t(item.labelKey)} onClick={item.onClick} />
-          </Fragment>
-        ))}
-        <Separator />
-        <KeyManagementSubsection />
-
-        <Separator />
-
         <div className="flex items-center justify-between py-2">
           <span className="flex items-center gap-3 text-sm">
             <Timer className="size-4" />
@@ -94,6 +83,19 @@ function SecuritySection() {
             aria-label={t('security.lockOnTabHidden')}
           />
         </label>
+
+        <Separator />
+
+        {ITEMS.map((item, i) => (
+          <Fragment key={item.labelKey}>
+            {i > 0 && <Separator />}
+            <SettingsItem icon={item.icon} label={t(item.labelKey)} onClick={item.onClick} />
+          </Fragment>
+        ))}
+
+        <Separator />
+
+        <KeyManagementSubsection />
       </CardContent>
     </Card>
   )
