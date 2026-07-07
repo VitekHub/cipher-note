@@ -21,15 +21,20 @@ describe('Spinner', () => {
     expect(container.querySelector('svg')?.getAttribute('class')).toContain('size-6')
   })
 
-  it('applies custom className and is marked aria-hidden', () => {
+  it('applies custom className to the SVG', () => {
     const { container } = render(<Spinner className="text-muted-foreground" />)
     const svg = container.querySelector('svg')
     expect(svg?.getAttribute('class')).toContain('text-muted-foreground')
-    expect(svg?.getAttribute('aria-hidden')).toBe('true')
   })
 
-  it('does not expose an accessible role', () => {
+  it('has status role and screen reader label for accessibility', () => {
     render(<Spinner />)
-    expect(screen.queryByRole('img')).toBeNull()
+    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByText('Loading...')).toBeInTheDocument()
+  })
+
+  it('hides the SVG from assistive technology', () => {
+    const { container } = render(<Spinner />)
+    expect(container.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true')
   })
 })
