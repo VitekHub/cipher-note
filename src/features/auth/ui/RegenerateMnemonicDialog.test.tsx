@@ -14,7 +14,7 @@ vi.mock('@/features/auth/model/mnemonic-service', () => ({
 
 import { RegenerateMnemonicDialog } from './RegenerateMnemonicDialog'
 import { regenerateMnemonic } from '@/features/auth/model/mnemonic-service'
-import { useRegenerateMnemonicDialogStore } from '@/shared/auth/auth-dialogs-store'
+import { useRegenerateMnemonicDialogStore } from '@/shared/stores/dialogs-store'
 
 const mockRegenerateMnemonic = vi.mocked(regenerateMnemonic)
 

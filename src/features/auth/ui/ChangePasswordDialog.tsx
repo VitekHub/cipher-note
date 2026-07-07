@@ -11,7 +11,7 @@ import { PasswordStrength } from '@/features/auth/ui/PasswordStrength'
 import { changePasswordSchema, type ChangePasswordFormData } from '@/features/auth/model/change-password-schema'
 import { changeUserPassword } from '@/features/auth/model/auth-service'
 import { getChangePasswordErrorMessage } from '@/features/auth/model/change-password-error-messages'
-import { useChangePasswordDialogStore } from '@/shared/auth/auth-dialogs-store'
+import { useChangePasswordDialogStore } from '@/shared/stores/dialogs-store'
 
 function ChangePasswordDialog() {
   const { t } = useTranslation('auth')

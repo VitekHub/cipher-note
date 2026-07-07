@@ -1,4 +1,4 @@
-import { createDialogStore, createDialogStoreWithPayload } from '@/shared/ui/create-dialog-store'
+import { createDialogStore, createDialogStoreWithPayload } from '@/shared/stores/create-dialog-store'
 import type { FieldName } from '@/shared/types/entities/field.types'
 
 export const useChangePasswordDialogStore = createDialogStore('ChangePasswordDialogStore')

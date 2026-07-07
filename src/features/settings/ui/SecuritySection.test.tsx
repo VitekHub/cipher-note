@@ -2,8 +2,9 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen } from '@/test/utils'
 import userEvent from '@testing-library/user-event'
 
-import { useRegenerateMnemonicDialogStore, useVerifyMnemonicDialogStore } from '@/shared/auth/auth-dialogs-store'
+import { useRegenerateMnemonicDialogStore, useVerifyMnemonicDialogStore } from '@/shared/stores/dialogs-store'
 import { useCryptoStore } from '@/shared/crypto/vault/crypto-store'
+import { useVaultSettingsStore, DEFAULT_VAULT_TIMEOUT_MS } from '@/shared/stores/vault-settings-store'
 import { SecuritySection } from './SecuritySection'
 
 describe('SecuritySection', () => {
@@ -11,6 +12,7 @@ describe('SecuritySection', () => {
     useRegenerateMnemonicDialogStore.setState({ isOpen: false })
     useVerifyMnemonicDialogStore.setState({ isOpen: false })
     useCryptoStore.setState({ isVaultLocked: true, cachedEnvelope: null, loadedFieldKeys: {} })
+    useVaultSettingsStore.setState({ vaultTimeoutMs: DEFAULT_VAULT_TIMEOUT_MS, lockOnTabHidden: false })
   })
 
   it('renders section title and description', () => {
@@ -59,5 +61,48 @@ describe('SecuritySection', () => {
     await user.click(verifyButton)
 
     expect(useVerifyMnemonicDialogStore.getState().isOpen).toBe(true)
+  })
+
+  it('renders the auto-lock select with timeout options', async () => {
+    const user = userEvent.setup()
+    render(<SecuritySection />)
+
+    const select = screen.getByRole('combobox', { name: 'Auto-lock vault' })
+    expect(select).toBeInTheDocument()
+    expect(select).toHaveTextContent('15 min')
+
+    await user.click(select)
+    expect(screen.getAllByRole('option')).toHaveLength(5)
+  })
+
+  it('updates vaultTimeoutMs when the auto-lock selection changes', async () => {
+    const user = userEvent.setup()
+    render(<SecuritySection />)
+
+    const select = screen.getByRole('combobox', { name: 'Auto-lock vault' })
+    await user.click(select)
+    await user.click(screen.getByRole('option', { name: '5 min' }))
+
+    expect(useVaultSettingsStore.getState().vaultTimeoutMs).toBe(5 * 60 * 1000)
+  })
+
+  it('renders the tab-lock checkbox unchecked by default', () => {
+    render(<SecuritySection />)
+
+    const checkbox = screen.getByRole('checkbox')
+    expect(checkbox).not.toBeChecked()
+  })
+
+  it('toggles lockOnTabHidden when the checkbox is clicked', async () => {
+    const user = userEvent.setup()
+    render(<SecuritySection />)
+
+    const checkbox = screen.getByRole('checkbox')
+    await user.click(checkbox)
+
+    expect(useVaultSettingsStore.getState().lockOnTabHidden).toBe(true)
+
+    await user.click(checkbox)
+    expect(useVaultSettingsStore.getState().lockOnTabHidden).toBe(false)
   })
 })

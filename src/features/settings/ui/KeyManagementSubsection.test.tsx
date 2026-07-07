@@ -3,7 +3,7 @@ import { render, screen } from '@/test/utils'
 import userEvent from '@testing-library/user-event'
 
 import { useCryptoStore } from '@/shared/crypto/vault/crypto-store'
-import { useRotateFieldKeyDialogStore } from '@/shared/auth/auth-dialogs-store'
+import { useRotateFieldKeyDialogStore } from '@/shared/stores/dialogs-store'
 import { KeyManagementSubsection } from './KeyManagementSubsection'
 
 const unlockedState = {

@@ -18,6 +18,7 @@ import vaultCs from '@/shared/i18n/locales/cs/vault.json'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { useCryptoStore } from '@/shared/crypto/vault/crypto-store'
 import { useLayoutStore } from '@/app/layouts/layout-store'
+import { useVaultSettingsStore, DEFAULT_VAULT_TIMEOUT_MS } from '@/shared/stores/vault-settings-store'
 import { useSyncStatusStore } from '@/features/fields/model/sync-status-store'
 
 afterEach(() => {
@@ -37,6 +38,10 @@ afterEach(() => {
     sidebarOpen: false,
     activeField: null,
     sidebarWidth: 240,
+  })
+  useVaultSettingsStore.setState({
+    vaultTimeoutMs: DEFAULT_VAULT_TIMEOUT_MS,
+    lockOnTabHidden: false,
   })
   useSyncStatusStore.getState().resetAll()
 })

@@ -5,7 +5,10 @@
     "description": "Správa šifrovacích klíčů a seed fráze.",
     "seedPhrase": "Znovu vygenerovat seed frázi",
     "verifySeedPhrase": "Ověřit seed frázi",
-    "keyManagement": "Správa klíčů"
+    "keyManagement": "Správa klíčů",
+    "autoLock": "Automatické uzamčení trezoru",
+    "lockOnTabHidden": "Uzamknout při přepnutí karty",
+    "minutesShort": "{{count}} min"
   },
   "preferences": {
     "title": "Předvolby",

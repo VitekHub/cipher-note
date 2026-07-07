@@ -24,7 +24,7 @@ vi.mock('@/features/fields/model/key-rotation-service', () => ({
 
 import { RotateFieldKeyDialog } from './RotateFieldKeyDialog'
 import { toast } from 'sonner'
-import { useRotateFieldKeyDialogStore } from '@/shared/auth/auth-dialogs-store'
+import { useRotateFieldKeyDialogStore } from '@/shared/stores/dialogs-store'
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { useCryptoStore } from '@/shared/crypto/vault/crypto-store'
 import { queryKeys } from '@/shared/lib/query-keys'

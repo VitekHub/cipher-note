@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/shared/ui/dialog'
 import { Button } from '@/shared/ui/button'
 import { MnemonicInput } from '@/features/auth/ui/MnemonicInput'
-import { useVerifyMnemonicDialogStore } from '@/shared/auth/auth-dialogs-store'
+import { useVerifyMnemonicDialogStore } from '@/shared/stores/dialogs-store'
 import { verifyMnemonic } from '@/features/auth/model/mnemonic-service'
 import { getRecoveryErrorMessage } from '@/features/auth/model/recovery-error-messages'
 

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen } from '@/test/utils'
 import userEvent from '@testing-library/user-event'
 import { useAuthStore } from '@/features/auth/model/auth-store'
-import { useChangePasswordDialogStore } from '@/shared/auth/auth-dialogs-store'
+import { useChangePasswordDialogStore } from '@/shared/stores/dialogs-store'
 
 import { AccountSection } from './AccountSection'
 
