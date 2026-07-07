@@ -314,6 +314,25 @@ describe('argon2id.worker — onmessage handler', () => {
     expect(response.hash.byteLength).toBe(32)
   })
 
+  it('zero-fills the worker-side hash after posting the result', async () => {
+    await import('@/shared/crypto/core/argon2id.worker')
+
+    const handler = self.onmessage as (event: MessageEvent) => Promise<void>
+    const salt = new Uint8Array(16).fill(1)
+
+    await handler(
+      new MessageEvent('message', {
+        data: { type: 'derive', id: 42, password: 'pw', salt, params: DEFAULT_ARGON2_PARAMS },
+      }),
+    )
+
+    // postMessage structured-clones the buffer, so zeroing the worker-side
+    // copy does not affect the message already delivered. The recorded
+    // response.hash is the same reference the worker zero-filled.
+    const response = postMessageSpy.mock.calls[0][0]
+    expect(Array.from(response.hash as Uint8Array)).toEqual(new Array(32).fill(0))
+  })
+
   it('sends error back when derivation fails', async () => {
     mockArgon2Module.hash.mockRejectedValue(new Error('WASM load failed'))
 
