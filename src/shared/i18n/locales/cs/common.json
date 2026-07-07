@@ -10,17 +10,20 @@
     "confirm": "Potvrdit",
     "close": "Zavřít",
     "copy": "Zkopírovat do schránky",
-    "retry": "Zkusit znovu"
+    "retry": "Zkusit znovu",
+    "goHome": "Domů"
   },
   "status": {
     "loading": "Načítání...",
     "error": "Něco se pokazilo",
+    "notFound": "Stránka nenalezena",
     "offline": "Jste offline",
     "backOnline": "Zpět online"
   },
   "errors": {
     "networkError": "Chyba sítě. Zkuste to prosím znovu.",
-    "unexpectedError": "Došlo k neočekávané chybě. Zkuste to prosím znovu."
+    "unexpectedError": "Došlo k neočekávané chybě. Zkuste to prosím znovu.",
+    "pageNotFound": "Stránka, kterou hledáte, neexistuje."
   },
   "preAlpha": {
     "ariaLabel": "Upozornění na předběžnou verzi",

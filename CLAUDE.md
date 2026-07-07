@@ -34,7 +34,7 @@ Field Keys (one per field) → wrapped by KEK with AAD(fieldName, version)
 
 ### App Hierarchy
 ```
-main.tsx → AppProviders (QueryClientProvider > AuthProvider > RouterProvider)
+main.tsx → AppErrorBoundary → AppProviders (QueryClientProvider > AuthProvider > RouterProvider)
   → __root.tsx (ThemeProvider + Toaster)
     → _public (redirects to /dashboard if authed — guard in route beforeLoad)
       → /login, /register, /recover
@@ -190,11 +190,15 @@ See `docs/implementation-plan/README.md` for the full 36-step plan.
 - Step 30 (Regenerate Seed Phrase) — complete
 - Step 31 (Seed Phrase Recovery Flow + UI) — complete
 - Step 32 (Key Rotation + UI) — complete
+- Step 33 (Mobile Responsive Refinements) — complete
+- Step 34 (Loading States, Error Boundaries, Toast Notifications) — complete
 
 ### Implementation Notes
 
 Non-obvious decisions not visible from code alone:
 
+- **Two error boundaries must stay separate**: `AppErrorBoundary` wraps `<AppProviders>` in `main.tsx` and renders a dependency-free fallback (no i18n, no theme, inline styles, hardcoded English). `RouteErrorBoundary` is the router's error component and uses i18n/theme/`mapErrorToMessage`. They cannot be merged because `AppErrorBoundary` must work when providers themselves are broken.
+- **Field query error display avoids "empty but looks loaded" flash**: `useFieldEditor` returns the full `fieldQuery` (TanStack Query result) instead of picking off `error`/`refetch` separately. When a field errors and the user clicks retry, TanStack Query clears `error` and sets `isFetching: true`. Without checking `isFetching`, the UI would briefly show empty field editors that look correctly loaded. Checking `fieldQuery.isFetching` shows a spinner during refetch instead.
 - **Auth store `isRestoringSession`**: defaults `true`; `reset()` does NOT touch it (logout doesn't re-trigger initialization)
 - **Auto-lock**: `useVaultTimeout` hook in ProtectedLayout resets a 15-minute inactivity timer on user activity (mousemove, keydown, mousedown, touchstart, scroll); calls `lockVault()` on expiry
 - **VaultUnlockDialog**: uses a separate `vault-dialog-store` (in `features/vault/model/vault-dialog-store.ts`) created via `createDialogStore` factory. The dialog can be opened/closed independently of vault lock state. This lets the user dismiss the dialog without unlocking, and lets the sidebar/mobile nav trigger `open()` directly

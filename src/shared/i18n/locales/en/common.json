@@ -10,17 +10,20 @@
     "confirm": "Confirm",
     "close": "Close",
     "copy": "Copy to clipboard",
-    "retry": "Retry"
+    "retry": "Retry",
+    "goHome": "Go home"
   },
   "status": {
     "loading": "Loading...",
     "error": "Something went wrong",
+    "notFound": "Page not found",
     "offline": "You are offline",
     "backOnline": "Back online"
   },
   "errors": {
     "networkError": "Network error. Please try again.",
-    "unexpectedError": "An unexpected error occurred. Please try again."
+    "unexpectedError": "An unexpected error occurred. Please try again.",
+    "pageNotFound": "The page you're looking for doesn't exist."
   },
   "preAlpha": {
     "ariaLabel": "Pre-alpha software notice",

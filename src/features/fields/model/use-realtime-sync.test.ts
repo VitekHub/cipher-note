@@ -10,7 +10,7 @@ const ctx = vi.hoisted(() => {
   const mockSubscribe =
     vi.fn<(userId: string, callbacks: import('@/shared/realtime/realtime.types').RealtimeCallbacks) => Promise<void>>()
   const mockUnsubscribe = vi.fn<() => void>()
-  const toastInfo = vi.fn<(msg: string, options?: unknown) => string | number>()
+  const toastWarning = vi.fn<(msg: string, options?: unknown) => string | number>()
   const toastSuccess = vi.fn<(msg: string, options?: unknown) => string | number>()
   const toastError = vi.fn<(msg: string, options?: unknown) => string | number>()
   const mockSyncFieldKeys = vi.fn<(userId: string) => Promise<void>>()
@@ -20,7 +20,7 @@ const ctx = vi.hoisted(() => {
     callbacksRef,
     mockSubscribe,
     mockUnsubscribe,
-    toastInfo,
+    toastWarning,
     toastSuccess,
     toastError,
     mockSyncFieldKeys,
@@ -38,7 +38,7 @@ vi.mock('@/shared/auth/use-current-user', () => ({
 }))
 
 vi.mock('sonner', () => ({
-  toast: { info: ctx.toastInfo, success: ctx.toastSuccess, error: ctx.toastError },
+  toast: { warning: ctx.toastWarning, success: ctx.toastSuccess, error: ctx.toastError },
 }))
 
 vi.mock('@/shared/crypto/vault/key-vault', () => ({
@@ -129,7 +129,7 @@ describe('useRealtimeSync', () => {
     callbacks().onFieldChange(FIELD_EVENT)
 
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.field.detail('e1', 'note') })
-    expect(ctx.toastInfo).not.toHaveBeenCalled()
+    expect(ctx.toastWarning).not.toHaveBeenCalled()
   })
 
   it('sets remote-update status and invalidates for genuine remote changes', () => {
@@ -152,7 +152,7 @@ describe('useRealtimeSync', () => {
     // Echo should be suppressed entirely — no invalidate, no status, no toast
     expect(invalidateSpy).not.toHaveBeenCalled()
     expect(useSyncStatusStore.getState().status['e1']?.['note'] ?? SYNC_STATUS.IDLE).toBe(SYNC_STATUS.IDLE)
-    expect(ctx.toastInfo).not.toHaveBeenCalled()
+    expect(ctx.toastWarning).not.toHaveBeenCalled()
   })
 
   it('does not suppress when timestamps differ (not an echo)', () => {
@@ -199,6 +199,9 @@ describe('useRealtimeSync', () => {
     // Conflict: no invalidate, no remote-update status
     expect(invalidateSpy).not.toHaveBeenCalled()
     expect(useSyncStatusStore.getState().status['e1']?.['note'] ?? SYNC_STATUS.IDLE).toBe(SYNC_STATUS.IDLE)
+    // Conflict toast is shown as a warning
+    expect(ctx.toastWarning).toHaveBeenCalledTimes(1)
+    expect(ctx.toastWarning.mock.calls[0][0]).toEqual(expect.any(String))
   })
 
   it('does not treat a pending save for a different field as a conflict', async () => {
@@ -212,7 +215,7 @@ describe('useRealtimeSync', () => {
     callbacks().onFieldChange({ ...FIELD_EVENT, fieldName: 'title' })
 
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.field.detail('e1', 'title') })
-    expect(ctx.toastInfo).not.toHaveBeenCalled()
+    expect(ctx.toastWarning).not.toHaveBeenCalled()
   })
 
   it('invalidates the entries list on a remote entry change', () => {
@@ -232,7 +235,7 @@ describe('useRealtimeSync', () => {
 
     expect(invalidateSpy).not.toHaveBeenCalled()
     expect(useSyncStatusStore.getState().status['e1']?.['note'] ?? SYNC_STATUS.IDLE).toBe(SYNC_STATUS.IDLE)
-    expect(ctx.toastInfo).not.toHaveBeenCalled()
+    expect(ctx.toastWarning).not.toHaveBeenCalled()
   })
 
   it('skips onEntryChange when the vault is locked', () => {

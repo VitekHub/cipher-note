@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
-import { Loader2, Check, X } from 'lucide-react'
+import { Check, X } from 'lucide-react'
+import { Spinner } from '@/shared/ui/Spinner'
 import { cn } from '@/shared/lib/utils'
 import type { UsernameAvailabilityStatus } from '@/features/auth/model/use-username-availability'
 
@@ -22,7 +23,7 @@ function UsernameAvailability({ status }: UsernameAvailabilityProps) {
         status === 'checking' && 'text-muted-foreground',
       )}
     >
-      {status === 'checking' && <Loader2 className="size-3 animate-spin" />}
+      {status === 'checking' && <Spinner size="sm" />}
       {status === 'available' && <Check className="size-3" />}
       {status === 'taken' && <X className="size-3" />}
       {status === 'checking' && t('register.checkingUsername')}

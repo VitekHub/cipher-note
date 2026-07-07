@@ -1,10 +1,12 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, FileText } from 'lucide-react'
+import { Plus, FileText, AlertCircle } from 'lucide-react'
+import { Spinner } from '@/shared/ui/Spinner'
 
 import { useCryptoStore } from '@/shared/crypto/vault/crypto-store'
 import { useSyncStatusStore } from '@/features/fields/model/sync-status-store'
 import { useFieldEditor } from '@/features/fields/model/use-field-editor'
+import { getFieldLoadErrorMessage } from '@/features/fields/model/field-error-messages'
 import { useEntries } from '@/features/fields/model/use-entry'
 import { useCurrentUser } from '@/shared/auth/use-current-user'
 import { FieldCard } from '@/features/fields/ui/FieldCard'
@@ -25,9 +27,10 @@ function FieldEditorWrapper({
   fieldName: FieldName
   entranceIndex: number
 }) {
+  const { t: tf } = useTranslation('fields')
   const isVaultLocked = useCryptoStore((s) => s.isVaultLocked)
   const titleInputRef = useRef<HTMLInputElement>(null)
-  const { fieldValue, saveFieldValue, fieldSyncStatus, retrySave, isOfflineAwaitingData } = useFieldEditor(
+  const { fieldValue, saveFieldValue, fieldSyncStatus, retrySave, isOfflineAwaitingData, fieldQuery } = useFieldEditor(
     entryId,
     fieldName,
   )
@@ -49,6 +52,25 @@ function FieldEditorWrapper({
       }
     >
       {() => {
+        if (fieldQuery.error) {
+          return (
+            <div className="text-destructive flex flex-col items-center gap-3 py-4 text-center text-sm">
+              <AlertCircle className="size-6" />
+              <span>{getFieldLoadErrorMessage(fieldQuery.error, tf)}</span>
+              <Button variant="outline" size="sm" onClick={() => void fieldQuery.refetch()}>
+                {tf('status.retry')}
+              </Button>
+            </div>
+          )
+        }
+
+        if (fieldQuery.isFetching) {
+          return (
+            <div className="flex items-center justify-center py-6">
+              <Spinner size="lg" />
+            </div>
+          )
+        }
         switch (fieldName) {
           case 'title':
             return <InputField ref={titleInputRef} fieldName="title" value={fieldValue} onChange={saveFieldValue} />

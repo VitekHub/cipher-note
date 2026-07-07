@@ -32,5 +32,8 @@
     "keyRotationApplied": "Key for \"{{field}}\" updated to v{{version}}.",
     "keyRotationFailed": "Your vault keys are outdated. Please unlock your vault again.",
     "keyRotationNetworkError": "Network error while updating keys. Please reconnect and reload."
+  },
+  "errors": {
+    "loadFailed": "Couldn't load this field."
   }
 }

@@ -1,16 +1,19 @@
 import { createFileRoute } from '@tanstack/react-router'
+import type { ErrorComponentProps } from '@tanstack/react-router'
 
 import { EntryDetailPage } from '@/features/fields/ui/DashboardPage'
 import { LockedVaultCard } from '@/features/vault/ui/LockedVaultCard'
 import { useEntryStatus } from '@/features/fields/model/use-entry-status'
 import { ENTRY_STATUS } from '@/features/fields/model/entry-status'
 import { EntryStatusBanner } from '@/features/fields/ui/EntryStatusBanner'
+import { DashboardSkeleton } from '@/app/Pending'
+import { ErrorState } from '@/shared/ui/ErrorState'
 
 function EntryDetailRoute() {
   const { entryId } = Route.useParams()
   const entryStatus = useEntryStatus(entryId)
 
-  if (entryStatus === ENTRY_STATUS.LOADING) return null
+  if (entryStatus === ENTRY_STATUS.LOADING) return <DashboardSkeleton />
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
@@ -22,8 +25,14 @@ function EntryDetailRoute() {
   )
 }
 
+function EntryDetailError({ error }: ErrorComponentProps) {
+  void error
+  return <ErrorState title="common:status.error" description="entries:errors.loadFailed" />
+}
+
 const Route = createFileRoute('/_authenticated/dashboard_/$entryId')({
   component: EntryDetailRoute,
+  errorComponent: EntryDetailError,
 })
 
 export { Route }

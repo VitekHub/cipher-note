@@ -49,7 +49,7 @@ function useRealtimeSync(): void {
 
         // 2. Conflict: a local save is in flight, last-write-wins, don't invalidate.
         if (hasPendingSave(queryClient, data.entryId, data.fieldName)) {
-          toast.info(t('realtime.conflict'), {
+          toast.warning(t('realtime.conflict'), {
             id: `conflict:${data.entryId}:${data.fieldName}`,
           })
           return

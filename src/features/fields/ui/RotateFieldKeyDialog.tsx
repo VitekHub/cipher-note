@@ -13,6 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/shared/ui/alert-dialog'
+import { Spinner } from '@/shared/ui/Spinner'
 import { useRotateFieldKeyDialogStore } from '@/shared/auth/auth-dialogs-store'
 import { useRequiredUserId } from '@/shared/auth/use-current-user'
 import { queryKeys } from '@/shared/lib/query-keys'
@@ -150,6 +151,7 @@ function RotateFieldKeyDialog() {
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isSubmitting}>{tc('actions.cancel')}</AlertDialogCancel>
           <AlertDialogAction onClick={handleConfirm} disabled={isSubmitting}>
+            {isSubmitting && <Spinner size="sm" />}
             {isSubmitting ? t('keyRotation.rotating') : confirmLabel}
           </AlertDialogAction>
         </AlertDialogFooter>

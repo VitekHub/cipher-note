@@ -1,7 +1,7 @@
 import { createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 import { PageSkeleton } from '@/app/Pending'
-import { RootErrorBoundary } from '@/app/ErrorBoundary'
+import { RouteErrorBoundary } from '@/app/RouteErrorBoundary'
 import type { AuthContext } from '@/shared/auth/auth-context'
 
 function createAppRouter(auth: AuthContext) {
@@ -10,7 +10,7 @@ function createAppRouter(auth: AuthContext) {
     basepath: import.meta.env.BASE_URL.replace(/\/$/, '') || '/',
     context: { auth },
     defaultPendingComponent: PageSkeleton,
-    defaultErrorComponent: RootErrorBoundary,
+    defaultErrorComponent: RouteErrorBoundary,
     defaultPendingMs: 200,
     defaultPendingMinMs: 300,
   })
