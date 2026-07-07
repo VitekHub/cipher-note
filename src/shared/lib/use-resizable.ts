@@ -23,7 +23,7 @@ function clamp(value: number, min: number, max: number) {
 function useResizable({
   storedWidth,
   onWidthChange,
-  minWidth = 150,
+  minWidth = 200,
   maxWidth = 1000,
 }: UseResizableOptions): UseResizableReturn {
   const [localWidth, setLocalWidth] = useState<number | null>(null)

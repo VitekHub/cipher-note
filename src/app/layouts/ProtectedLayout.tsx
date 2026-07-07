@@ -67,12 +67,11 @@ function AuthenticatedLayout() {
       >
         <Sidebar onLogout={logoutUser} />
       </aside>
-      <ResizeHandle isDragging={isDragging} handleProps={handleProps} />
 
       {/* Right column: header + main */}
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Header */}
-        <header className="bg-muted/30 flex h-14 items-center justify-between border-b px-4">
+        <header className="bg-muted/30 flex min-h-14 items-center justify-between border-b px-4 pt-[env(safe-area-inset-top)]">
           <div className="flex items-center gap-2">
             {/* Mobile hamburger menu */}
             <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
@@ -94,10 +93,13 @@ function AuthenticatedLayout() {
         {/* Offline status banner */}
         <OfflineBanner />
 
-        {/* Main content */}
-        <main className="mb-10 flex flex-1 flex-col overflow-y-auto p-6 pb-20 md:pb-6">
-          <Outlet />
-        </main>
+        {/* Main content area with resize handle */}
+        <div className="relative flex flex-1 flex-col">
+          <ResizeHandle isDragging={isDragging} handleProps={handleProps} />
+          <main className="mb-10 flex flex-1 flex-col overflow-y-auto p-6 pb-20 md:pb-6">
+            <Outlet />
+          </main>
+        </div>
       </div>
 
       {/* Mobile bottom navigation */}

@@ -14,7 +14,7 @@ function ResizeHandle({ isDragging, handleProps }: ResizeHandleProps) {
       {...handleProps}
       data-slot="resize-handle"
       className={cn(
-        'group relative hidden cursor-col-resize select-none md:flex',
+        'group absolute top-0 bottom-0 left-0 z-10 hidden w-3 cursor-col-resize select-none md:flex md:flex-col md:items-center md:justify-center',
         'hover:bg-sidebar-primary/20 active:bg-sidebar-primary/30 focus-visible:ring-ring/50 focus-visible:ring-2 focus-visible:outline-none',
         'transition-colors duration-150',
         isDragging && 'bg-sidebar-primary/30',
@@ -24,9 +24,9 @@ function ResizeHandle({ isDragging, handleProps }: ResizeHandleProps) {
       tabIndex={0}
     >
       <div className="absolute inset-y-0 -left-1 w-3" />
-      <div className="mx-[2px] flex flex-col items-center justify-center gap-[3px] self-center">
+      <div className="flex flex-col items-center gap-0.75">
         {Array.from({ length: 3 }, (_, i) => (
-          <div key={i} className="flex gap-[3px]">
+          <div key={i} className="flex gap-0.75">
             {Array.from({ length: 2 }, (_, j) => (
               <span
                 key={`${i}-${j}`}

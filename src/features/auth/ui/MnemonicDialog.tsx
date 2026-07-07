@@ -78,9 +78,9 @@ function MnemonicDialog({ open, mnemonic, onContinue }: MnemonicDialogProps) {
           <p className="text-destructive text-sm">{t('mnemonic.warning')}</p>
         </div>
 
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {words.map((word, index) => (
-            <div key={index} className="bg-muted rounded-md px-3 py-2 text-center font-mono text-sm">
+            <div key={index} className="bg-muted rounded-md px-3 py-2 text-center font-mono text-sm break-words">
               <span className="text-muted-foreground mr-1">{index + 1}.</span>
               {word}
             </div>

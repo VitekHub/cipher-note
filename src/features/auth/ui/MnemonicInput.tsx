@@ -106,7 +106,7 @@ function MnemonicInput({ value, onChange, disabled, error, onValidityChange }: M
 
   return (
     <div>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {Array.from({ length: WORD_COUNT }, (_, index) => {
           const isInvalid = invalidWords.has(index)
           return (
