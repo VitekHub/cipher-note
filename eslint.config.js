@@ -23,13 +23,27 @@ export default defineConfig([
     rules: {
       'react-refresh/only-export-components': [
         'warn',
-        { allowConstantExport: true, allowExportNames: ['Route', 'useTheme', 'useAuth', 'buttonVariants', 'queryClient'] },
+        {
+          allowConstantExport: true,
+          allowExportNames: ['Route', 'useTheme', 'useAuth', 'buttonVariants', 'queryClient'],
+        },
       ],
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
     },
   },
   {
     files: ['src/test/**/*.{ts,tsx}', 'src/app/routes/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
+  {
+    // E2E tests run in Node (Playwright test runner), not the browser.
+    files: ['e2e/**/*.{ts,tsx}', 'playwright.config.ts'],
+    extends: [tseslint.configs.recommended, prettier],
+    languageOptions: {
+      globals: globals.node,
+    },
     rules: {
       'react-refresh/only-export-components': 'off',
     },

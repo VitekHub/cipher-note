@@ -61,6 +61,29 @@ pnpm supabase:status   # Show URLs and keys
 pnpm dev:reset         # Reset database then start Vite
 ```
 
+### E2E Tests (Playwright)
+
+End-to-end tests run real crypto (real Argon2id in the worker, no mocks) against a production `vite preview` build served on `:4173`, talking to the local Supabase instance.
+
+Prerequisites:
+
+- **Docker** running and `pnpm supabase:start` so local Supabase is up.
+- `.env.local` populated with `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (the **Publishable** key from `pnpm supabase:status`). Raw DB assertions in the security spec connect as the `postgres` superuser via `E2E_DB_URL` (default `postgresql://postgres:postgres@127.0.0.1:54322/postgres`), so no service-role key is required.
+- Chromium installed for Playwright (one-time):
+
+```bash
+pnpm dlx playwright install chromium
+```
+
+Run the suite:
+
+```bash
+pnpm test:e2e      # headless
+pnpm test:e2e:ui   # interactive Playwright UI
+```
+
+The `webServer` config builds the app and serves `vite preview` automatically. Tests run **serially** (`workers: 1`) and each auth op runs a real Argon2id derivation, so a full run takes a few minutes. A global setup resets the database once before the suite, and each spec truncates `auth.users` + `private.rate_limits` between tests to avoid tripping the shared-IP pre-auth RPC rate limits.
+
 ## Architecture
 
 ```
