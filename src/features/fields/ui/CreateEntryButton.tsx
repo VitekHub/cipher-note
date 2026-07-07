@@ -36,6 +36,7 @@ function CreateEntryButton({ onCreated, size = 'icon-sm', className }: CreateEnt
       onClick={handleCreateEntry}
       aria-label={t('create')}
       disabled={isVaultLocked || createEntry.isPending}
+      data-testid="create-entry"
     >
       <Plus />
     </Button>

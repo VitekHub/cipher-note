@@ -35,7 +35,14 @@ function DeleteEntryDialog({ entryId }: { entryId: string }) {
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger
-        render={<Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" />}
+        render={
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-destructive hover:text-destructive"
+            data-testid="delete-entry"
+          />
+        }
       >
         <Trash2 className="mr-2 size-4" />
         {t('delete')}
@@ -50,6 +57,7 @@ function DeleteEntryDialog({ entryId }: { entryId: string }) {
           <AlertDialogAction
             onClick={handleDelete}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            data-testid="delete-entry-confirm"
           >
             {t('common:actions.delete')}
           </AlertDialogAction>

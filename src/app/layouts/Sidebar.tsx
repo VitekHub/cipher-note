@@ -46,7 +46,13 @@ function Sidebar({ onClose, onLogout, className }: SidebarProps) {
       <div className="flex items-center justify-between p-4">
         <AppLogo />
         {onClose && (
-          <Button variant="ghost" size="icon-xs" onClick={onClose} aria-label={t('common:nav.closeMenu')}>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            onClick={onClose}
+            aria-label={t('common:nav.closeMenu')}
+            data-testid="sidebar-close"
+          >
             <X className="size-4" />
           </Button>
         )}
@@ -92,14 +98,14 @@ function Sidebar({ onClose, onLogout, className }: SidebarProps) {
         <div className="flex items-center justify-between">
           {/* User info */}
           {user && (
-            <div className="text-muted-foreground flex items-center gap-2 text-sm">
+            <div className="text-muted-foreground flex min-w-0 flex-1 items-center gap-2 text-sm">
               <User className="size-4" />
               <span className="min-w-0 truncate">{user.username}</span>
             </div>
           )}
 
           {/* Logout button */}
-          <Button variant="ghost" size="sm" className="px-4" onClick={handleLogout}>
+          <Button variant="ghost" size="sm" className="px-4" onClick={handleLogout} data-testid="logout-button">
             <LogOut className="size-4" />
             <span>{t('common:nav.logout')}</span>
           </Button>
@@ -108,7 +114,12 @@ function Sidebar({ onClose, onLogout, className }: SidebarProps) {
         {/* Vault lock button */}
         <VaultLockButton variant="label" onBeforeToggle={onClose} className="w-full" />
         {/* Settings */}
-        <NavLink to="/settings" onClick={handleNavClick} className="flex items-center justify-center gap-3">
+        <NavLink
+          to="/settings"
+          onClick={handleNavClick}
+          className="flex items-center justify-center gap-3"
+          data-testid="nav-settings"
+        >
           <Settings className="size-4" />
           <span>{t('common:nav.settings')}</span>
         </NavLink>

@@ -90,6 +90,7 @@ function RegisterPage({ onSubmit }: RegisterPageProps) {
               submitLabel={t('register.submit')}
               submittingLabel={t('register.submitting')}
               disabled={isSubmitDisabled}
+              dataTestId="register-submit"
             />
           </form>
         </FormProvider>

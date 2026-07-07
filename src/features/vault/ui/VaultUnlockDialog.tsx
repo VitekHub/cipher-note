@@ -32,6 +32,7 @@ function VaultUnlockDialog() {
       description={t('vaultUnlockDialog.description')}
       submitLabel={t('vaultUnlockDialog.submit')}
       isSubmittingLabel={t('vaultUnlockDialog.submitting')}
+      submitTestId="vault-unlock-submit"
     />
   )
 }

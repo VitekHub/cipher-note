@@ -82,10 +82,16 @@ function VerifyMnemonicDialog() {
             disabled={isSubmitting}
           />
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={handleClose} disabled={isSubmitting}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleClose}
+              disabled={isSubmitting}
+              data-testid="verify-mnemonic-cancel"
+            >
               {tc('actions.cancel')}
             </Button>
-            <Button type="submit" disabled={!isValid || isSubmitting}>
+            <Button type="submit" disabled={!isValid || isSubmitting} data-testid="verify-mnemonic-submit">
               {isSubmitting ? t('verifyMnemonic.submitting') : t('verifyMnemonic.submit')}
             </Button>
           </div>

@@ -59,6 +59,7 @@ function MobileNav() {
           className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           onClick={() => navigate({ to: '/settings' })}
           aria-label={t('common:nav.settings')}
+          data-testid="nav-settings"
         >
           <Settings className="size-5" />
         </Button>

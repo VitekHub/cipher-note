@@ -24,6 +24,8 @@ interface PasswordConfirmDialogProps {
   description: string
   submitLabel: string
   isSubmittingLabel: string
+  /** Stable selector for the submit button (rendered as `data-testid`). */
+  submitTestId?: string
 }
 
 function PasswordConfirmDialog({
@@ -35,6 +37,7 @@ function PasswordConfirmDialog({
   description,
   submitLabel,
   isSubmittingLabel,
+  submitTestId,
 }: PasswordConfirmDialogProps) {
   const { t } = useTranslation('auth')
   const [error, setError] = useState<string | null>(null)
@@ -87,7 +90,12 @@ function PasswordConfirmDialog({
               {...register('password')}
             />
           </FormField>
-          <SubmitButton isSubmitting={isSubmitting} submitLabel={submitLabel} submittingLabel={isSubmittingLabel} />
+          <SubmitButton
+            isSubmitting={isSubmitting}
+            submitLabel={submitLabel}
+            submittingLabel={isSubmittingLabel}
+            dataTestId={submitTestId}
+          />
         </form>
       </DialogContent>
     </Dialog>

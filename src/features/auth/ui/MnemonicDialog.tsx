@@ -78,7 +78,7 @@ function MnemonicDialog({ open, mnemonic, onContinue }: MnemonicDialogProps) {
           <p className="text-destructive text-sm">{t('mnemonic.warning')}</p>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3" data-testid="mnemonic-words">
           {words.map((word, index) => (
             <div key={index} className="bg-muted rounded-md px-3 py-2 text-center font-mono text-sm break-words">
               <span className="text-muted-foreground mr-1">{index + 1}.</span>
@@ -88,7 +88,7 @@ function MnemonicDialog({ open, mnemonic, onContinue }: MnemonicDialogProps) {
         </div>
 
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleCopy} type="button">
+          <Button variant="outline" size="sm" onClick={handleCopy} type="button" data-testid="mnemonic-copy">
             <Copy className="size-3.5" />
             {t('mnemonic.copy')}
           </Button>
@@ -99,14 +99,19 @@ function MnemonicDialog({ open, mnemonic, onContinue }: MnemonicDialogProps) {
         </div>
 
         <div className="flex cursor-pointer items-start gap-2">
-          <Checkbox id="mnemonic-acknowledge" checked={acknowledged} onCheckedChange={handleAcknowledge} />
+          <Checkbox
+            id="mnemonic-acknowledge"
+            checked={acknowledged}
+            onCheckedChange={handleAcknowledge}
+            data-testid="mnemonic-acknowledge"
+          />
           <Label htmlFor="mnemonic-acknowledge" className="cursor-pointer text-sm font-normal">
             {t('mnemonic.acknowledge')}
           </Label>
         </div>
 
         <DialogFooter>
-          <Button onClick={handleContinue} disabled={!acknowledged} type="button">
+          <Button onClick={handleContinue} disabled={!acknowledged} type="button" data-testid="mnemonic-continue">
             {t('register.continue')}
           </Button>
         </DialogFooter>

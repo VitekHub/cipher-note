@@ -29,10 +29,16 @@ function AccountSection() {
         <SettingsItem
           icon={KeyRound}
           label={t('account.changePassword')}
+          testId="settings-change-password"
           onClick={() => useChangePasswordDialogStore.getState().open()}
         />
         <Separator />
-        <SettingsItem icon={Trash2} label={t('account.deleteAccount')} variant="destructive" />
+        <SettingsItem
+          icon={Trash2}
+          label={t('account.deleteAccount')}
+          variant="destructive"
+          testId="settings-delete-account"
+        />
       </CardContent>
     </Card>
   )

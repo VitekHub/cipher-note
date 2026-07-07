@@ -87,6 +87,7 @@ function ChangePasswordDialog() {
               isSubmitting={isSubmitting}
               submitLabel={t('changePassword.submit')}
               submittingLabel={t('changePassword.submitting')}
+              dataTestId="change-password-submit"
             />
           </form>
         </FormProvider>

@@ -5,11 +5,12 @@ import { cn } from '@/shared/lib/utils'
 interface SettingsItemProps {
   icon: LucideIcon
   label: string
+  testId?: string
   onClick?: () => void
   variant?: 'default' | 'destructive'
 }
 
-function SettingsItem({ icon: Icon, label, onClick, variant = 'default' }: SettingsItemProps) {
+function SettingsItem({ icon: Icon, label, testId, onClick, variant = 'default' }: SettingsItemProps) {
   const isDestructive = variant === 'destructive'
 
   if (onClick) {
@@ -20,6 +21,7 @@ function SettingsItem({ icon: Icon, label, onClick, variant = 'default' }: Setti
           'hover:bg-muted/50 -mx-1 flex w-full cursor-pointer items-center justify-between rounded-md px-1 py-2 text-left',
           isDestructive && 'text-destructive hover:bg-destructive/10',
         )}
+        data-testid={testId}
         onClick={onClick}
       >
         <span className="flex items-center gap-3 text-sm">
