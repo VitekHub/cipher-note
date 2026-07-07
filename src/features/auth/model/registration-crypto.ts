@@ -1,6 +1,6 @@
 import { zeroFill, generateSalt } from '@/shared/crypto/core/crypto-utils'
 import { createRecoveryData } from '@/shared/crypto/keys/mnemonic'
-import { generateAndWrapFieldKeys } from '@/shared/crypto/keys/field-keys'
+import { generateAllFieldKeys } from '@/shared/crypto/keys/field-keys'
 import { deriveAuthCredentials } from '@/shared/crypto/keys/split-kdf'
 import { generateMasterKey, wrapMasterKeyWithPassword } from '@/shared/crypto/keys/master-key'
 import { deriveKEK } from '@/shared/crypto/core/hkdf'
@@ -29,7 +29,7 @@ export async function deriveRegistrationKeys(password: string): Promise<Registra
 
     const kek = await importKey(kekBytes)
     zeroFill(kekBytes)
-    const { cryptoFieldKeys, wrappedFieldKeys } = await generateAndWrapFieldKeys(kek)
+    const { cryptoFieldKeys, wrappedFieldKeys } = await generateAllFieldKeys(kek)
 
     return {
       authHash,

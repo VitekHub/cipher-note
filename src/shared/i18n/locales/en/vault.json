@@ -17,5 +17,11 @@
     "wrongPassword": "Wrong password",
     "argon2Failed": "Key derivation failed. Please try again.",
     "unwrapFailed": "Failed to decrypt your vault. Your data may be corrupted."
+  },
+  "rotation": {
+    "failed": "Rotation failed. Your data is unchanged.",
+    "networkError": "Network error — rotation not applied.",
+    "staleVault": "Failed to decrypt. Re-unlock the vault and try again.",
+    "locked": "Vault is locked."
   }
 }

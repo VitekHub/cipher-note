@@ -1,4 +1,5 @@
 import type { ServerEncryptedField } from '@/shared/types/api.types'
+import type { FieldName } from '@/shared/types/entities/field.types'
 
 /** The kind of row change a realtime `entries` event represents. */
 export type RealtimeEntryEventType = 'INSERT' | 'UPDATE' | 'DELETE'
@@ -14,7 +15,7 @@ export interface RealtimeEntryChange {
 export interface RealtimeCallbacks {
   onFieldChange: (data: ServerEncryptedField) => void
   onEntryChange: (change: RealtimeEntryChange) => void
-  onKeyRotation: (fieldName: string, newVersion: number) => void
+  onKeyRotation: (fieldName: FieldName, newVersion: number) => void
   onError: (error: Error) => void
 }
 

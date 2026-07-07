@@ -2,11 +2,10 @@
   "title": "Settings",
   "security": {
     "title": "Security",
-    "description": "Manage your password and security settings.",
-    "changePassword": "Change password",
+    "description": "Manage your encryption keys and seed phrase.",
     "seedPhrase": "Regenerate seed phrase",
     "verifySeedPhrase": "Verify seed phrase",
-    "keyVersions": "Key versions"
+    "keyManagement": "Key management"
   },
   "preferences": {
     "title": "Preferences",
@@ -20,8 +19,33 @@
   },
   "account": {
     "title": "Account",
-    "description": "Manage your account settings.",
+    "description": "Manage your account and login credentials.",
     "username": "Username",
+    "changePassword": "Change password",
     "deleteAccount": "Delete account"
+  },
+  "keyRotation": {
+    "field": {
+      "title": "Title",
+      "note": "Note",
+      "website": "Website",
+      "email": "Email"
+    },
+    "version": "v{{version}}",
+    "rotate": "Rotate",
+    "rotateAll": "Rotate all field keys",
+    "rotating": "Rotating...",
+    "confirm": {
+      "title": "Rotate {{field}} key?",
+      "body": "This re-encrypts your {{field}} data across all entries. This cannot be undone."
+    },
+    "confirmAll": {
+      "title": "Rotate all field keys?",
+      "body": "This re-encrypts all of your data. This cannot be undone."
+    },
+    "success": "{{field}} key rotated to v{{version}}",
+    "successAll": "All field keys rotated",
+    "locked": "Unlock the vault to rotate keys",
+    "progress": "Rotating {{field}}... ({{done}}/{{total}})"
   }
 }

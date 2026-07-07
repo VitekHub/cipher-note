@@ -8,12 +8,14 @@ import type {
   CachedVaultEnvelope,
   SaveWrappedKeyData,
   UpdateMasterKeyEnvelopeData,
+  RotateFieldKeyRpcInput,
 } from '@/shared/types/api.types'
 import {
   LOGIN_SALTS_TABLE,
   MASTER_KEYS_TABLE,
   FIELD_KEYS_TABLE,
   GET_LOGIN_SALTS_RPC,
+  ROTATE_FIELD_KEY_RPC,
 } from '@/shared/types/supabase-schema'
 
 export interface LoginSalts {
@@ -147,4 +149,30 @@ export async function updateMasterKeyEnvelope(userId: string, data: UpdateMaster
     .eq('user_id', userId)
 
   if (masterError) throw wrapApiError(masterError)
+}
+
+/**
+ * Atomically rotate a field key: inserts the new wrapped key version,
+ * replaces every entry's ciphertext for that field (re-encrypted client-side),
+ * and deletes all older wrapped-key versions — all in one transaction.
+ * The SECURITY DEFINER RPC reads the user id from auth.uid(), so it is
+ * not part of the payload (no impersonation surface).
+ */
+export async function rotateFieldKeyRpc(input: RotateFieldKeyRpcInput): Promise<void> {
+  const supabase = getSupabase()
+  const { error } = await supabase.rpc(ROTATE_FIELD_KEY_RPC, {
+    p_payload: {
+      field_name: input.fieldName,
+      new_version: input.newVersion,
+      new_wrapped_field_key: input.newWrappedFieldKey,
+      new_field_key_iv: input.newFieldKeyIV,
+      re_encrypted_fields: input.reEncryptedFields.map((f) => ({
+        entry_id: f.entryId,
+        ciphertext: f.ciphertext,
+        ciphertext_iv: f.ciphertextIV,
+      })),
+    },
+  })
+
+  if (error) throw wrapApiError(error)
 }

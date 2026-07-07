@@ -39,6 +39,25 @@ export async function fetchField(entryId: string, fieldName: FieldName): Promise
 }
 
 /**
+ * Fetch every encrypted-field row for one field across all of the user's
+ * entries. RLS scopes the result to the authenticated user's own rows.
+ */
+export async function fetchAllEncryptedFieldsForUser(
+  userId: string,
+  fieldName: FieldName,
+): Promise<ServerEncryptedField[]> {
+  const supabase = getSupabase()
+  const { data, error } = await supabase
+    .from(ENCRYPTED_FIELDS_TABLE)
+    .select('entry_id, field_name, ciphertext, ciphertext_iv, updated_at')
+    .eq('user_id', userId)
+    .eq('field_name', fieldName)
+
+  if (error) throw wrapApiError(error)
+  return (data ?? []).map(mapServerField)
+}
+
+/**
  * Upsert an encrypted field for an entry.
  * Uses onConflict to handle the unique (entry_id, field_name) constraint.
  * Requires userId for RLS (INSERT policy checks user_id = auth.uid()).

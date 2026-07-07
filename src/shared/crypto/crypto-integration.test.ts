@@ -1,13 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { encrypt, decrypt, importKey } from '@/shared/crypto/core/aes-gcm'
 import { generateMasterKey, rewrapMasterKey } from '@/shared/crypto/keys/master-key'
-import { generateAndWrapFieldKeys, unwrapFieldKeys } from '@/shared/crypto/keys/field-keys'
+import { generateAllFieldKeys, unwrapFieldKeys, generateFieldKey } from '@/shared/crypto/keys/field-keys'
 import { deriveKEK } from '@/shared/crypto/core/hkdf'
 import { deriveAuthCredentials, derivePasswordKey } from '@/shared/crypto/keys/split-kdf'
 import { wrapMasterKeyWithRecovery, unwrapMasterKeyWithRecovery } from '@/shared/crypto/keys/mnemonic'
 import { DecryptionError } from '@/shared/crypto/core/errors'
-import { MASTER_KEY_PASSWORD_AAD } from '@/shared/types/crypto.types'
-import { hexEncode } from '@/shared/crypto/core/crypto-utils'
+import { FIELD_CONTENT_VERSION, MASTER_KEY_PASSWORD_AAD } from '@/shared/types/crypto.types'
+import { hexEncode, hexDecode } from '@/shared/crypto/core/crypto-utils'
+import { encryptField, decryptField } from '@/features/fields/model/field-crypto'
 import type { ServerFieldKey, ServerMasterKeyEnvelope } from '@/shared/types/api.types'
 
 // Mock Argon2id module — Web Worker won't run in jsdom
@@ -67,7 +68,7 @@ async function setupRegistration() {
   const authCreds = await deriveAuthCredentials(PASSWORD, kdfSalt)
   const kekBytes = await deriveKEK(masterKey)
   const kek = await importKey(kekBytes)
-  const { cryptoFieldKeys, wrappedFieldKeys } = await generateAndWrapFieldKeys(kek)
+  const { cryptoFieldKeys, wrappedFieldKeys } = await generateAllFieldKeys(kek)
   const serverFieldKeys: ServerFieldKey[] = wrappedFieldKeys.map((w) => ({
     fieldName: w.fieldName,
     version: w.version,
@@ -387,6 +388,92 @@ describe('crypto integration', () => {
         fieldKeyIV: hexEncode(newNoteIV),
       }
       await expect(unwrapFieldKeys([tampered], kek)).rejects.toThrow(DecryptionError)
+    })
+
+    it('generateFieldKey + encryptField/decryptField end-to-end: rotate a field key and round-trip all ciphertexts', async () => {
+      const { kek, cryptoFieldKeys, serverFieldKeys } = await setupRegistration()
+      vi.clearAllMocks()
+
+      const oldNoteKey = cryptoFieldKeys.get('note')!
+      const noteVersion = serverFieldKeys.find((f) => f.fieldName === 'note')!.version
+
+      // Encrypt original note content with encryptField (same path the service uses).
+      const entries = [
+        { entryId: 'e1', plaintext: 'note one' },
+        { entryId: 'e2', plaintext: 'note two' },
+      ]
+      const currentCiphertexts = await Promise.all(
+        entries.map(async ({ entryId, plaintext }) => {
+          const encrypted = await encryptField(plaintext, oldNoteKey, 'note')
+          return {
+            entryId,
+            ciphertext: hexEncode(encrypted.ciphertext),
+            ciphertextIV: hexEncode(encrypted.ciphertextIV),
+          }
+        }),
+      )
+
+      // Generate a new field key (the rotation step).
+      const newVersion = noteVersion + 1
+      const { cryptoKey: newNoteKey, wrappedFieldKey, fieldKeyIV } = await generateFieldKey(kek, 'note', newVersion)
+
+      // Re-encrypt all ciphertexts with the new key.
+      const reEncryptedFields = await Promise.all(
+        currentCiphertexts.map(async ({ entryId, ciphertext, ciphertextIV }) => {
+          const plaintext = await decryptField(
+            { ciphertext: hexDecode(ciphertext), ciphertextIV: hexDecode(ciphertextIV) },
+            oldNoteKey,
+            'note',
+          )
+          const newEncrypted = await encryptField(plaintext, newNoteKey, 'note')
+          return {
+            entryId,
+            ciphertext: hexEncode(newEncrypted.ciphertext),
+            ciphertextIV: hexEncode(newEncrypted.ciphertextIV),
+          }
+        }),
+      )
+
+      expect(newVersion).toBe(noteVersion + 1)
+
+      // The new wrapped key unwraps with the same KEK + new-version wrap AAD.
+      await expect(
+        decrypt(wrappedFieldKey, kek, { iv: fieldKeyIV, aad: encodeAAD('note', newVersion) }),
+      ).resolves.toBeDefined()
+
+      // Re-encrypted ciphertexts decrypt with the new key and match the originals.
+      for (const r of reEncryptedFields) {
+        const expected = entries.find((e) => e.entryId === r.entryId)!.plaintext
+        const decrypted = await decryptField(
+          { ciphertext: hexDecode(r.ciphertext), ciphertextIV: hexDecode(r.ciphertextIV) },
+          newNoteKey,
+          'note',
+        )
+        expect(decrypted).toBe(expected)
+      }
+
+      // The old note key can no longer decrypt the re-encrypted ciphertexts.
+      for (const r of reEncryptedFields) {
+        await expect(
+          decryptField(
+            { ciphertext: hexDecode(r.ciphertext), ciphertextIV: hexDecode(r.ciphertextIV) },
+            oldNoteKey,
+            'note',
+          ),
+        ).rejects.toThrow(DecryptionError)
+      }
+
+      // Other fields are untouched: their keys still round-trip their own content.
+      const websiteKey = cryptoFieldKeys.get('website')!
+      const websiteAad = encodeAAD('website', FIELD_CONTENT_VERSION)
+      const wIv = generateIV()
+      const wCipher = await encrypt(
+        new TextEncoder().encode('website content') as Uint8Array<ArrayBuffer>,
+        websiteKey,
+        { iv: wIv, aad: websiteAad },
+      )
+      const wPt = await decrypt(wCipher, websiteKey, { iv: wIv, aad: websiteAad })
+      expect(new TextDecoder().decode(wPt)).toBe('website content')
     })
   })
 

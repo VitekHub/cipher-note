@@ -17,5 +17,11 @@
     "wrongPassword": "Špatné heslo",
     "argon2Failed": "Odvození klíče selhalo. Zkuste to prosím znovu.",
     "unwrapFailed": "Selhalo dešifrování trezoru. Vaše data mohou být poškozena."
+  },
+  "rotation": {
+    "failed": "Rotace selhala. Vaše data zůstala nezměněna.",
+    "networkError": "Chyba sítě — rotace nebyla provedena.",
+    "staleVault": "Dešifrování selhalo. Odemkněte trezor znovu a zkuste to znovu.",
+    "locked": "Trezor je uzamčen."
   }
 }

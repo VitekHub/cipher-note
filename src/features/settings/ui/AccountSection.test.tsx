@@ -1,14 +1,20 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen } from '@/test/utils'
+import userEvent from '@testing-library/user-event'
 import { useAuthStore } from '@/features/auth/model/auth-store'
+import { useChangePasswordDialogStore } from '@/shared/auth/auth-dialogs-store'
 
 import { AccountSection } from './AccountSection'
 
 describe('AccountSection', () => {
+  beforeEach(() => {
+    useChangePasswordDialogStore.setState({ isOpen: false })
+  })
+
   it('renders section title and description', () => {
     render(<AccountSection />)
     expect(screen.getByText('Account')).toBeInTheDocument()
-    expect(screen.getByText('Manage your account settings.')).toBeInTheDocument()
+    expect(screen.getByText('Manage your account and login credentials.')).toBeInTheDocument()
   })
 
   it('displays username from auth store', () => {
@@ -23,9 +29,23 @@ describe('AccountSection', () => {
     expect(screen.getByText('—')).toBeInTheDocument()
   })
 
-  it('renders delete account button as disabled', () => {
+  it('renders Change password button', () => {
     render(<AccountSection />)
-    const deleteButton = screen.getByRole('button', { name: /delete account/i })
-    expect(deleteButton).toBeDisabled()
+    expect(screen.getByRole('button', { name: /Change password/i })).toBeInTheDocument()
+  })
+
+  it('opens change password dialog when clicking "Change password"', async () => {
+    const user = userEvent.setup()
+    render(<AccountSection />)
+
+    await user.click(screen.getByRole('button', { name: /Change password/i }))
+
+    expect(useChangePasswordDialogStore.getState().isOpen).toBe(true)
+  })
+
+  it('renders delete account item as inactive (no onClick handler)', () => {
+    render(<AccountSection />)
+    expect(screen.getByText('Delete account')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /delete account/i })).not.toBeInTheDocument()
   })
 })

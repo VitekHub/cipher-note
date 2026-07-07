@@ -14,7 +14,8 @@ const ctx = vi.hoisted(() => {
   const toastSuccess = vi.fn<(msg: string, options?: unknown) => string | number>()
   const toastError = vi.fn<(msg: string, options?: unknown) => string | number>()
   const mockSyncFieldKeys = vi.fn<(userId: string) => Promise<void>>()
-  const cryptoStoreState = { isVaultLocked: false }
+  const mockClearCachedEnvelope = vi.fn<() => void>()
+  const cryptoStoreState = { isVaultLocked: false, clearCachedEnvelope: mockClearCachedEnvelope }
   return {
     callbacksRef,
     mockSubscribe,
@@ -23,6 +24,7 @@ const ctx = vi.hoisted(() => {
     toastSuccess,
     toastError,
     mockSyncFieldKeys,
+    mockClearCachedEnvelope,
     cryptoStoreState,
   }
 })
@@ -53,7 +55,7 @@ vi.mock('@/shared/crypto/vault/crypto-store', () => ({
 
 import { useRealtimeSync } from '@/features/fields/model/use-realtime-sync'
 import { useSyncStatusStore, SYNC_STATUS } from '@/features/fields/model/sync-status-store'
-import { markLocalSave, clearEchoMarkers } from '@/shared/realtime/realtime-echo'
+import { markLocalSave, markLocalKeyRotation, clearEchoMarkers } from '@/shared/realtime/realtime-echo'
 import { queryKeys } from '@/shared/lib/query-keys'
 import { DecryptionError } from '@/shared/crypto/core/errors'
 import type { RealtimeCallbacks } from '@/shared/realtime/realtime.types'
@@ -243,13 +245,14 @@ describe('useRealtimeSync', () => {
     expect(invalidateSpy).not.toHaveBeenCalled()
   })
 
-  it('skips onKeyRotation when the vault is locked', async () => {
+  it('clears cached envelope and skips onKeyRotation when the vault is locked', async () => {
     ctx.cryptoStoreState.isVaultLocked = true
 
     renderHook(() => useRealtimeSync(), { wrapper: createWrapper(queryClient) })
 
     callbacks().onKeyRotation('note', 2)
 
+    expect(ctx.mockClearCachedEnvelope).toHaveBeenCalledOnce()
     // Give the async IIFE a chance to run (it shouldn't)
     await waitFor(() => {
       expect(ctx.mockSyncFieldKeys).not.toHaveBeenCalled()
@@ -268,6 +271,36 @@ describe('useRealtimeSync', () => {
       expect(ctx.toastSuccess).toHaveBeenCalledTimes(1)
     })
     expect(ctx.toastSuccess.mock.calls[0][0]).toEqual(expect.any(String))
+    // Unlocked vault processes rotation normally — no need to clear cache
+    expect(ctx.mockClearCachedEnvelope).not.toHaveBeenCalled()
+  })
+
+  it('skips onKeyRotation entirely when it is a local echo', async () => {
+    markLocalKeyRotation('note', 2)
+
+    renderHook(() => useRealtimeSync(), { wrapper: createWrapper(queryClient) })
+
+    callbacks().onKeyRotation('note', 2)
+
+    // Give the async IIFE a chance to run (it shouldn't)
+    await waitFor(() => {
+      expect(ctx.mockSyncFieldKeys).not.toHaveBeenCalled()
+    })
+    expect(invalidateSpy).not.toHaveBeenCalled()
+    expect(ctx.toastSuccess).not.toHaveBeenCalled()
+    expect(ctx.toastError).not.toHaveBeenCalled()
+  })
+
+  it('still toasts when the marker version does not match (not a true echo)', async () => {
+    markLocalKeyRotation('note', 3)
+
+    renderHook(() => useRealtimeSync(), { wrapper: createWrapper(queryClient) })
+
+    callbacks().onKeyRotation('note', 2)
+
+    await waitFor(() => {
+      expect(ctx.toastSuccess).toHaveBeenCalledTimes(1)
+    })
   })
 
   it('shows keyRotationFailed toast on DecryptionError (stale KEK)', async () => {

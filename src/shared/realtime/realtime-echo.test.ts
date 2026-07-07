@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import {
   markLocalSave,
-  isLocalEcho,
+  isLocalSaveEcho,
   clearEchoMarkers,
   scheduleRemoteUpdateClear,
 } from '@/shared/realtime/realtime-echo'
@@ -16,43 +16,43 @@ describe('echo detection', () => {
 
   it('markLocalSave + isLocalEcho detects echo with matching timestamp', () => {
     markLocalSave(ENTRY_ID, 'note', '2026-01-01T00:00:00Z')
-    expect(isLocalEcho(ENTRY_ID, 'note', '2026-01-01T00:00:00Z')).toBe(true)
+    expect(isLocalSaveEcho(ENTRY_ID, 'note', '2026-01-01T00:00:00Z')).toBe(true)
     // After detection, marker is consumed
-    expect(isLocalEcho(ENTRY_ID, 'note', '2026-01-01T00:00:00Z')).toBe(false)
+    expect(isLocalSaveEcho(ENTRY_ID, 'note', '2026-01-01T00:00:00Z')).toBe(false)
   })
 
   it('isLocalEcho returns false for different timestamp', () => {
     markLocalSave(ENTRY_ID, 'note', '2026-01-01T00:00:00Z')
-    expect(isLocalEcho(ENTRY_ID, 'note', '2026-01-01T00:00:01Z')).toBe(false)
+    expect(isLocalSaveEcho(ENTRY_ID, 'note', '2026-01-01T00:00:01Z')).toBe(false)
   })
 
   it('isLocalEcho returns false for unknown entry/field', () => {
-    expect(isLocalEcho(ENTRY_ID, 'note', '2026-01-01T00:00:00Z')).toBe(false)
+    expect(isLocalSaveEcho(ENTRY_ID, 'note', '2026-01-01T00:00:00Z')).toBe(false)
   })
 
   it('isLocalEcho returns false on mismatch and does not remove the marker', () => {
     markLocalSave(ENTRY_ID, 'note', '2026-01-01T00:00:00Z')
     // Mismatch — returns false, but does NOT remove the marker
-    expect(isLocalEcho(ENTRY_ID, 'note', 'different')).toBe(false)
+    expect(isLocalSaveEcho(ENTRY_ID, 'note', 'different')).toBe(false)
     // The original marker is still there, so a matching call succeeds
-    expect(isLocalEcho(ENTRY_ID, 'note', '2026-01-01T00:00:00Z')).toBe(true)
+    expect(isLocalSaveEcho(ENTRY_ID, 'note', '2026-01-01T00:00:00Z')).toBe(true)
   })
 
   it('clearEchoMarkers removes all markers', () => {
     markLocalSave('e1', 'note', 'ts1')
     markLocalSave('e2', 'title', 'ts2')
     clearEchoMarkers()
-    expect(isLocalEcho('e1', 'note', 'ts1')).toBe(false)
-    expect(isLocalEcho('e2', 'title', 'ts2')).toBe(false)
+    expect(isLocalSaveEcho('e1', 'note', 'ts1')).toBe(false)
+    expect(isLocalSaveEcho('e2', 'title', 'ts2')).toBe(false)
   })
 
   it('markLocalSave overwrites previous timestamp for same key', () => {
     markLocalSave(ENTRY_ID, 'note', 'ts-old')
     markLocalSave(ENTRY_ID, 'note', 'ts-new')
     // ts-old no longer matches (was overwritten)
-    expect(isLocalEcho(ENTRY_ID, 'note', 'ts-old')).toBe(false)
+    expect(isLocalSaveEcho(ENTRY_ID, 'note', 'ts-old')).toBe(false)
     // ts-new matches
-    expect(isLocalEcho(ENTRY_ID, 'note', 'ts-new')).toBe(true)
+    expect(isLocalSaveEcho(ENTRY_ID, 'note', 'ts-new')).toBe(true)
   })
 })
 
@@ -130,7 +130,7 @@ describe('crypto store clears echo markers', () => {
     useCryptoStore.getState().lockVault()
 
     // After lockVault, echo marker is gone
-    expect(isLocalEcho(ENTRY_ID, 'note', 'ts1')).toBe(false)
+    expect(isLocalSaveEcho(ENTRY_ID, 'note', 'ts1')).toBe(false)
   })
 
   it('clearVault clears echo markers', () => {
@@ -139,6 +139,6 @@ describe('crypto store clears echo markers', () => {
     useCryptoStore.getState().clearVault()
 
     // After clearVault, echo marker is gone
-    expect(isLocalEcho(ENTRY_ID, 'note', 'ts1')).toBe(false)
+    expect(isLocalSaveEcho(ENTRY_ID, 'note', 'ts1')).toBe(false)
   })
 })

@@ -2,7 +2,7 @@
  * Field key operations: generation+wrapping and unwrapping.
  *
  * Each entry has four encrypted fields (title, note, website, email), each
- * protected by its own 256-bit field key. `generateAndWrapFieldKeys` creates
+ * protected by its own 256-bit field key. `generateAllFieldKeys` creates
  * and wraps all four field keys in a single parallel pass; `unwrapFieldKeys`
  * decrypts them during vault unlock.
  */
@@ -15,15 +15,34 @@ import { FIELD_KEY_VERSION } from '@/shared/types/crypto.types'
 import type { ServerFieldKey } from '@/shared/types/api.types'
 import { FIELD_NAMES } from '@/shared/types/entities/field.types'
 
+export type GeneratedFieldKey = {
+  cryptoKey: CryptoKey
+  wrappedFieldKey: Uint8Array<ArrayBuffer>
+  fieldKeyIV: Uint8Array<ArrayBuffer>
+}
+
+/**
+ * Generate a single field key, import it as a CryptoKey, and wrap it with the
+ * KEK. Raw key bytes are zero-filled in a finally block.
+ */
+export async function generateFieldKey(kek: CryptoKey, fieldName: string, version: number): Promise<GeneratedFieldKey> {
+  const rawKey = generateKey()
+  try {
+    const cryptoKey = await importKey(rawKey)
+    const fieldKeyIV = generateIV()
+    const aad = encodeAAD(fieldName, version)
+    const wrappedFieldKey = await encrypt(rawKey, kek, { iv: fieldKeyIV, aad })
+    return { cryptoKey, wrappedFieldKey, fieldKeyIV }
+  } finally {
+    zeroFill(rawKey)
+  }
+}
+
 /**
  * Generate all four field keys, import them as CryptoKeys, and wrap them
  * with the KEK — all in a single parallel pass.
- *
- * This combines what were previously three separate steps (generate → version
- * → wrap) into one, avoiding multiple iterations over the field key arrays.
- * Raw keys are zero-filled after wrapping.
  */
-export async function generateAndWrapFieldKeys(
+export async function generateAllFieldKeys(
   kek: CryptoKey,
 ): Promise<{ cryptoFieldKeys: Map<string, CryptoKey>; wrappedFieldKeys: WrappedFieldKey[] }> {
   const cryptoFieldKeys = new Map<string, CryptoKey>()
@@ -31,18 +50,9 @@ export async function generateAndWrapFieldKeys(
 
   await Promise.all(
     FIELD_NAMES.map(async (fieldName) => {
-      const rawKey = generateKey()
-      try {
-        const cryptoKey = await importKey(rawKey)
-        const fieldKeyIV = generateIV()
-        const aad = encodeAAD(fieldName, FIELD_KEY_VERSION)
-        const wrappedFieldKey = await encrypt(rawKey, kek, { iv: fieldKeyIV, aad })
-
-        cryptoFieldKeys.set(fieldName, cryptoKey)
-        wrappedFieldKeys.push({ fieldName, version: FIELD_KEY_VERSION, wrappedFieldKey, fieldKeyIV })
-      } finally {
-        zeroFill(rawKey)
-      }
+      const { cryptoKey, wrappedFieldKey, fieldKeyIV } = await generateFieldKey(kek, fieldName, FIELD_KEY_VERSION)
+      cryptoFieldKeys.set(fieldName, cryptoKey)
+      wrappedFieldKeys.push({ fieldName, version: FIELD_KEY_VERSION, wrappedFieldKey, fieldKeyIV })
     }),
   )
 

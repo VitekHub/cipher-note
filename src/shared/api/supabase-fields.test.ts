@@ -12,7 +12,7 @@ vi.mock('@/shared/api/supabase-client', () => ({
   }),
 }))
 
-import { fetchField, saveField } from '@/shared/api/supabase-fields'
+import { fetchField, saveField, fetchAllEncryptedFieldsForUser } from '@/shared/api/supabase-fields'
 
 describe('fetchField', () => {
   let qb: ReturnType<typeof createQueryBuilder>
@@ -128,6 +128,97 @@ describe('saveField', () => {
         ciphertext: 'aa'.repeat(16),
         ciphertextIV: 'bb'.repeat(12),
       })
+      expect.unreachable('should have thrown')
+    } catch (e) {
+      expect(e).toBeInstanceOf(ApiError)
+      expect((e as ApiError).code).toBe(ApiErrorCode.UNEXPECTED)
+    }
+  })
+})
+
+describe('fetchAllEncryptedFieldsForUser', () => {
+  function buildChain(terminal: ReturnType<typeof vi.fn>) {
+    const firstEq = vi.fn().mockReturnValue({ eq: terminal })
+    const selectMock = vi.fn().mockReturnValue({ eq: firstEq })
+    mockFrom.mockReturnValue({ select: selectMock })
+    return { selectMock, firstEq }
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('queries with user_id and field_name filters and maps rows to ServerEncryptedField', async () => {
+    const terminalEq = vi.fn().mockResolvedValueOnce({
+      data: [
+        {
+          entry_id: 'entry-1',
+          field_name: 'note',
+          ciphertext: 'aa'.repeat(16),
+          ciphertext_iv: 'bb'.repeat(12),
+          updated_at: '2025-01-01T00:00:00Z',
+        },
+        {
+          entry_id: 'entry-2',
+          field_name: 'note',
+          ciphertext: 'cc'.repeat(16),
+          ciphertext_iv: 'dd'.repeat(12),
+          updated_at: '2025-01-02T00:00:00Z',
+        },
+      ],
+      error: null,
+    })
+    const { selectMock, firstEq } = buildChain(terminalEq)
+
+    const result = await fetchAllEncryptedFieldsForUser('user-1', 'note')
+
+    expect(mockFrom).toHaveBeenCalledWith(ENCRYPTED_FIELDS_TABLE)
+    expect(selectMock).toHaveBeenCalledWith('entry_id, field_name, ciphertext, ciphertext_iv, updated_at')
+    expect(firstEq).toHaveBeenCalledWith('user_id', 'user-1')
+    expect(terminalEq).toHaveBeenCalledWith('field_name', 'note')
+    expect(result).toEqual([
+      {
+        entryId: 'entry-1',
+        fieldName: 'note',
+        ciphertext: 'aa'.repeat(16),
+        ciphertextIV: 'bb'.repeat(12),
+        updatedAt: '2025-01-01T00:00:00Z',
+      },
+      {
+        entryId: 'entry-2',
+        fieldName: 'note',
+        ciphertext: 'cc'.repeat(16),
+        ciphertextIV: 'dd'.repeat(12),
+        updatedAt: '2025-01-02T00:00:00Z',
+      },
+    ])
+  })
+
+  it('returns an empty array when no rows match', async () => {
+    const terminalEq = vi.fn().mockResolvedValueOnce({ data: [], error: null })
+    buildChain(terminalEq)
+
+    const result = await fetchAllEncryptedFieldsForUser('user-1', 'note')
+    expect(result).toEqual([])
+  })
+
+  it('returns an empty array when data is null', async () => {
+    const terminalEq = vi.fn().mockResolvedValueOnce({ data: null, error: null })
+    buildChain(terminalEq)
+
+    const result = await fetchAllEncryptedFieldsForUser('user-1', 'note')
+    expect(result).toEqual([])
+  })
+
+  it('throws ApiError on query error', async () => {
+    const terminalEq = vi.fn().mockResolvedValueOnce({
+      data: null,
+      error: { message: 'Query error' },
+    })
+    buildChain(terminalEq)
+
+    try {
+      await fetchAllEncryptedFieldsForUser('user-1', 'note')
       expect.unreachable('should have thrown')
     } catch (e) {
       expect(e).toBeInstanceOf(ApiError)

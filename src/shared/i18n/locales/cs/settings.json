@@ -2,11 +2,10 @@
   "title": "Nastavení",
   "security": {
     "title": "Zabezpečení",
-    "description": "Správa hesla a nastavení zabezpečení.",
-    "changePassword": "Změnit heslo",
+    "description": "Správa šifrovacích klíčů a seed fráze.",
     "seedPhrase": "Znovu vygenerovat seed frázi",
     "verifySeedPhrase": "Ověřit seed frázi",
-    "keyVersions": "Verze klíčů"
+    "keyManagement": "Správa klíčů"
   },
   "preferences": {
     "title": "Předvolby",
@@ -20,8 +19,33 @@
   },
   "account": {
     "title": "Účet",
-    "description": "Správa nastavení účtu.",
+    "description": "Správa účtu a přihlašovacích údajů.",
     "username": "Uživatelské jméno",
+    "changePassword": "Změnit heslo",
     "deleteAccount": "Smazat účet"
+  },
+  "keyRotation": {
+    "field": {
+      "title": "Název",
+      "note": "Poznámka",
+      "website": "Webová stránka",
+      "email": "E-mail"
+    },
+    "version": "v{{version}}",
+    "rotate": "Rotovat",
+    "rotateAll": "Rotovat všechny klíče polí",
+    "rotating": "Rotuji...",
+    "confirm": {
+      "title": "Rotovat klíč pole {{field}}?",
+      "body": "Toto znovu zašifruje data pole {{field}} napříč všemi záznamy. Tuto akci nelze vrátit zpět."
+    },
+    "confirmAll": {
+      "title": "Rotovat všechny klíče polí?",
+      "body": "Toto znovu zašifruje všechna vaše data. Tuto akci nelze vrátit zpět."
+    },
+    "success": "Klíč pole {{field}} rotován na v{{version}}",
+    "successAll": "Všechny klíče polí rotovány",
+    "locked": "Odemkněte trezor pro rotaci klíčů",
+    "progress": "Rotuji {{field}}... ({{done}}/{{total}})"
   }
 }
