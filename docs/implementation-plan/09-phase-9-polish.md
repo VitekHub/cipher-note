@@ -9,11 +9,11 @@
   - Login/Register: stacked form, full-width inputs
   - Dashboard: stacked field cards (no sidebar), bottom navigation
   - Settings: stacked sections, full-width inputs
-  - Mnemonic dialog: scrollable word list, larger tap targets
+  - Mnemonic dialog: responsive 2→3 column grid on mobile, `break-words` for long mnemonics
   - Vault unlock dialog: full-screen on mobile
-- Touch targets: minimum 44px tap area for all interactive elements
+- Touch targets: mobile-first 44px minimum (`min-h-11` / `min-w-11`), reverting to standard sizes at `md:` breakpoint
 - Keyboard handling: scroll to focused input on mobile
-- Safe area insets: respect `env(safe-area-inset-*)` for notched devices
+- Safe area insets: `viewport-fit=cover` meta + `env(safe-area-inset-top)` padding on headers
 - Swipe gestures: consider swipe to lock vault on mobile
 
 **Tests:**

@@ -69,8 +69,8 @@ This is the implementation plan for Cipher Note, an end-to-end encrypted note-ta
 - [x] Step 29 — Change Password Flow + UI
 - [x] Step 30 — Seed Phrase Backup View
 - [x] Step 31 — Seed Phrase Recovery Flow + UI
-- [ ] Step 32 — Key Rotation + UI
-- [ ] Step 33 — Mobile Responsive Refinements
+- [x] Step 32 — Key Rotation + UI
+- [x] Step 33 — Mobile Responsive Refinements
 - [ ] Step 34 — Loading States, Error Boundaries, Toast Notifications
 - [ ] Step 35 — Security Hardening
 - [ ] Step 36 — E2E Tests (Playwright)

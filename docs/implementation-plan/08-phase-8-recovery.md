@@ -1,4 +1,4 @@
-# Phase 8: Password & Recovery
+# Phase 8: Password & Recovery ✅
 
 ## Step 29 — Change Password Flow + UI ✅
 
@@ -119,32 +119,35 @@
 
 ---
 
-## Step 32 — Key Rotation + UI
+## Step 32 — Key Rotation + UI ✅
 
-**Goal:** Rotate individual field keys (re-encrypt one field's data without affecting others).
+**Goal:** Rotate individual field keys (re-encrypt one field's data without affecting others), with support for rotating all fields at once.
 
 **Code:**
-- `src/shared/crypto/key-rotation.ts`:
-  - `rotateFieldKey(fieldName: string): Promise<void>`
-    1. Generate new random 256-bit field key
+- Rotation service in `features/fields/model/`:
+  - `rotateFieldKey(userId, fieldName): Promise<number>` — returns new version number
+    1. Generate new random 256-bit field key via `generateFieldKey`
     2. Increment version for this field (v1 → v2)
     3. Wrap new field key with KEK (AAD = fieldName + newVersion)
-    4. Decrypt current field content with old field key
-    5. Re-encrypt field content with new field key
-    6. Upload new wrapped field key + new encrypted field content to server
-    7. Update crypto store with new field key
-    8. Old wrapped key and old ciphertext are replaced on server
-- `src/features/settings/ui/KeyRotationSection.tsx`:
-  - Shows current key versions for each field (note v1, website v1, email v1)
-  - "Rotate key" button for each field
-  - Confirmation dialog: "This will re-encrypt your [field name] data. This cannot be undone."
-  - Success/error feedback
+    4. Fetch all encrypted fields for this field name across all entries (multi-entry aware)
+    5. Decrypt each field's content with old field key, re-encrypt with new field key
+    6. Commit via atomic server RPC (new wrapped key + re-encrypted ciphertexts + delete old versions in one transaction)
+    7. Suppress realtime echo via `markLocalKeyRotation`
+    8. Update key vault and crypto store with new field key and cached envelope
+  - `rotateAllFields(userId): Promise<RotationOutcome[]>` — rotates all four fields sequentially; partial success is surfaced per field (failed fields can be retried independently)
+  - `generateFieldKey(kek, fieldName, version)` — extracted from `generateAllFieldKeys`, generates a single field key + wraps it
+- `KeyManagementSubsection` — collapsible section inside SecuritySection showing current key versions per field, "Rotate" button per field, and "Rotate all" button
+- `RotateFieldKeyDialog` — confirmation dialog handling both single-field and all-fields rotation, with progress indicator for "rotate all"
+- Dedicated error-mapping module using shared `mapErrorToMessage` pattern
+- Server RPC: `rotate_field_key` SECURITY DEFINER function (atomic: insert new key version, update all ciphertexts, delete old key versions in one transaction)
+- Realtime echo suppression: `markLocalKeyRotation` / `isLocalKeyRotationEcho` to avoid processing own rotation events
 - Add i18n strings to `settings.json` and `vault.json`
 
 **Tests:**
 - Integration: rotate note key → verify note v2 in DB → verify note content decrypts correctly
 - Integration: after rotation, old key can no longer decrypt (old ciphertext replaced)
 - Integration: website and email field keys are unaffected by note key rotation
-- Component test: key rotation section shows current versions
-- Component test: confirmation dialog appears before rotation
+- Component test: key rotation subsection shows current versions, rotate buttons
+- Component test: confirmation dialog appears before rotation (single and all-fields)
 - Unit: key version increments correctly
+- Unit: error-mapping module covers all error types
