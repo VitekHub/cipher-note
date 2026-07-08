@@ -192,6 +192,7 @@ See `docs/implementation-plan/README.md` for the full 36-step plan.
 - Step 32 (Key Rotation + UI) — complete
 - Step 33 (Mobile Responsive Refinements) — complete
 - Step 34 (Loading States, Error Boundaries, Toast Notifications) — complete
+- Step 35 (Security Hardening) — complete
 
 ### Implementation Notes
 

@@ -55,7 +55,7 @@
 
 ---
 
-## Step 35 — Security Hardening
+## Step 35 — Security Hardening ✅
 
 **Goal:** Defense-in-depth security measures for an E2EE app.
 
@@ -64,11 +64,8 @@
   - Zero-fill all key material when vault is locked (already in crypto-store)
   - Zero-fill key material after use in crypto functions (best effort — JS GC is not guaranteed)
   - Avoid `string` for sensitive data where possible (use `Uint8Array`)
-- CSP headers (in `vite.config.ts` or deployment config):
-  - `Content-Security-Policy`: no inline scripts, no eval, strict origins
-  - `X-Content-Type-Options: nosniff`
-  - `X-Frame-Options: DENY`
-  - `Referrer-Policy: no-referrer`
+- Referrer-Policy added as `<meta>` tag in `index.html`
+  - Remaining security headers (Content-Security-Policy, X-Content-Type-Options, X-Frame-Options) are deployment config — not set at build time
 - Supabase RLS audit:
   - Verify every table has RLS enabled
   - Verify policies enforce `user_id = auth.uid()` (using the internal Supabase email mapping)

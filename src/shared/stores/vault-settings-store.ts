@@ -25,6 +25,7 @@ const useVaultSettingsStore = create<VaultSettingsState & VaultSettingsActions>(
       }),
       {
         name: 'cipher-note-vault-settings',
+        version: 0,
         partialize: (state) => ({
           vaultTimeoutMs: state.vaultTimeoutMs,
           lockOnTabHidden: state.lockOnTabHidden,

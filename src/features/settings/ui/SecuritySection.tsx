@@ -1,4 +1,4 @@
-import { Fragment } from 'react'
+import { Fragment, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ShieldCheck, ScanEye, Timer, EyeOff, type LucideIcon } from 'lucide-react'
 
@@ -24,13 +24,7 @@ const ITEMS: { icon: LucideIcon; labelKey: string; onClick?: () => void }[] = [
   },
 ]
 
-const AUTO_LOCK_OPTIONS = [
-  { value: 5 * 60 * 1000, minutes: 5 },
-  { value: 10 * 60 * 1000, minutes: 10 },
-  { value: 15 * 60 * 1000, minutes: 15 },
-  { value: 30 * 60 * 1000, minutes: 30 },
-  { value: 60 * 60 * 1000, minutes: 60 },
-] as const
+const AUTO_LOCK_MINUTES = [5, 10, 15, 30, 60] as const
 
 function SecuritySection() {
   const { t } = useTranslation('settings')
@@ -39,10 +33,16 @@ function SecuritySection() {
   const lockOnTabHidden = useVaultSettingsStore((s) => s.lockOnTabHidden)
   const setLockOnTabHidden = useVaultSettingsStore((s) => s.setLockOnTabHidden)
 
-  const autoLockItems = AUTO_LOCK_OPTIONS.map((opt) => ({
-    value: opt.value,
-    label: t('security.minutesShort', { count: opt.minutes }),
-  }))
+  // Base UI SelectItem children are portal-mounted and not in the DOM while the
+  // popup is closed, so SelectValue uses `items` to resolve the selected label.
+  const autoLockItems = useMemo(
+    () =>
+      AUTO_LOCK_MINUTES.map((minutes) => ({
+        value: String(minutes * 60 * 1000),
+        label: t('security.minutesShort', { count: minutes }),
+      })),
+    [t],
+  )
 
   return (
     <Card>
@@ -56,14 +56,21 @@ function SecuritySection() {
             <Timer className="size-4" />
             {t('security.autoLock')}
           </span>
-          <Select value={vaultTimeoutMs} onValueChange={(v) => setVaultTimeoutMs(Number(v))} items={autoLockItems}>
-            <SelectTrigger aria-label={t('security.autoLock')} className="w-auto">
+          <Select
+            value={String(vaultTimeoutMs)}
+            onValueChange={(v) => {
+              const ms = Number(v)
+              if (Number.isFinite(ms) && ms > 0) setVaultTimeoutMs(ms)
+            }}
+            items={autoLockItems}
+          >
+            <SelectTrigger aria-label={t('security.autoLock')} className="w-auto" size="sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {AUTO_LOCK_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {t('security.minutesShort', { count: opt.minutes })}
+              {AUTO_LOCK_MINUTES.map((minutes) => (
+                <SelectItem key={minutes} value={String(minutes * 60 * 1000)}>
+                  {t('security.minutesShort', { count: minutes })}
                 </SelectItem>
               ))}
             </SelectContent>
