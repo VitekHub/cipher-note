@@ -25,10 +25,6 @@
     "unexpectedError": "An unexpected error occurred. Please try again.",
     "pageNotFound": "The page you're looking for doesn't exist."
   },
-  "preAlpha": {
-    "ariaLabel": "Pre-alpha software notice",
-    "message": "Cipher Note is in pre-alpha version. Expect breaking changes and periodic data resets."
-  },
   "nav": {
     "dashboard": "Dashboard",
     "settings": "Settings",

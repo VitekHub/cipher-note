@@ -25,10 +25,6 @@
     "unexpectedError": "Došlo k neočekávané chybě. Zkuste to prosím znovu.",
     "pageNotFound": "Stránka, kterou hledáte, neexistuje."
   },
-  "preAlpha": {
-    "ariaLabel": "Upozornění na předběžnou verzi",
-    "message": "Cipher Note je předběžná alfa verze. Očekávejte zásadní změny a občasné resety dat."
-  },
   "nav": {
     "dashboard": "Nástěnka",
     "settings": "Nastavení",
