@@ -1,7 +1,8 @@
 import { useTranslation } from 'react-i18next'
-import { Loader2, Check, AlertCircle, CloudOff, CloudDownload } from 'lucide-react'
+import { Check, AlertCircle, CloudOff, CloudDownload } from 'lucide-react'
 import { SYNC_STATUS } from '@/features/fields/model/sync-status-store'
 import type { SyncStatus } from '@/features/fields/model/sync-status-store'
+import { Spinner } from '@/shared/ui/Spinner'
 import { cn } from '@/shared/lib/utils'
 
 // Static keys so i18next-parser can discover them
@@ -31,7 +32,7 @@ function SaveIndicator({ status, onRetry, className }: SaveIndicatorProps) {
   if (status === SYNC_STATUS.SAVING) {
     return (
       <span className={cn('text-muted-foreground inline-flex items-center gap-1 text-xs', className)}>
-        <Loader2 className="size-3 animate-spin" />
+        <Spinner size="sm" />
         {t(keys.text)}
       </span>
     )

@@ -32,5 +32,8 @@
     "keyRotationApplied": "Klíč pro \"{{field}}\" byl aktualizován na v{{version}}.",
     "keyRotationFailed": "Klíče vašeho trezoru jsou zastaralé. Prosím, odemkněte trezor znovu.",
     "keyRotationNetworkError": "Chyba sítě při aktualizaci klíčů. Prosím, připojte se znovu a obnovte stránku."
+  },
+  "errors": {
+    "loadFailed": "Toto pole se nepodařilo načíst."
   }
 }

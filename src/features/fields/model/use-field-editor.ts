@@ -13,6 +13,7 @@ export interface UseFieldEditorResult {
   fieldSyncStatus: SyncStatus
   retrySave: () => void
   isOfflineAwaitingData: boolean
+  fieldQuery: ReturnType<typeof useField>
 }
 
 /**
@@ -98,7 +99,14 @@ function useFieldEditor(entryId: string, fieldName: FieldName): UseFieldEditorRe
   const fieldValue = isVaultLocked ? '' : (draft ?? fieldQuery.data ?? '')
   const isOfflineAwaitingData = fieldQuery.isPaused && !fieldQuery.data
 
-  return { fieldValue, saveFieldValue, fieldSyncStatus: syncStatus, retrySave, isOfflineAwaitingData }
+  return {
+    fieldValue,
+    saveFieldValue,
+    fieldSyncStatus: syncStatus,
+    retrySave,
+    isOfflineAwaitingData,
+    fieldQuery,
+  }
 }
 
 export { useFieldEditor }

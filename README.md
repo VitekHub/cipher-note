@@ -84,24 +84,27 @@ Dependency direction: `routes -> features -> shared`. No cross-feature imports.
 │           │──▶ Tailwind CSS
 └─────┬─────┘
       ▼
-┌───────────────────┐
-│  AppProviders     │
-│  ┌──────────────┐ │
-│  │ QueryClient  │ │
-│  │ ┌──────────┐ │ │
-│  │ │  Auth    │ │ │
-│  │ │ ┌──────┐ │ │ │
-│  │ │ │Router│ │ │ │
-│  │ │ └──┬───┘ │ │ │
-│  │ └────┬─────┘ │ │
-│  └──────┼───────┘ │
-└─────────┼─────────┘
-          ▼
-    ┌────────────┐
-    │  __root    │──▶ ThemeProvider + Toaster
-    └─────┬──────┘
-      ┌───┴───┐
-      ▼       ▼
+┌───────────────────────┐
+│ AppErrorBoundary      │  ← catches provider/router crashes
+│ ┌───────────────────┐ │
+│ │  AppProviders     │ │
+│ │  ┌──────────────┐ │ │
+│ │  │ QueryClient  │ │ │
+│ │  │ ┌──────────┐ │ │ │
+│ │  │ │  Auth    │ │ │ │
+│ │  │ │ ┌──────┐ │ │ │ │
+│ │  │ │ │Router│ │ │ │ │
+│ │  │ │ └──┬───┘ │ │ │ │
+│ │  │ └────┼─────┘ │ │ │
+│ │  └──────┼───────┘ │ │
+│ └─────────┼─────────┘ │
+└───────────┼───────────┘
+            ▼          
+     ┌────────────┐   
+     │  __root    │────▶ ThemeProvider + Toaster
+     └─────┬──────┘
+       ┌───┴───┐
+       ▼       ▼
   _public   _authenticated
   (guest)   (logged in)
       │       │

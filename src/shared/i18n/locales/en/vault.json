@@ -23,5 +23,6 @@
     "networkError": "Network error — rotation not applied.",
     "staleVault": "Failed to decrypt. Re-unlock the vault and try again.",
     "locked": "Vault is locked."
-  }
+  },
+  "inactivityLocked": "Vault locked due to inactivity."
 }

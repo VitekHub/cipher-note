@@ -9,5 +9,8 @@
   "notFound": "Poznámka nebyla nalezena",
   "deleted": "Tato poznámka byla smazána. Změny nebudou uloženy",
   "welcome": "Vítejte {{username}}",
-  "welcomeNoteCount": "Máte {{count}} poznámek. Vyberte si jednu z postranního panelu a můžete začít."
+  "welcomeNoteCount": "Máte {{count}} poznámek. Vyberte si jednu z postranního panelu a můžete začít.",
+  "errors": {
+    "loadFailed": "Poznámky se nepodařilo načíst."
+  }
 }

@@ -1,6 +1,6 @@
 # Phase 9: Polish
 
-## Step 33 — Mobile Responsive Refinements
+## Step 33 — Mobile Responsive Refinements ✅
 
 **Goal:** Ensure all pages work well on mobile viewports.
 
@@ -24,29 +24,31 @@
 
 ---
 
-## Step 34 — Loading States, Error Boundaries, Toast Notifications
+## Step 34 — Loading States, Error Boundaries, Toast Notifications ✅
 
 **Goal:** Professional UX for loading, errors, and notifications.
 
 **Code:**
 - Loading states:
-  - Skeleton loaders for field content while fetching
+  - Spinner component for loading states (field content, crypto operations)
   - Spinner during Argon2id derivation (login, register, password change)
   - Spinner during key wrapping/unwrapping operations
-  - "Saving..." indicator on field auto-save
-- Error boundaries (enhance the root error boundary from Step 3):
-  - Crypto errors: "Decryption failed. Your data may be corrupted." with support link
-  - Network errors: "Connection lost. Changes will sync when reconnected."
+  - Inline save status indicator for field auto-save (saving/saved/error with retry)
+- Error boundaries (two separate boundaries):
+  - App-level boundary above providers: dependency-free fallback (no i18n, no theme, inline styles, hardcoded English)
+  - Route-level boundary inside router: uses i18n, theme, and shared error-to-message mapper
+  - Shared `ErrorState` component for inline error display with retry and "Go home" actions
+  - Crypto errors: "Decryption failed. Your data may be corrupted.", "Corrupted data"
+  - Network errors: "Network error. Please try again."
   - Route-level Suspense fallbacks already in place from Step 3
-- Toast notifications:
-  - Success: "Saved", "Password changed", "Key rotated"
-  - Error: "Save failed — retrying", "Wrong password"
-  - Warning: "Vault locked due to inactivity", "Remote change detected"
+- Notifications:
+  - Inline status indicators for save state (saving/saved/paused/error)
+  - Toast for vault lock due to inactivity and other one-time events
   - Use shadcn `Toaster` component
 - i18n strings for all error/success messages
 
 **Tests:**
-- Component test: skeleton loaders shown during loading
+- Component test: spinners shown during loading
 - Component test: error boundary catches and displays error
 - Component test: toast notifications appear for success/error
 - Integration: network error → error toast → retry → success toast

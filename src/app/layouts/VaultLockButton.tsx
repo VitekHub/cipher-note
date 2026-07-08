@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Lock, Unlock, Loader2 } from 'lucide-react'
+import { Lock, Unlock } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/shared/ui/button'
+import { Spinner } from '@/shared/ui/Spinner'
 import { keyVault } from '@/shared/crypto/vault/key-vault'
 import { useCryptoStore } from '@/shared/crypto/vault/crypto-store'
 import { useSyncStatusStore, isSaving, isPaused } from '@/features/fields/model/sync-status-store'
@@ -50,7 +51,7 @@ function VaultLockButton({ variant, onBeforeToggle, className }: VaultLockButton
   }
 
   function renderLockIcon(size: string) {
-    if (isLocking) return <Loader2 className={`${size} animate-spin`} />
+    if (isLocking) return <Spinner className={size} />
     if (isVaultLocked) return <Unlock className={size} />
     return <Lock className={size} />
   }

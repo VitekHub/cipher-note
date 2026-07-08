@@ -4,6 +4,12 @@ import { act } from 'react'
 import { useCryptoStore } from '@/shared/crypto/vault/crypto-store'
 import { DEFAULT_VAULT_TIMEOUT_MS } from './use-vault-timeout'
 
+const toastWarning = vi.hoisted(() => vi.fn<(msg: string, options?: unknown) => string | number>())
+
+vi.mock('sonner', () => ({
+  toast: { warning: toastWarning },
+}))
+
 vi.mock('@/shared/crypto/vault/key-vault', () => ({
   keyVault: {
     lockVault: vi.fn<() => void>(),
@@ -41,6 +47,8 @@ describe('useVaultTimeout', () => {
     vi.advanceTimersByTime(DEFAULT_VAULT_TIMEOUT_MS)
 
     expect(keyVault.lockVault).toHaveBeenCalledTimes(1)
+    expect(toastWarning).toHaveBeenCalledTimes(1)
+    expect(toastWarning.mock.calls[0][0]).toBe('Vault locked due to inactivity.')
   })
 
   it('resets timer on mousemove', () => {

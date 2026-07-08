@@ -9,5 +9,8 @@
   "notFound": "Note not found",
   "deleted": "This note was deleted. Changes won't be saved",
   "welcome": "Welcome {{username}}",
-  "welcomeNoteCount": "You have {{count}} notes. Select one from the sidebar to get started."
+  "welcomeNoteCount": "You have {{count}} notes. Select one from the sidebar to get started.",
+  "errors": {
+    "loadFailed": "Couldn't load your notes."
+  }
 }
