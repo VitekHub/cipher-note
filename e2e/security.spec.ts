@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 
+import { createEntry } from './helpers/entries'
 import { queryRaw, resetUserData } from './helpers/db'
 import { registerUser, uniqueUsername } from './helpers/users'
 
@@ -34,20 +35,6 @@ test.describe('security', () => {
   test.beforeEach(async () => {
     await resetUserData()
   })
-
-  /**
-   * Drives the sidebar "New note" button to create an entry and returns the
-   * entryId from the URL so the RLS query and DB assertions can target A's row.
-   */
-  async function createEntry(page: Page): Promise<string> {
-    // `create-entry` renders on both the desktop sidebar and the md:hidden
-    // mobile nav; .first() targets the sidebar variant.
-    await page.getByTestId('create-entry').first().click()
-    await expect(page).toHaveURL(/\/dashboard\/[^/]+$/)
-    const match = page.url().match(/\/dashboard\/([^/]+)$/)
-    if (!match) throw new Error(`expected entry id in URL, got ${page.url()}`)
-    return match[1]
-  }
 
   /**
    * Reads the current Supabase session's access token from the page's

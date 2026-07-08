@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 
+import { createEntry } from './helpers/entries'
 import { resetUserData } from './helpers/db'
 import { login, registerUser, uniqueUsername } from './helpers/users'
 
@@ -44,20 +45,6 @@ async function fillMnemonicInputs(page: Page, mnemonic: string): Promise<void> {
   for (let i = 0; i < words.length; i++) {
     await page.getByTestId(`mnemonic-word-${i + 1}`).fill(words[i])
   }
-}
-
-/**
- * Drives the sidebar "New note" button to create an entry and returns the
- * entryId from the URL so the rotation test can re-navigate after rotating.
- */
-async function createEntry(page: Page): Promise<string> {
-  // `create-entry` renders on both the desktop sidebar and the md:hidden
-  // mobile nav; .first() targets the sidebar variant.
-  await page.getByTestId('create-entry').first().click()
-  await expect(page).toHaveURL(/\/dashboard\/[^/]+$/)
-  const match = page.url().match(/\/dashboard\/([^/]+)$/)
-  if (!match) throw new Error(`expected entry id in URL, got ${page.url()}`)
-  return match[1]
 }
 
 test.describe('crypto', () => {

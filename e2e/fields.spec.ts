@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 
+import { createEntry, entryIdFromUrl } from './helpers/entries'
 import { resetUserData } from './helpers/db'
 import { login, registerUser, uniqueUsername } from './helpers/users'
 
@@ -32,35 +33,6 @@ test.describe('fields', () => {
   test.beforeEach(async () => {
     await resetUserData()
   })
-
-  /** Captures the entryId from the current /dashboard/$entryId URL. */
-  function entryIdFromUrl(page: Page): string {
-    const match = page.url().match(/\/dashboard\/([^/]+)$/)
-    if (!match) throw new Error(`expected entry id in URL, got ${page.url()}`)
-    return match[1]
-  }
-
-  /**
-   * Drives the sidebar "New note" button to create an entry and returns the
-   * entryId from the URL so later reload/login steps can re-navigate to it.
-   */
-  async function createEntry(page: Page): Promise<string> {
-    // .first() targets the desktop sidebar variant (mobile nav is hidden).
-    const urlBefore = page.url()
-    await page.getByTestId('create-entry').first().click()
-    // If already viewing an entry, toHaveURL(regex) would resolve instantly and
-    // capture the wrong id — poll until the URL actually changes.
-    await expect
-      .poll(
-        () => {
-          const url = page.url()
-          return /\/dashboard\/[^/]+$/.test(url) && url !== urlBefore ? url : null
-        },
-        { timeout: 10000 },
-      )
-      .not.toBeNull()
-    return entryIdFromUrl(page)
-  }
 
   /**
    * Fills all four field inputs and asserts each SaveIndicator reaches "Saved".

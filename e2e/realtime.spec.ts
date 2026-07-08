@@ -1,5 +1,6 @@
 import { expect, test, type Browser, type Page } from '@playwright/test'
 
+import { entryIdFromUrl } from './helpers/entries'
 import { resetUserData } from './helpers/db'
 import { login, registerUser, uniqueUsername } from './helpers/users'
 
@@ -47,13 +48,6 @@ async function openSecondSession(
   const pageB = await contextB.newPage()
   await login(pageB, username, password)
   return { pageB, close: () => contextB.close() }
-}
-
-/** Captures the entryId from the current /dashboard/$entryId URL. */
-function entryIdFromUrl(page: Page): string {
-  const match = page.url().match(/\/dashboard\/([^/]+)$/)
-  if (!match) throw new Error(`expected entry id in URL, got ${page.url()}`)
-  return match[1]
 }
 
 test.describe('realtime', () => {
