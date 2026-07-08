@@ -65,6 +65,7 @@ function LoginPage({ redirectUrl }: LoginPageProps) {
             isSubmitting={isSubmitting}
             submitLabel={t('login.submit')}
             submittingLabel={t('login.submitting')}
+            dataTestId="login-submit"
           />
         </form>
       </FormProvider>

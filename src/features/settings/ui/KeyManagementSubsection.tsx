@@ -32,7 +32,10 @@ function KeyManagementSubsection() {
 
   return (
     <CollapsibleRoot defaultOpen={false}>
-      <CollapsibleTrigger className="group hover:bg-muted/50 -mx-1 flex w-full cursor-pointer items-center justify-between rounded-md px-1 py-2 text-left">
+      <CollapsibleTrigger
+        data-testid="settings-key-management-trigger"
+        className="group hover:bg-muted/50 -mx-1 flex w-full cursor-pointer items-center justify-between rounded-md px-1 py-2 text-left"
+      >
         <span className="flex items-center gap-3 text-sm">
           <KeyRound className="size-4" />
           {t('security.keyManagement')}
@@ -51,7 +54,13 @@ function KeyManagementSubsection() {
                   {t('keyRotation.version', { version: versionFor(fieldKeys, fieldName) })}
                 </span>
               </span>
-              <Button variant="outline" size="sm" disabled={isVaultLocked} onClick={() => openDialog({ fieldName })}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isVaultLocked}
+                onClick={() => openDialog({ fieldName })}
+                data-testid={`settings-rotate-key-${fieldName}`}
+              >
                 {t('keyRotation.rotate')}
               </Button>
             </div>
@@ -63,6 +72,7 @@ function KeyManagementSubsection() {
           className="mt-2 w-full"
           disabled={isVaultLocked}
           onClick={() => openDialog({ fieldName: null })}
+          data-testid="settings-rotate-all-keys"
         >
           {t('keyRotation.rotateAll')}
         </Button>

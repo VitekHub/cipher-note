@@ -29,6 +29,7 @@ function FieldCard({ fieldName, children, statusIndicator, entranceIndex, isOffl
       size="sm"
       className={entranceIndex != null ? 'animate-fade-in-up' : undefined}
       style={entranceIndex != null ? { animationDelay: `${entranceIndex * 75}ms` } : undefined}
+      data-testid={`field-card-${fieldName}`}
     >
       <CardHeader>
         <CardTitle>{t(FIELD_LABEL_KEYS[fieldName])}</CardTitle>

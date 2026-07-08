@@ -22,19 +22,17 @@ const Toaster = ({ ...props }: ToasterProps) => {
       }}
       style={
         {
+          // Background/border colors for error/success/warning toasts are inherited
+          // from globals.css (--error-bg, --success-bg, --warning-bg, etc.)
+          // because Sonner uses the same CSS variable names as our theme.
+          // To change toast colors, edit the corresponding variables in globals.css.
           '--normal-bg': 'var(--popover)',
           '--normal-text': 'var(--popover-foreground)',
           '--normal-border': 'var(--border)',
           '--border-radius': 'var(--radius)',
-          '--error-bg': 'var(--error-bg)',
           '--error-text': 'var(--destructive)',
-          '--error-border': 'var(--error-border)',
-          '--success-bg': 'var(--success-bg)',
           '--success-text': 'var(--success)',
-          '--success-border': 'var(--success-border)',
-          '--warning-bg': 'var(--warning-bg)',
           '--warning-text': 'var(--warning)',
-          '--warning-border': 'var(--warning-border)',
         } as React.CSSProperties
       }
       toastOptions={{

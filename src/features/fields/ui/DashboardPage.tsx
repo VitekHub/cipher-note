@@ -64,7 +64,7 @@ function FieldEditorWrapper({
           )
         }
 
-        if (fieldQuery.isFetching) {
+        if (fieldQuery.isFetching && !fieldQuery.data) {
           return (
             <div className="flex items-center justify-center py-6">
               <Spinner size="lg" />
@@ -137,7 +137,7 @@ function EmptyState({ onCreateEntry, lockedFallback }: { onCreateEntry: () => vo
           <CardTitle>{t('empty')}</CardTitle>
         </CardHeader>
         <CardContent>
-          <Button onClick={onCreateEntry} className="my-4 w-full">
+          <Button onClick={onCreateEntry} className="my-4 w-full" data-testid="create-entry-empty">
             <Plus className="mr-2 size-4" />
             {t('emptyAction')}
           </Button>

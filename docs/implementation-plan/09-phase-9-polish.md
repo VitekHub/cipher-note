@@ -1,4 +1,4 @@
-# Phase 9: Polish
+# Phase 9: Polish ✅
 
 ## Step 33 — Mobile Responsive Refinements ✅
 
@@ -88,7 +88,7 @@
 
 ---
 
-## Step 36 — E2E Tests (Playwright)
+## Step 36 — E2E Tests (Playwright) ✅
 
 **Goal:** Full end-to-end tests for critical user flows.
 
@@ -111,6 +111,8 @@
   - Register user A → verify user A cannot read user B's data (via API)
   - Verify encrypted fields in DB are not plaintext
   - Verify auth_hash in DB is not the real password
+- `e2e/realtime.spec.ts`:
+  - Cross-session realtime sync: two browser contexts, A mutates while B asserts the change propagates without reload
 - `playwright.config.ts` — configure to run against local Supabase
 
 **Tests:**

@@ -138,6 +138,7 @@ function RecoverPage() {
               submitLabel={t('recover.submit')}
               submittingLabel={t('recover.submitting')}
               disabled={!mnemonicValid}
+              dataTestId="recover-submit"
             />
           </form>
         </FormProvider>
@@ -161,6 +162,7 @@ function RecoverPage() {
             isSubmitting={isSubmittingStep2}
             submitLabel={t('recover.setPassword')}
             submittingLabel={t('recover.settingPassword')}
+            dataTestId="recover-set-password"
           />
         </form>
       </FormProvider>

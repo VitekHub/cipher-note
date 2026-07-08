@@ -31,7 +31,10 @@ function SaveIndicator({ status, onRetry, className }: SaveIndicatorProps) {
 
   if (status === SYNC_STATUS.SAVING) {
     return (
-      <span className={cn('text-muted-foreground inline-flex items-center gap-1 text-xs', className)}>
+      <span
+        className={cn('text-muted-foreground inline-flex items-center gap-1 text-xs', className)}
+        data-testid="save-indicator"
+      >
         <Spinner size="sm" />
         {t(keys.text)}
       </span>
@@ -40,7 +43,10 @@ function SaveIndicator({ status, onRetry, className }: SaveIndicatorProps) {
 
   if (status === SYNC_STATUS.PAUSED) {
     return (
-      <span className={cn('inline-flex animate-pulse items-center gap-1 text-xs', className)}>
+      <span
+        className={cn('inline-flex animate-pulse items-center gap-1 text-xs', className)}
+        data-testid="save-indicator"
+      >
         <CloudOff className="size-3" />
         {t(keys.text)}
       </span>
@@ -49,7 +55,10 @@ function SaveIndicator({ status, onRetry, className }: SaveIndicatorProps) {
 
   if (status === SYNC_STATUS.SAVED) {
     return (
-      <span className={cn('inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400', className)}>
+      <span
+        className={cn('inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400', className)}
+        data-testid="save-indicator"
+      >
         <Check className="size-3" />
         {t(keys.text)}
       </span>
@@ -58,7 +67,10 @@ function SaveIndicator({ status, onRetry, className }: SaveIndicatorProps) {
 
   if (status === SYNC_STATUS.REMOTE_UPDATE) {
     return (
-      <span className={cn('inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400', className)}>
+      <span
+        className={cn('inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400', className)}
+        data-testid="save-indicator"
+      >
         <CloudDownload className="size-3" />
         {t(keys.text)}
       </span>
@@ -67,7 +79,10 @@ function SaveIndicator({ status, onRetry, className }: SaveIndicatorProps) {
 
   // status === 'error'
   return (
-    <span className={cn('text-destructive inline-flex items-center gap-1 text-xs', className)}>
+    <span
+      className={cn('text-destructive inline-flex items-center gap-1 text-xs', className)}
+      data-testid="save-indicator"
+    >
       <AlertCircle className="size-3" />
       {t(keys.text)}
       {onRetry && (
@@ -75,6 +90,7 @@ function SaveIndicator({ status, onRetry, className }: SaveIndicatorProps) {
           type="button"
           onClick={onRetry}
           className="text-primary hover:text-primary/80 cursor-pointer underline underline-offset-2"
+          data-testid="save-indicator-retry"
         >
           {t(keys.retry!)}
         </button>

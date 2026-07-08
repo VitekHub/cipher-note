@@ -22,6 +22,8 @@ export function EntryNavItem({ entryId, index, isVaultLocked, isActive, onClick,
     return (
       <button
         onClick={onClick}
+        data-testid="entry-nav-item"
+        data-entry-id={entryId}
         className={cn(
           'flex min-h-11 min-w-11 flex-col items-center justify-center gap-0.5 px-2 py-1 text-xs',
           isActive ? 'bg-muted' : 'hover:bg-muted/50 text-muted-foreground',
@@ -36,6 +38,8 @@ export function EntryNavItem({ entryId, index, isVaultLocked, isActive, onClick,
   return (
     <button
       onClick={onClick}
+      data-testid="entry-nav-item"
+      data-entry-id={entryId}
       className={cn(
         'focus-visible:ring-ring/50 flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-left text-sm outline-none focus-visible:ring-2 md:min-h-0',
         isActive ? 'bg-muted font-medium' : 'hover:bg-muted/50 text-muted-foreground',

@@ -11,15 +11,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useVaultSettingsStore } from '@/shared/stores/vault-settings-store'
 import { KeyManagementSubsection } from '@/features/settings/ui/KeyManagementSubsection'
 
-const ITEMS: { icon: LucideIcon; labelKey: string; onClick?: () => void }[] = [
+const ITEMS: { icon: LucideIcon; labelKey: string; testId: string; onClick?: () => void }[] = [
   {
     icon: ScanEye,
     labelKey: 'security.verifySeedPhrase',
+    testId: 'settings-verify-mnemonic',
     onClick: () => useVerifyMnemonicDialogStore.getState().open(),
   },
   {
     icon: ShieldCheck,
     labelKey: 'security.seedPhrase',
+    testId: 'settings-regenerate-mnemonic',
     onClick: () => useRegenerateMnemonicDialogStore.getState().open(),
   },
 ]
@@ -96,7 +98,7 @@ function SecuritySection() {
         {ITEMS.map((item, i) => (
           <Fragment key={item.labelKey}>
             {i > 0 && <Separator />}
-            <SettingsItem icon={item.icon} label={t(item.labelKey)} onClick={item.onClick} />
+            <SettingsItem icon={item.icon} label={t(item.labelKey)} testId={item.testId} onClick={item.onClick} />
           </Fragment>
         ))}
 

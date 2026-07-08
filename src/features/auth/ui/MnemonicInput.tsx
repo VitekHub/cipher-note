@@ -125,6 +125,7 @@ function MnemonicInput({ value, onChange, disabled, error, onValidityChange }: M
               onPaste={(e) => handlePaste(index, e)}
               disabled={disabled}
               aria-label={`Word ${index + 1}`}
+              data-testid={`mnemonic-word-${index + 1}`}
               className={cn('font-mono', isInvalid && 'border-destructive')}
             />
           )

@@ -149,8 +149,10 @@ function RotateFieldKeyDialog() {
           </p>
         )}
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isSubmitting}>{tc('actions.cancel')}</AlertDialogCancel>
-          <AlertDialogAction onClick={handleConfirm} disabled={isSubmitting}>
+          <AlertDialogCancel disabled={isSubmitting} data-testid="rotate-field-key-cancel">
+            {tc('actions.cancel')}
+          </AlertDialogCancel>
+          <AlertDialogAction onClick={handleConfirm} disabled={isSubmitting} data-testid="rotate-field-key-confirm">
             {isSubmitting && <Spinner size="sm" />}
             {isSubmitting ? t('keyRotation.rotating') : confirmLabel}
           </AlertDialogAction>

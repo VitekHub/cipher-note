@@ -45,6 +45,7 @@ function RegenerateMnemonicDialog() {
         description={t('regenerateMnemonic.description')}
         submitLabel={t('regenerateMnemonic.submit')}
         isSubmittingLabel={t('regenerateMnemonic.submitting')}
+        submitTestId="regenerate-mnemonic-submit"
       />
       {mnemonic && (
         <MnemonicDialog open={isMnemonicDialogOpen} mnemonic={mnemonic} onContinue={handleMnemonicConfirm} />

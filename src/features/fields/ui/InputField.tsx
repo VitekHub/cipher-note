@@ -45,6 +45,7 @@ function InputField({ fieldName, value, onChange, ref }: InputFieldProps) {
       placeholder={t(config.placeholderKey)}
       value={value}
       onChange={(e) => onChange(e.target.value)}
+      data-testid={`field-input-${fieldName}`}
     />
   )
 }
