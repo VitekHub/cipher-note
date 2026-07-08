@@ -73,7 +73,7 @@ This is the implementation plan for Cipher Note, an end-to-end encrypted note-ta
 - [x] Step 33 — Mobile Responsive Refinements
 - [x] Step 34 — Loading States, Error Boundaries, Toast Notifications
 - [x] Step 35 — Security Hardening
-- [ ] Step 36 — E2E Tests (Playwright)
+- [x] Step 36 — E2E Tests (Playwright)
 
 ---
 

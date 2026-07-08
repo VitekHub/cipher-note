@@ -73,7 +73,7 @@ test.describe('security', () => {
     if (!url || !anonKey) {
       throw new Error('VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY must be set in .env.local')
     }
-    const res = await fetch(`${url}/rest/v1/encrypted_fields?entry_id=eq.${entryId}&select=id`, {
+    const res = await fetch(`${url}/rest/v1/encrypted_fields?entry_id=eq.${encodeURIComponent(entryId)}&select=id`, {
       headers: { apikey: anonKey, Authorization: `Bearer ${accessToken}` },
     })
     if (!res.ok) {

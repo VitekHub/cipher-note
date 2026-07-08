@@ -51,7 +51,7 @@ export async function resetUserData(): Promise<void> {
  * for a plaintext leak, or confirming `auth.users.encrypted_password` is
  * neither the raw password nor the raw `authHash`.
  */
-export async function queryRaw<R extends QueryResultRow = QueryResultRow>(
+export async function queryRaw<R extends QueryResultRow>(
   sql: string,
   params?: unknown[],
 ): Promise<QueryResult<R>['rows']> {
