@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 
-import { resetUserData } from './helpers/db'
-import { clickSidebarButton, clickSidebarButtonByName } from './helpers/navigation'
+import { queryRaw, resetUserData } from './helpers/db'
+import { clickFirstEntry, clickSidebarButton, clickSidebarButtonByName, navigateToSettings } from './helpers/navigation'
 import { login, registerUser, uniqueUsername } from './helpers/users'
 
 /**
@@ -137,5 +137,73 @@ test.describe('auth', () => {
     await expect(page.getByText('Username is already taken', { exact: true })).toBeVisible()
     await expect(page.getByTestId('register-submit')).toBeDisabled()
     await expect(page).toHaveURL(/\/register$/)
+  })
+
+  test('delete account: wrong password shows error and leaves the session intact', async ({ page }, testInfo) => {
+    const username = uniqueUsername('delbadpw')
+    await registerUser(page, username, PASSWORD)
+
+    // Settings → Delete Account. Navigate in-app so the vault stays unlocked.
+    await navigateToSettings(page, testInfo)
+    await page.waitForURL('**/settings')
+    await page.getByTestId('settings-delete-account').click()
+
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible()
+
+    // Wrong password: deleteUserAccount re-derives authHash and calls
+    // authAdapter.login → INVALID_CREDENTIALS → the dialog maps it to the
+    // wrong-password error string. No server state mutates.
+    await dialog.locator('#password-confirm').fill('DefinitelyNotThePassword!')
+    await page.getByTestId('delete-account-submit').click()
+
+    await expect(page.getByText('Password is incorrect', { exact: true })).toBeVisible()
+    // The dialog stays open for retry — dismiss it and verify the session is
+    // still alive (vault unlocked, can navigate to an entry).
+    await page.keyboard.press('Escape')
+    await expect(dialog).not.toBeVisible()
+
+    // Session intact: navigate back to an entry. The field editor renders only
+    // while unlocked, so field-input-note visible proves the keys survived.
+    await clickFirstEntry(page, testInfo)
+    await expect(page).toHaveURL(/\/dashboard\/[^/]+$/)
+    await expect(page.getByTestId('field-input-note')).toBeVisible()
+  })
+
+  test('delete account: correct password deletes the user and login fails afterward', async ({ page }, testInfo) => {
+    const username = uniqueUsername('delete')
+    await registerUser(page, username, PASSWORD)
+
+    // Settings → Delete Account. Navigate in-app so the vault stays unlocked.
+    await navigateToSettings(page, testInfo)
+    await page.waitForURL('**/settings')
+    await page.getByTestId('settings-delete-account').click()
+
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible()
+
+    await dialog.locator('#password-confirm').fill(PASSWORD)
+    await page.getByTestId('delete-account-submit').click()
+
+    // Correct password → deleteUserAccount succeeds → logoutCleanup clears
+    // local state → navigate to /login → success toast.
+    await expect(page).toHaveURL(/\/login$/)
+    await expect(page.getByText('Account deleted successfully', { exact: true })).toBeVisible()
+
+    // The delete_account RPC deleted from auth.users with ON DELETE CASCADE,
+    // so all user data (public.users, login_salts, master_keys, field_keys,
+    // entries, encrypted_fields, recovery_keys) must be gone.
+    const userRows = await queryRaw<{ id: string }>(
+      'SELECT id FROM auth.users WHERE email = $1',
+      [`${username}@ciphernote.internal`],
+    )
+    expect(userRows).toHaveLength(0)
+
+    // Login with the now-deleted user's credentials must fail.
+    await page.locator('#username').fill(username)
+    await page.locator('#password').fill(PASSWORD)
+    await page.getByTestId('login-submit').click()
+    await expect(page).toHaveURL(/\/login$/)
+    await expect(page.getByText('Invalid username or password', { exact: true })).toBeVisible()
   })
 })
