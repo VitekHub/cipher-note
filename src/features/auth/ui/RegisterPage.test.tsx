@@ -12,10 +12,10 @@ vi.mock('@/shared/lib/use-debounced-value', () => ({
   useDebouncedValue: (value: unknown) => value,
 }))
 
+const mockRpc = vi.fn().mockResolvedValue({ data: true, error: null })
+
 vi.mock('@/shared/api/supabase-client', () => ({
-  getSupabase: () => ({
-    rpc: vi.fn().mockResolvedValue({ data: true, error: null }),
-  }),
+  getSupabase: () => ({ rpc: mockRpc }),
 }))
 
 vi.mock('@tanstack/react-router', () => ({
@@ -31,6 +31,9 @@ const MNEMONIC = 'abandon ability able about above absent absorb abstract absurd
 describe('RegisterPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // clearAllMocks clears call history but not implementations; restore the
+    // default "available" response so a per-test override can't leak forward.
+    mockRpc.mockResolvedValue({ data: true, error: null })
   })
 
   it('renders registration form fields', () => {
@@ -141,5 +144,23 @@ describe('RegisterPage', () => {
   it('displays link to login page', () => {
     render(<RegisterPage onSubmit={vi.fn().mockResolvedValue(undefined)} />)
     expect(screen.getByText(/log in/i)).toBeInTheDocument()
+  })
+
+  it('disables submit and shows the taken badge when the username is already taken', async () => {
+    // check_username_availability returns false → useUsernameAvailability
+    // status flips to 'taken' → the "Username is already taken" badge renders
+    // and isSubmitDisabled (availability === 'taken') disables the submit
+    // button, blocking the registration attempt before it reaches onSubmit.
+    mockRpc.mockResolvedValue({ data: false, error: null })
+    const user = userEvent.setup()
+
+    render(<RegisterPage onSubmit={vi.fn().mockResolvedValue(undefined)} />)
+
+    await user.type(screen.getByLabelText(/username/i), 'testuser')
+
+    await waitFor(() => {
+      expect(screen.getByText(/username is already taken/i)).toBeInTheDocument()
+    })
+    expect(screen.getByRole('button', { name: /create account/i })).toBeDisabled()
   })
 })
