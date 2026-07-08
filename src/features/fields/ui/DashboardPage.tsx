@@ -64,7 +64,7 @@ function FieldEditorWrapper({
           )
         }
 
-        if (fieldQuery.isFetching) {
+        if (fieldQuery.isFetching && !fieldQuery.data) {
           return (
             <div className="flex items-center justify-center py-6">
               <Spinner size="lg" />
