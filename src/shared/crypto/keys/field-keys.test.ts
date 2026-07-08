@@ -179,6 +179,32 @@ describe('field-keys', () => {
       expect(unwrapped.size).toBe(0)
     })
 
+    it('zero-fills each unwrapped raw field key after importing it', async () => {
+      const { kek } = await setupKEK()
+      const { wrappedFieldKeys } = await generateAllFieldKeys(kek)
+      const serverFieldKeys: ServerFieldKey[] = wrappedFieldKeys.map((w) => ({
+        fieldName: w.fieldName,
+        version: w.version,
+        wrappedFieldKey: hexEncode(w.wrappedFieldKey),
+        fieldKeyIV: hexEncode(w.fieldKeyIV),
+      }))
+
+      const zeroFillSpy = vi.spyOn(cryptoUtils, 'zeroFill')
+      try {
+        await unwrapFieldKeys(serverFieldKeys, kek)
+
+        // One zeroFill per field (4 fields), each on a 32-byte raw key buffer.
+        const calls = zeroFillSpy.mock.calls.map(([buf]) => buf as Uint8Array)
+        expect(calls).toHaveLength(4)
+        for (const buf of calls) {
+          expect(buf.length).toBe(32)
+          expect(Array.from(buf).every((b) => b === 0)).toBe(true)
+        }
+      } finally {
+        zeroFillSpy.mockRestore()
+      }
+    })
+
     it('keeps the last key when two versions are present for a field (atomic-swap guard)', async () => {
       // After an atomic rotation the server holds exactly one version per
       // field. If a multi-version state were ever reintroduced, unwrapFieldKeys

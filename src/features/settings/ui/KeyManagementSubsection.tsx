@@ -6,7 +6,7 @@ import { CollapsibleRoot, CollapsibleTrigger, CollapsiblePanel } from '@/shared/
 import { Button } from '@/shared/ui/button'
 import { Separator } from '@/shared/ui/separator'
 import { useCryptoStore } from '@/shared/crypto/vault/crypto-store'
-import { useRotateFieldKeyDialogStore } from '@/shared/auth/auth-dialogs-store'
+import { useRotateFieldKeyDialogStore } from '@/shared/stores/dialogs-store'
 import { FIELD_NAMES } from '@/shared/types/entities/field.types'
 import type { FieldName } from '@/shared/types/entities/field.types'
 

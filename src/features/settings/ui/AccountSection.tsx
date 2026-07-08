@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { KeyRound, Trash2, User } from 'lucide-react'
 
 import { useCurrentUser } from '@/shared/auth/use-current-user'
-import { useChangePasswordDialogStore } from '@/shared/auth/auth-dialogs-store'
+import { useChangePasswordDialogStore } from '@/shared/stores/dialogs-store'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/ui/card'
 import { Separator } from '@/shared/ui/separator'
 import { SettingsItem } from '@/features/settings/ui/SettingsItem'

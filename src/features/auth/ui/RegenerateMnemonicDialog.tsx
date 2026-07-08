@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 
 import { PasswordConfirmDialog } from '@/shared/ui/PasswordConfirmDialog'
 import { MnemonicDialog } from '@/features/auth/ui/MnemonicDialog'
-import { useRegenerateMnemonicDialogStore } from '@/shared/auth/auth-dialogs-store'
+import { useRegenerateMnemonicDialogStore } from '@/shared/stores/dialogs-store'
 import { regenerateMnemonic } from '@/features/auth/model/mnemonic-service'
 import { getRegenerateMnemonicErrorMessage } from '@/features/auth/model/recovery-error-messages'
 

@@ -24,5 +24,6 @@
     "staleVault": "Failed to decrypt. Re-unlock the vault and try again.",
     "locked": "Vault is locked."
   },
-  "inactivityLocked": "Vault locked due to inactivity."
+  "inactivityLocked": "Vault locked due to inactivity.",
+  "tabSwitchLocked": "Vault locked due to tab switch."
 }

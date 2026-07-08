@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { importKey } from '@/shared/crypto/core/aes-gcm'
+import * as cryptoUtils from '@/shared/crypto/core/crypto-utils'
 import { DecryptionError } from '@/shared/crypto/core/errors'
 import { encryptField, decryptField, toSaveFieldData, toEncryptedFieldData } from '@/features/fields/model/field-crypto'
 import { FIELD_NAMES } from '@/shared/types/entities/field.types'
@@ -63,6 +64,24 @@ describe('encryptField + decryptField', () => {
     const encrypted = await encryptField('secret note', key, 'note')
     // Attempt to decrypt as a different field — AAD won't match
     await expect(decryptField(encrypted, key, 'website')).rejects.toThrow(DecryptionError)
+  })
+
+  it('zero-fills the decrypted plaintext bytes after decoding', async () => {
+    const key = await generateKey()
+    const encrypted = await encryptField('secret note', key, 'note')
+
+    const zeroFillSpy = vi.spyOn(cryptoUtils, 'zeroFill')
+    try {
+      await decryptField(encrypted, key, 'note')
+
+      // decryptField decodes plaintextBytes to a string, then zero-fills the bytes.
+      expect(zeroFillSpy).toHaveBeenCalledOnce()
+      const buf = zeroFillSpy.mock.calls[0]![0] as Uint8Array
+      expect(buf.length).toBe('secret note'.length)
+      expect(Array.from(buf).every((b) => b === 0)).toBe(true)
+    } finally {
+      zeroFillSpy.mockRestore()
+    }
   })
 })
 

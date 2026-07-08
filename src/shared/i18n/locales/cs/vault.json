@@ -24,5 +24,6 @@
     "staleVault": "Dešifrování selhalo. Odemkněte trezor znovu a zkuste to znovu.",
     "locked": "Trezor je uzamčen."
   },
-  "inactivityLocked": "Trezor byl uzamčen kvůli nečinnosti."
+  "inactivityLocked": "Trezor byl uzamčen kvůli nečinnosti.",
+  "tabSwitchLocked": "Trezor byl uzamčen kvůli přepnutí karty."
 }

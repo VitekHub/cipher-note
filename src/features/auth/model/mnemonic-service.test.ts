@@ -100,6 +100,7 @@ vi.mock('@/shared/crypto/keys/mnemonic', () => ({
     recoveryData: mockRecoveryData,
   }),
   unwrapMasterKeyWithRecovery: vi.fn(),
+  validateMnemonic: vi.fn().mockResolvedValue(true),
 }))
 
 vi.mock('@/shared/crypto/keys/split-kdf', () => ({
@@ -155,7 +156,7 @@ import {
   regenerateMnemonic,
   RecoveryLoginError,
 } from '@/features/auth/model/mnemonic-service'
-import { createRecoveryData, unwrapMasterKeyWithRecovery } from '@/shared/crypto/keys/mnemonic'
+import { createRecoveryData, unwrapMasterKeyWithRecovery, validateMnemonic } from '@/shared/crypto/keys/mnemonic'
 import { unwrapMasterKeyWithPassword, wrapMasterKeyWithPassword } from '@/shared/crypto/keys/master-key'
 import { derivePasswordKey, deriveAuthCredentials } from '@/shared/crypto/keys/split-kdf'
 import {
@@ -169,7 +170,7 @@ import { hexEncode, generateSalt, zeroFill } from '@/shared/crypto/core/crypto-u
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { useCryptoStore } from '@/shared/crypto/vault/crypto-store'
 import { authAdapter } from '@/shared/auth/supabase-adapter'
-import { DecryptionError } from '@/shared/crypto/core/errors'
+import { DecryptionError, MnemonicError } from '@/shared/crypto/core/errors'
 import { ApiError, ApiErrorCode } from '@/shared/api/api-errors'
 import { keyVault } from '@/shared/crypto/vault/key-vault'
 
@@ -304,6 +305,17 @@ describe('recoveryFlow.validateMnemonic', () => {
     mockFetchRecoveryDataPreAuth.mockRejectedValueOnce(notFoundError)
 
     await expect(recoveryFlow.validateMnemonic('unknown', mockMnemonic)).rejects.toThrow()
+    expect(unwrapMasterKeyWithRecovery).not.toHaveBeenCalled()
+  })
+
+  it('throws MnemonicError and skips RPC when mnemonic fails BIP-39 validation', async () => {
+    vi.mocked(validateMnemonic).mockResolvedValueOnce(false)
+
+    await expect(recoveryFlow.validateMnemonic('testuser', 'not a valid mnemonic')).rejects.toThrow(MnemonicError)
+
+    // The wordlist guard runs before any network call, so the rate-limited RPC
+    // is not burned on malformed input.
+    expect(fetchRecoveryDataPreAuth).not.toHaveBeenCalled()
     expect(unwrapMasterKeyWithRecovery).not.toHaveBeenCalled()
   })
 
@@ -526,6 +538,15 @@ describe('verifyMnemonic', () => {
     vi.mocked(useAuthStore.getState).mockReturnValueOnce({ user: null } as ReturnType<typeof useAuthStore.getState>)
 
     await expect(verifyMnemonic(mockMnemonic)).rejects.toThrow('No authenticated user')
+  })
+
+  it('throws MnemonicError and skips RPC when mnemonic fails BIP-39 validation', async () => {
+    vi.mocked(validateMnemonic).mockResolvedValueOnce(false)
+
+    await expect(verifyMnemonic('not a valid mnemonic')).rejects.toThrow(MnemonicError)
+
+    expect(fetchRecoveryData).not.toHaveBeenCalled()
+    expect(unwrapMasterKeyWithRecovery).not.toHaveBeenCalled()
   })
 
   it('throws when user has no recovery data', async () => {

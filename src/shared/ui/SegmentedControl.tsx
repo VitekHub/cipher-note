@@ -30,7 +30,7 @@ function SegmentedControl({ items, value, onChange, ariaLabel }: SegmentedContro
           role="tab"
           aria-pressed={value === item.value}
         >
-          {item.icon}
+          {item.icon ? item.icon : <span className="inline sm:hidden">{item.value.toUpperCase()}</span>}
           <span className="hidden sm:inline">{item.label}</span>
         </button>
       ))}

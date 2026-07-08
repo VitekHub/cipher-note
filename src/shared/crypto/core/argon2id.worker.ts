@@ -1,3 +1,4 @@
+import { zeroFill } from '@/shared/crypto/core/crypto-utils'
 import type { Argon2Params } from '@/shared/types/crypto.types'
 import type { Argon2DeriveRequest, Argon2DeriveResult, Argon2DeriveError } from '@/shared/types/argon2-worker.types'
 
@@ -53,6 +54,9 @@ self.onmessage = async (event: MessageEvent<Argon2DeriveRequest>) => {
     const hash = await computeArgon2id(password, salt, params)
     const response: Argon2DeriveResult = { type: 'result', id, hash }
     self.postMessage(response)
+    // postMessage structured-clones the buffer, so zeroing the worker-side
+    // copy does not affect the message already delivered to the main thread.
+    zeroFill(hash)
   } catch (err) {
     const response: Argon2DeriveError = {
       type: 'error',

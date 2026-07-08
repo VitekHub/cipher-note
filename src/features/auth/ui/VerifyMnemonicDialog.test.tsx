@@ -42,7 +42,7 @@ vi.mock('@/shared/crypto/keys/mnemonic', () => ({
 
 import { VerifyMnemonicDialog } from './VerifyMnemonicDialog'
 import { verifyMnemonic } from '@/features/auth/model/mnemonic-service'
-import { useVerifyMnemonicDialogStore } from '@/shared/auth/auth-dialogs-store'
+import { useVerifyMnemonicDialogStore } from '@/shared/stores/dialogs-store'
 import { toast } from 'sonner'
 
 const mockVerifyMnemonic = vi.mocked(verifyMnemonic)

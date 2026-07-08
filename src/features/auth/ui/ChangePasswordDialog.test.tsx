@@ -9,7 +9,7 @@ vi.mock('@/features/auth/model/auth-service', () => ({
 
 import { ChangePasswordDialog } from './ChangePasswordDialog'
 import { changeUserPassword } from '@/features/auth/model/auth-service'
-import { useChangePasswordDialogStore } from '@/shared/auth/auth-dialogs-store'
+import { useChangePasswordDialogStore } from '@/shared/stores/dialogs-store'
 
 const mockChangeUserPassword = vi.mocked(changeUserPassword)
 

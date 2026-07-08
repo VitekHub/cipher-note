@@ -88,12 +88,25 @@ describe('mnemonic', () => {
 
     it('truncates the 64-byte seed to 32 bytes', async () => {
       const fullSeed = new Uint8Array(64).fill(0xab)
+      const expected = fullSeed.slice(0, 32)
       const { mnemonicToSeedSync } = await import('@scure/bip39')
       vi.mocked(mnemonicToSeedSync).mockReturnValueOnce(fullSeed)
 
       const seed = await mnemonicToSeed(MOCK_VALID_MNEMONIC)
 
-      expect(seed).toEqual(fullSeed.slice(0, 32))
+      expect(seed).toEqual(expected)
+    })
+
+    it('zero-fills the 64-byte full seed after taking the 32-byte slice', async () => {
+      const fullSeed = new Uint8Array(64).fill(0xab)
+      const { mnemonicToSeedSync } = await import('@scure/bip39')
+      vi.mocked(mnemonicToSeedSync).mockReturnValueOnce(fullSeed)
+
+      await mnemonicToSeed(MOCK_VALID_MNEMONIC)
+
+      // The slice is a separate buffer (returned to the caller); the source
+      // 64-byte array is zeroed in the finally block.
+      expect(Array.from(fullSeed)).toEqual(new Array(64).fill(0))
     })
 
     it('throws MnemonicError for an invalid mnemonic', async () => {

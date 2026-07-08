@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { act } from 'react'
 
 import { useCryptoStore } from '@/shared/crypto/vault/crypto-store'
-import { DEFAULT_VAULT_TIMEOUT_MS } from './use-vault-timeout'
+import { useVaultSettingsStore, DEFAULT_VAULT_TIMEOUT_MS } from '@/shared/stores/vault-settings-store'
 
 const toastWarning = vi.hoisted(() => vi.fn<(msg: string, options?: unknown) => string | number>())
 
@@ -24,12 +24,14 @@ describe('useVaultTimeout', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     useCryptoStore.setState({ isVaultLocked: true })
+    useVaultSettingsStore.setState({ vaultTimeoutMs: DEFAULT_VAULT_TIMEOUT_MS, lockOnTabHidden: false })
     vi.clearAllMocks()
   })
 
   afterEach(() => {
     vi.useRealTimers()
     useCryptoStore.setState({ isVaultLocked: true })
+    useVaultSettingsStore.setState({ vaultTimeoutMs: DEFAULT_VAULT_TIMEOUT_MS, lockOnTabHidden: false })
   })
 
   it('does not start timer when vault is locked', () => {
@@ -135,10 +137,11 @@ describe('useVaultTimeout', () => {
     expect(keyVault.lockVault).not.toHaveBeenCalled()
   })
 
-  it('supports custom timeout', () => {
+  it('supports custom timeout via store', () => {
     const customTimeout = 5000
     useCryptoStore.setState({ isVaultLocked: false })
-    renderHook(() => useVaultTimeout(customTimeout))
+    useVaultSettingsStore.setState({ vaultTimeoutMs: customTimeout })
+    renderHook(() => useVaultTimeout())
 
     vi.advanceTimersByTime(customTimeout)
 

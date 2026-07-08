@@ -76,8 +76,12 @@ export async function unwrapFieldKeys(fieldKeys: ServerFieldKey[], kek: CryptoKe
       const aad = encodeAAD(fieldName, version)
       const iv = hexDecode(fieldKeyIV)
       const unwrappedKey = await decrypt(hexDecode(wrappedFieldKey), kek, { iv, aad })
-      const key = await importKey(unwrappedKey)
-      return [fieldName, key] as [string, CryptoKey]
+      try {
+        const key = await importKey(unwrappedKey)
+        return [fieldName, key] as [string, CryptoKey]
+      } finally {
+        zeroFill(unwrappedKey)
+      }
     }),
   )
 

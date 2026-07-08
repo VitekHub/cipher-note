@@ -28,6 +28,7 @@ const useLayoutStore = create<LayoutState & LayoutActions>()(
       }),
       {
         name: 'cipher-note-layout',
+        version: 0,
         partialize: (state) => ({
           sidebarOpen: state.sidebarOpen,
           sidebarWidth: state.sidebarWidth,

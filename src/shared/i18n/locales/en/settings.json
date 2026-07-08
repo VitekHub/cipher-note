@@ -2,10 +2,13 @@
   "title": "Settings",
   "security": {
     "title": "Security",
-    "description": "Manage your encryption keys and seed phrase.",
+    "description": "Manage vault, encryption keys, and seed phrase.",
     "seedPhrase": "Regenerate seed phrase",
     "verifySeedPhrase": "Verify seed phrase",
-    "keyManagement": "Key management"
+    "keyManagement": "Key management",
+    "autoLock": "Auto-lock vault",
+    "lockOnTabHidden": "Lock when switching tabs",
+    "minutesShort": "{{count}} min"
   },
   "preferences": {
     "title": "Preferences",

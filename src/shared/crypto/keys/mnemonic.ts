@@ -77,7 +77,11 @@ export async function mnemonicToSeed(mnemonic: string): Promise<Uint8Array<Array
   const { mnemonicToSeedSync, validateMnemonic: bip39Validate, wordlist } = await loadBip39()
   if (!bip39Validate(mnemonic, wordlist)) throw new MnemonicError()
   const fullSeed = mnemonicToSeedSync(mnemonic)
-  return fullSeed.slice(0, CRYPTO_KEY_LENGTH) as Uint8Array<ArrayBuffer>
+  try {
+    return fullSeed.slice(0, CRYPTO_KEY_LENGTH) as Uint8Array<ArrayBuffer>
+  } finally {
+    zeroFill(fullSeed)
+  }
 }
 
 /**

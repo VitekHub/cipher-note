@@ -1,3 +1,3 @@
-import { createDialogStore } from '@/shared/ui/create-dialog-store'
+import { createDialogStore } from '@/shared/stores/create-dialog-store'
 
 export const useVaultDialogStore = createDialogStore('VaultDialogStore')

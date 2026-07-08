@@ -14,7 +14,7 @@ import {
   AlertDialogTitle,
 } from '@/shared/ui/alert-dialog'
 import { Spinner } from '@/shared/ui/Spinner'
-import { useRotateFieldKeyDialogStore } from '@/shared/auth/auth-dialogs-store'
+import { useRotateFieldKeyDialogStore } from '@/shared/stores/dialogs-store'
 import { useRequiredUserId } from '@/shared/auth/use-current-user'
 import { queryKeys } from '@/shared/lib/query-keys'
 import { FIELD_NAMES } from '@/shared/types/entities/field.types'

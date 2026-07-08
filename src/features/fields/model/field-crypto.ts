@@ -1,5 +1,5 @@
 import { decrypt, encrypt } from '@/shared/crypto/core/aes-gcm'
-import { encodeAAD, generateIV, hexDecode, hexEncode } from '@/shared/crypto/core/crypto-utils'
+import { encodeAAD, generateIV, hexDecode, hexEncode, zeroFill } from '@/shared/crypto/core/crypto-utils'
 import { FIELD_CONTENT_VERSION } from '@/shared/types/crypto.types'
 import type { EncryptedFieldData } from '@/shared/types/crypto.types'
 import type { FieldName } from '@/shared/types/entities/field.types'
@@ -36,7 +36,9 @@ export async function decryptField(
 ): Promise<string> {
   const aad = encodeAAD(fieldName, FIELD_CONTENT_VERSION)
   const plaintextBytes = await decrypt(encryptedData.ciphertext, fieldKey, { iv: encryptedData.ciphertextIV, aad })
-  return new TextDecoder().decode(plaintextBytes)
+  const text = new TextDecoder().decode(plaintextBytes)
+  zeroFill(plaintextBytes)
+  return text
 }
 
 /** Convert internal binary EncryptedFieldData to hex-string SaveFieldData for the API. */

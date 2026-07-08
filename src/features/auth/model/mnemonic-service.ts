@@ -7,13 +7,17 @@ import {
   fetchRecoveryDataPreAuth,
   recoverAccount,
 } from '@/shared/api/supabase-recovery'
-import { createRecoveryData, unwrapMasterKeyWithRecovery } from '@/shared/crypto/keys/mnemonic'
+import {
+  createRecoveryData,
+  unwrapMasterKeyWithRecovery,
+  validateMnemonic as validateBip39Mnemonic,
+} from '@/shared/crypto/keys/mnemonic'
 import { unwrapMasterKeyWithPassword, wrapMasterKeyWithPassword } from '@/shared/crypto/keys/master-key'
 import { derivePasswordKey, deriveAuthCredentials } from '@/shared/crypto/keys/split-kdf'
 import { hexDecode, hexEncode, generateSalt, zeroFill } from '@/shared/crypto/core/crypto-utils'
 import { keyVault } from '@/shared/crypto/vault/key-vault'
 import { authAdapter } from '@/shared/auth/supabase-adapter'
-import { DecryptionError } from '@/shared/crypto/core/errors'
+import { DecryptionError, MnemonicError } from '@/shared/crypto/core/errors'
 
 /**
  * Thrown when account recovery succeeded (password changed on server)
@@ -89,6 +93,10 @@ class RecoveryFlow {
    * @throws ApiError(NOT_FOUND) if the account has no recovery data
    */
   async validateMnemonic(username: string, mnemonic: string): Promise<void> {
+    if (!(await validateBip39Mnemonic(mnemonic))) {
+      throw new MnemonicError()
+    }
+
     const recoveryData = await fetchRecoveryDataPreAuth(username)
 
     const { masterKey, recoveryAuthHash } = await unwrapMasterKeyWithRecovery(
@@ -171,6 +179,10 @@ export const recoveryFlow = new RecoveryFlow()
 export async function verifyMnemonic(mnemonic: string): Promise<boolean> {
   const { user } = useAuthStore.getState()
   if (!user) throw new Error('No authenticated user')
+
+  if (!(await validateBip39Mnemonic(mnemonic))) {
+    throw new MnemonicError()
+  }
 
   const recoveryData = await fetchRecoveryData(user.id)
   if (!recoveryData) {
