@@ -27,6 +27,13 @@
     "changePassword": "Změnit heslo",
     "deleteAccount": "Smazat účet"
   },
+  "about": {
+    "title": "O aplikaci",
+    "description": "Informace o aplikaci.",
+    "version": "Verze",
+    "license": "Licence",
+    "sourceCode": "Zdrojový kód"
+  },
   "keyRotation": {
     "field": {
       "title": "Název",

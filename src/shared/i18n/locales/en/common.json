@@ -1,7 +1,10 @@
 {
   "app": {
     "name": "Cipher Note",
-    "tagline": "Your notes. Your privacy. Your control."
+    "tagline": "Your notes. Your privacy. Your control.",
+    "version": "v1.0.0",
+    "githubUrl": "https://github.com/VitekHub/cipher-note/",
+    "license": "MIT License"
   },
   "actions": {
     "save": "Save",
@@ -39,6 +42,7 @@
     "languageSelection": "Language selection",
     "switchLanguage": "Switch language",
     "themeSelection": "Theme selection",
-    "switchTheme": "Switch theme"
+    "switchTheme": "Switch theme",
+    "github": "GitHub"
   }
 }
