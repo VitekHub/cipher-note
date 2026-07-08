@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 
-import { createEntry } from './helpers/entries'
 import { queryRaw, resetUserData } from './helpers/db'
+import { createEntry, clickSidebarButton } from './helpers/navigation'
 import { registerUser, uniqueUsername } from './helpers/users'
 
 /**
@@ -82,16 +82,16 @@ test.describe('security', () => {
     return (await res.json()) as unknown[]
   }
 
-  test("RLS blocks a second user from reading another user's encrypted fields", async ({ page }) => {
+  test("RLS blocks a second user from reading another user's encrypted fields", async ({ page }, testInfo) => {
     // --- User A: register, create an entry, and persist a known title. ---
     const usernameA = uniqueUsername('secA')
     await registerUser(page, usernameA, PASSWORD)
-    const entryId = await createEntry(page)
+    const entryId = await createEntry(page, testInfo)
     await page.getByTestId('field-input-title').fill(TITLE_PLAINTEXT)
     await expect(page.getByTestId('field-card-title').getByTestId('save-indicator')).toHaveText('Saved')
 
     // Log out so the same browser session can register and authenticate as B.
-    await page.getByTestId('logout-button').click()
+    await clickSidebarButton(page, testInfo, 'logout-button')
     await expect(page).toHaveURL(/\/login$/)
 
     // --- User B: register on the same page. localStorage now holds B's session. ---
@@ -107,10 +107,10 @@ test.describe('security', () => {
     expect(rows).toEqual([])
   })
 
-  test('stored ciphertext and auth hash never contain the plaintext password', async ({ page }) => {
+  test('stored ciphertext and auth hash never contain the plaintext password', async ({ page }, testInfo) => {
     const usernameA = uniqueUsername('leak')
     await registerUser(page, usernameA, PASSWORD)
-    const entryId = await createEntry(page)
+    const entryId = await createEntry(page, testInfo)
     await page.getByTestId('field-input-title').fill(TITLE_PLAINTEXT)
     await expect(page.getByTestId('field-card-title').getByTestId('save-indicator')).toHaveText('Saved')
 

@@ -1,7 +1,15 @@
 import { expect, test, type Page } from '@playwright/test'
 
-import { createEntry, entryIdFromUrl } from './helpers/entries'
 import { resetUserData } from './helpers/db'
+import {
+  clickEntryNav,
+  clickFirstEntry,
+  clickSidebarButton,
+  createEntry,
+  entryIdFromUrl,
+  entryNavLocator,
+  getSidebar,
+} from './helpers/navigation'
 import { login, registerUser, uniqueUsername } from './helpers/users'
 
 /**
@@ -74,11 +82,11 @@ test.describe('fields', () => {
     }
   }
 
-  test('typing into all four fields auto-saves and persists across reload + re-unlock', async ({ page }) => {
+  test('typing into all four fields auto-saves and persists across reload + re-unlock', async ({ page }, testInfo) => {
     const username = uniqueUsername('fields')
     await registerUser(page, username, PASSWORD)
 
-    const entryId = await createEntry(page)
+    const entryId = await createEntry(page, testInfo)
     await fillAllFieldsAndAwaitSaved(page)
 
     // Reload drops the in-memory master key → vault locks → LockedVaultCard.
@@ -90,35 +98,33 @@ test.describe('fields', () => {
     await expectFieldsRestored(page)
   })
 
-  test('saved values re-decrypt after logout and a fresh login', async ({ page }) => {
+  test('saved values re-decrypt after logout and a fresh login', async ({ page }, testInfo) => {
     const username = uniqueUsername('relogin')
     await registerUser(page, username, PASSWORD)
 
-    const entryId = await createEntry(page)
+    const entryId = await createEntry(page, testInfo)
     await fillAllFieldsAndAwaitSaved(page)
 
     // Logout clears local auth + key state; login re-derives the passwordKey
     // and auto-unlocks, so navigating back to the entry decrypts the persisted
     // ciphertext without a separate unlock. Reach it via its sidebar nav item
     // (in-app) so the vault stays unlocked.
-    await page.getByTestId('logout-button').click()
+    await clickSidebarButton(page, testInfo, 'logout-button')
     await expect(page).toHaveURL(/\/login$/)
 
     await login(page, username, PASSWORD)
-    await page.locator(`[data-testid="entry-nav-item"][data-entry-id="${entryId}"]`).first().click()
+    await clickEntryNav(page, entryId, testInfo)
     await expect(page).toHaveURL(new RegExp(`/dashboard/${entryId}$`))
     await expectFieldsRestored(page)
   })
 
-  test('deleting the last entry returns to the empty dashboard', async ({ page }) => {
+  test('deleting the last entry returns to the empty dashboard', async ({ page }, testInfo) => {
     const username = uniqueUsername('delete')
     await registerUser(page, username, PASSWORD)
 
-    // Registration auto-creates one entry. Open it, then delete it — with zero
-    // entries remaining, /dashboard renders EmptyState (not DashboardWelcome).
-    // `entry-nav-item` renders on both desktop sidebar and md:hidden mobile
-    // nav; .first() targets the sidebar variant.
-    await page.getByTestId('entry-nav-item').first().click()
+    // Registration auto-creates one entry. Open it via sidebar, then delete it —
+    // with zero entries remaining, /dashboard renders EmptyState.
+    await clickFirstEntry(page, testInfo)
     await expect(page).toHaveURL(/\/dashboard\/[^/]+$/)
 
     await page.getByTestId('delete-entry').click()
@@ -135,12 +141,14 @@ test.describe('fields', () => {
     await expect(page.getByTestId('create-entry-empty')).toBeVisible()
   })
 
-  test('multiple entries keep per-entry decrypted content when switching via the sidebar', async ({ page }) => {
+  test('multiple entries keep per-entry decrypted content when switching via the sidebar', async ({
+    page,
+  }, testInfo) => {
     const username = uniqueUsername('multi')
     await registerUser(page, username, PASSWORD)
 
     // Entry 1 (auto-created): open via sidebar, type distinct values.
-    await page.getByTestId('entry-nav-item').first().click()
+    await clickFirstEntry(page, testInfo)
     await expect(page).toHaveURL(/\/dashboard\/[^/]+$/)
     const entry1Id = entryIdFromUrl(page)
     const entry1Values: FieldValues = {
@@ -152,7 +160,7 @@ test.describe('fields', () => {
     await fillAllFieldsAndAwaitSaved(page, entry1Values)
 
     // Entry 2: create via the sidebar "New note" button, type different values.
-    const entry2Id = await createEntry(page)
+    const entry2Id = await createEntry(page, testInfo)
     const entry2Values: FieldValues = {
       title: 'Entry two title',
       website: 'https://two.example.com',
@@ -163,30 +171,30 @@ test.describe('fields', () => {
 
     // Switch back to entry 1 via its sidebar nav item. Each entry's fields are
     // keyed by entryId in the query cache, so switching routes must re-decrypt
-    // entry 1's ciphertext — not surface entry 2's. .first() scopes to the
-    // sidebar variant (entry-nav-item also renders in the mobile nav).
-    await page.locator(`[data-testid="entry-nav-item"][data-entry-id="${entry1Id}"]`).first().click()
+    // entry 1's ciphertext — not surface entry 2's.
+    await clickEntryNav(page, entry1Id, testInfo)
     await expect(page).toHaveURL(new RegExp(`/dashboard/${entry1Id}$`))
     await expectFieldsRestored(page, entry1Values)
 
     // Switch to entry 2; assert its (different) values are the ones restored.
-    await page.locator(`[data-testid="entry-nav-item"][data-entry-id="${entry2Id}"]`).first().click()
+    await clickEntryNav(page, entry2Id, testInfo)
     await expect(page).toHaveURL(new RegExp(`/dashboard/${entry2Id}$`))
     await expectFieldsRestored(page, entry2Values)
   })
 
-  test('editing the title field updates the sidebar nav item label', async ({ page }) => {
+  test('editing the title field updates the sidebar nav item label', async ({ page }, testInfo) => {
     const username = uniqueUsername('title')
     await registerUser(page, username, PASSWORD)
 
-    // Open the auto-created entry; its sidebar item initially shows the i18n
-    // fallback "Note 1" because the title field is empty (EntryNavItem falls
-    // back to entryLabel when the decrypted title is empty).
-    await page.getByTestId('entry-nav-item').first().click()
+    // After registration the sidebar shows the auto-created entry with the
+    // i18n fallback "Note 1" label (title field is still empty).
+    const sidebar = await getSidebar(page, testInfo)
+    await expect(sidebar.getByTestId('entry-nav-item').first()).toContainText('Note 1')
+
+    // Click the entry to open it (Sheet closes on mobile after navigation).
+    await sidebar.getByTestId('entry-nav-item').first().click()
     await expect(page).toHaveURL(/\/dashboard\/[^/]+$/)
     const entryId = entryIdFromUrl(page)
-    const navItem = page.locator(`[data-testid="entry-nav-item"][data-entry-id="${entryId}"]`).first()
-    await expect(navItem).toContainText('Note 1')
 
     // Type a title and let auto-save round-trip. useSaveField optimistically
     // writes the plaintext into the field.detail cache onMutate, so
@@ -196,6 +204,9 @@ test.describe('fields', () => {
     await page.getByTestId('field-input-title').fill(title)
     await expect(page.getByTestId('field-card-title').getByTestId('save-indicator')).toHaveText('Saved')
 
+    // Re-open sidebar on mobile (Sheet closed after navigation) to verify the
+    // nav label updated from the fallback "Note 1" to the typed title.
+    const navItem = await entryNavLocator(page, testInfo, entryId)
     await expect(navItem).toContainText(title)
     // The fallback label is gone — the title replaced it, not appended to it.
     await expect(navItem).not.toContainText('Note 1')

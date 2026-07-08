@@ -1,7 +1,13 @@
 import { expect, test, type Page } from '@playwright/test'
 
-import { createEntry } from './helpers/entries'
 import { resetUserData } from './helpers/db'
+import {
+  clickEntryNav,
+  clickFirstEntry,
+  clickSidebarButton,
+  createEntry,
+  navigateToSettings,
+} from './helpers/navigation'
 import { login, registerUser, uniqueUsername } from './helpers/users'
 
 /**
@@ -52,7 +58,7 @@ test.describe('crypto', () => {
     await resetUserData()
   })
 
-  test('change password: old password fails, new password unlocks the vault', async ({ page }) => {
+  test('change password: old password fails, new password unlocks the vault', async ({ page }, testInfo) => {
     const username = uniqueUsername('changepw')
     await registerUser(page, username, PASSWORD)
 
@@ -60,7 +66,7 @@ test.describe('crypto', () => {
     // (Argon2id), re-wraps the master key, uploads the new envelope, and updates
     // Supabase Auth — all before the success toast. Navigate in-app so the
     // unlocked vault survives.
-    await page.getByTestId('nav-settings').first().click()
+    await navigateToSettings(page, testInfo)
     await page.waitForURL('**/settings')
     await page.getByTestId('settings-change-password').click()
     const dialog = page.getByRole('dialog')
@@ -74,7 +80,7 @@ test.describe('crypto', () => {
     await expect(dialog).not.toBeVisible()
 
     // Logout clears the local session + key state.
-    await page.getByTestId('logout-button').click()
+    await clickSidebarButton(page, testInfo, 'logout-button')
     await expect(page).toHaveURL(/\/login$/)
 
     // The old authHash no longer matches Supabase Auth, so login rejects and
@@ -92,12 +98,12 @@ test.describe('crypto', () => {
     await expect(page.getByText(`Welcome ${username}`)).toBeVisible()
   })
 
-  test('change password: wrong current password shows an error and leaves the session intact', async ({ page }) => {
+  test('change password: wrong current password shows an error and leaves the session intact', async ({ page }, testInfo) => {
     const username = uniqueUsername('changepwbad')
     await registerUser(page, username, PASSWORD)
 
     // Settings → Change password dialog (in-app nav keeps the vault unlocked).
-    await page.getByTestId('nav-settings').first().click()
+    await navigateToSettings(page, testInfo)
     await page.waitForURL('**/settings')
     await page.getByTestId('settings-change-password').click()
     const dialog = page.getByRole('dialog')
@@ -122,19 +128,19 @@ test.describe('crypto', () => {
     // field-input-note visible proves the keys survived.
     await page.keyboard.press('Escape')
     await expect(dialog).not.toBeVisible()
-    await page.getByTestId('entry-nav-item').first().click()
+    await clickFirstEntry(page, testInfo)
     await expect(page).toHaveURL(/\/dashboard\/[^/]+$/)
     await expect(page.getByTestId('field-input-note')).toBeVisible()
   })
 
-  test('verify seed phrase confirms the stored mnemonic, regenerate produces a new one', async ({ page }) => {
+  test('verify seed phrase confirms the stored mnemonic, regenerate produces a new one', async ({ page }, testInfo) => {
     const username = uniqueUsername('mnemonic')
     const { mnemonic } = await registerUser(page, username, PASSWORD)
 
     // Verify Seed Phrase: paste the registration mnemonic into the 12 cells
     // and submit. verifyMnemonic unwraps the stored recovery data with it — a
     // match shows a success toast. Navigate in-app so the vault stays unlocked.
-    await page.getByTestId('nav-settings').first().click()
+    await navigateToSettings(page, testInfo)
     await page.waitForURL('**/settings')
     await page.getByTestId('settings-verify-mnemonic').click()
     const verifyDialog = page.getByRole('dialog')
@@ -166,14 +172,14 @@ test.describe('crypto', () => {
     await expect(page.getByText('Seed phrase regenerated successfully', { exact: true })).toBeVisible()
   })
 
-  test('account recovery: mnemonic + new password restores access', async ({ page }) => {
+  test('account recovery: mnemonic + new password restores access', async ({ page }, testInfo) => {
     const username = uniqueUsername('recover')
     const { mnemonic } = await registerUser(page, username, PASSWORD)
 
     // /recover is public; log out first so the _authenticated guard doesn't
     // redirect back to /dashboard. Reach it via the login "Forgot password?"
     // link (in-app navigation).
-    await page.getByTestId('logout-button').click()
+    await clickSidebarButton(page, testInfo, 'logout-button')
     await expect(page).toHaveURL(/\/login$/)
 
     await page.getByRole('link', { name: 'Forgot password?' }).click()
@@ -199,7 +205,7 @@ test.describe('crypto', () => {
     // login to prove it unlocks the vault.
     await expect(page).toHaveURL(/\/(dashboard|login)$/)
     if (page.url().endsWith('/dashboard')) {
-      await page.getByTestId('logout-button').click()
+      await clickSidebarButton(page, testInfo, 'logout-button')
       await expect(page).toHaveURL(/\/login$/)
     }
 
@@ -210,12 +216,12 @@ test.describe('crypto', () => {
     await expect(page.getByText(`Welcome ${username}`)).toBeVisible()
   })
 
-  test('rotating a single field key increments the version and preserved content still decrypts', async ({ page }) => {
+  test('rotating a single field key increments the version and preserved content still decrypts', async ({ page }, testInfo) => {
     const username = uniqueUsername('rotate')
     await registerUser(page, username, PASSWORD)
 
     // Create an entry and type a note so there is real ciphertext to re-encrypt.
-    const entryId = await createEntry(page)
+    const entryId = await createEntry(page, testInfo)
     await page.getByTestId('field-input-note').fill(NOTE_VALUE)
     const noteCard = page.getByTestId('field-card-note')
     await expect(noteCard.getByTestId('save-indicator')).toHaveText('Saved')
@@ -223,7 +229,7 @@ test.describe('crypto', () => {
     // Settings → Key versions. The note row reports its current wrapped-key
     // version via a `font-mono` "vN" span. Navigate in-app so the vault stays
     // unlocked. Expand the key management collapsible first — it starts collapsed.
-    await page.getByTestId('nav-settings').first().click()
+    await navigateToSettings(page, testInfo)
     await page.waitForURL('**/settings')
     await page.getByTestId('settings-key-management-trigger').click()
     const noteRow = page.getByTestId('settings-rotate-key-note').locator('xpath=ancestor::div[1]')
@@ -247,7 +253,7 @@ test.describe('crypto', () => {
     // Navigate back to the entry via the sidebar (in-app, no reload). The
     // field query was invalidated, so the note refetches and re-decrypts with
     // the v2 key now in the vault — the plaintext must survive intact.
-    await page.locator(`[data-testid="entry-nav-item"][data-entry-id="${entryId}"]`).first().click()
+    await clickEntryNav(page, entryId, testInfo)
     await expect(page).toHaveURL(new RegExp(`/dashboard/${entryId}$`))
     await expect(page.getByTestId('field-input-note')).toHaveValue(NOTE_VALUE)
   })

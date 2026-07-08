@@ -1,7 +1,13 @@
-import { expect, test, type Browser, type Page } from '@playwright/test'
+import { expect, test, type Browser, type Page, type TestInfo } from '@playwright/test'
 
-import { entryIdFromUrl } from './helpers/entries'
 import { resetUserData } from './helpers/db'
+import {
+  clickEntryNav,
+  clickFirstEntry,
+  clickSidebarButton,
+  entryIdFromUrl,
+  entryNavLocator,
+} from './helpers/navigation'
 import { login, registerUser, uniqueUsername } from './helpers/users'
 
 /**
@@ -21,7 +27,7 @@ import { login, registerUser, uniqueUsername } from './helpers/users'
  * Subscription ordering: Supabase `postgres_changes` does NOT replay events
  * that occur before a channel is SUBSCRIBED, so B must be subscribed before A
  * mutates. B's /login + navigation takes ~2s, during which the channel
- * connects; a short wait before A acts plus auto-retry on the cross-session
+ * connects; a short wait before A act plus auto-retry on the cross-session
  * assertion absorbs delivery latency.
  */
 
@@ -55,11 +61,11 @@ test.describe('realtime', () => {
     await resetUserData()
   })
 
-  test('a field edit in session A appears in session B without a reload', async ({ page: pageA, browser }) => {
+  test('a field edit in session A appears in session B without a reload', async ({ page: pageA, browser }, testInfo: TestInfo) => {
     const username = uniqueUsername('rtedit')
     await registerUser(pageA, username, PASSWORD)
     // Registration auto-creates entry #1; open it in A so A has a field to edit.
-    await pageA.getByTestId('entry-nav-item').first().click()
+    await clickFirstEntry(pageA, testInfo)
     await expect(pageA).toHaveURL(/\/dashboard\/[^/]+$/)
     const entryId = entryIdFromUrl(pageA)
 
@@ -67,7 +73,7 @@ test.describe('realtime', () => {
     try {
       const { pageB } = sessionB
       // B navigates to the SAME entry; its note field is empty (fresh entry).
-      await pageB.locator(`[data-testid="entry-nav-item"][data-entry-id="${entryId}"]`).first().click()
+      await clickEntryNav(pageB, entryId, testInfo)
       await expect(pageB).toHaveURL(new RegExp(`/dashboard/${entryId}$`))
       await expect(pageB.getByTestId('field-input-note')).toHaveValue('')
       // Let B's realtime channel finish subscribing before A mutates.
@@ -89,7 +95,7 @@ test.describe('realtime', () => {
     }
   })
 
-  test('an entry created in session A appears in session B sidebar', async ({ page: pageA, browser }) => {
+  test('an entry created in session A appears in session B sidebar', async ({ page: pageA, browser }, testInfo: TestInfo) => {
     const username = uniqueUsername('rtcreate')
     await registerUser(pageA, username, PASSWORD)
     // A is on /dashboard with the single auto-created entry.
@@ -101,38 +107,34 @@ test.describe('realtime', () => {
       await pageB.waitForTimeout(SUBSCRIBE_SETTLE_MS)
 
       // A creates a second entry via the sidebar "New note" button.
-      await pageA.getByTestId('create-entry').first().click()
+      await clickSidebarButton(pageA, testInfo, 'create-entry')
       await expect(pageA).toHaveURL(/\/dashboard\/[^/]+$/)
       const newEntryId = entryIdFromUrl(pageA)
 
       // B's onEntryChange (INSERT) invalidates the entry list → sidebar
       // refetches → the new entry-nav-item renders. Assert by the specific
-      // entryId so a pre-existing item can't satisfy the assertion. .first()
-      // scopes to the sidebar variant (entry-nav-item also renders in the
-      // mobile nav, so without .first() it matches 2 elements and trips strict
-      // mode).
-      await expect(pageB.locator(`[data-testid="entry-nav-item"][data-entry-id="${newEntryId}"]`).first()).toBeVisible({
-        timeout: CROSS_SESSION_TIMEOUT,
-      })
+      // entryId so a pre-existing item can't satisfy the assertion.
+      await expect(
+        await entryNavLocator(pageB, testInfo, newEntryId),
+      ).toBeVisible({ timeout: CROSS_SESSION_TIMEOUT })
     } finally {
       await sessionB.close()
     }
   })
 
-  test('an entry deleted in session A disappears from session B sidebar', async ({ page: pageA, browser }) => {
+  test('an entry deleted in session A disappears from session B sidebar', async ({ page: pageA, browser }, testInfo: TestInfo) => {
     const username = uniqueUsername('rtdelete')
     await registerUser(pageA, username, PASSWORD)
     // Open the auto-created entry in A so it can be deleted; capture its id.
-    await pageA.getByTestId('entry-nav-item').first().click()
+    await clickFirstEntry(pageA, testInfo)
     await expect(pageA).toHaveURL(/\/dashboard\/[^/]+$/)
     const entryId = entryIdFromUrl(pageA)
 
     const sessionB = await openSecondSession(browser, username, PASSWORD)
     try {
       const { pageB } = sessionB
-      // B sees the entry in its sidebar before the delete. .first() scopes to
-      // the sidebar variant (see the create test for the dup reason).
-      await expect(pageB.locator(`[data-testid="entry-nav-item"][data-entry-id="${entryId}"]`).first()).toBeVisible()
+      // B sees the entry in its sidebar before the delete.
+      await expect(await entryNavLocator(pageB, testInfo, entryId)).toBeVisible()
       await pageB.waitForTimeout(SUBSCRIBE_SETTLE_MS)
 
       // A deletes the entry through the real DeleteEntryDialog.
