@@ -8,6 +8,7 @@ interface SubmitButtonProps {
   submittingLabel: string
   disabled?: boolean
   className?: string
+  variant?: 'default' | 'destructive'
   /** Stable selector for E2E tests (rendered as `data-testid`). */
   dataTestId?: string
 }
@@ -18,11 +19,13 @@ function SubmitButton({
   submittingLabel,
   disabled,
   className,
+  variant,
   dataTestId,
 }: SubmitButtonProps) {
   return (
     <Button
       type="submit"
+      variant={variant ?? 'default'}
       className={cn('w-full', className)}
       disabled={isSubmitting || disabled}
       data-testid={dataTestId}

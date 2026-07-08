@@ -20,6 +20,7 @@ export interface IAuthAdapter {
   signup(username: string, authHash: string): Promise<AuthResult>
   recoverPassword(username: string, recoveryData: RecoveryCredentials): Promise<string>
   updatePassword(newAuthHash: string): Promise<void>
+  deleteAccount(): Promise<void>
   onAuthStateChange(callback: AuthStateChangeCallback): AuthUnsubscribe
 }
 

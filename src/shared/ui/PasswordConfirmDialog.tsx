@@ -24,6 +24,8 @@ interface PasswordConfirmDialogProps {
   description: string
   submitLabel: string
   isSubmittingLabel: string
+  /** When 'destructive', the submit button uses danger styling and the title turns red. */
+  variant?: 'default' | 'destructive'
   /** Stable selector for the submit button (rendered as `data-testid`). */
   submitTestId?: string
 }
@@ -37,6 +39,7 @@ function PasswordConfirmDialog({
   description,
   submitLabel,
   isSubmittingLabel,
+  variant,
   submitTestId,
 }: PasswordConfirmDialogProps) {
   const { t } = useTranslation('auth')
@@ -74,7 +77,7 @@ function PasswordConfirmDialog({
     <Dialog open={isOpen} preventClose={isSubmitting} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle className={variant === 'destructive' ? 'text-destructive' : undefined}>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
@@ -94,6 +97,7 @@ function PasswordConfirmDialog({
             isSubmitting={isSubmitting}
             submitLabel={submitLabel}
             submittingLabel={isSubmittingLabel}
+            variant={variant}
             dataTestId={submitTestId}
           />
         </form>

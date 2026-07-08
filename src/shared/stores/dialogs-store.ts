@@ -4,6 +4,7 @@ import type { FieldName } from '@/shared/types/entities/field.types'
 export const useChangePasswordDialogStore = createDialogStore('ChangePasswordDialogStore')
 export const useRegenerateMnemonicDialogStore = createDialogStore('RegenerateMnemonicDialogStore')
 export const useVerifyMnemonicDialogStore = createDialogStore('VerifyMnemonicDialogStore')
+export const useDeleteAccountDialogStore = createDialogStore('DeleteAccountDialogStore')
 
 /**
  * Payload for the field-key rotation dialog. `fieldName` is null for the

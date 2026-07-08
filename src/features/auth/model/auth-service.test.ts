@@ -117,6 +117,7 @@ vi.mock('@/shared/auth/supabase-adapter', () => ({
     getSession: vi.fn().mockResolvedValue(null),
     onAuthStateChange: vi.fn().mockReturnValue(vi.fn()),
     updatePassword: vi.fn().mockResolvedValue(undefined),
+    deleteAccount: vi.fn().mockResolvedValue(undefined),
   },
 }))
 
@@ -192,6 +193,7 @@ import {
   restoreSession,
   subscribeToAuthChanges,
   changeUserPassword,
+  deleteUserAccount,
 } from '@/features/auth/model/auth-service'
 import { deriveRegistrationKeys } from '@/features/auth/model/registration-crypto'
 import { authAdapter } from '@/shared/auth/supabase-adapter'
@@ -686,5 +688,86 @@ describe('changeUserPassword', () => {
 
     await expect(changeUserPassword('oldPassword', 'newPassword')).rejects.toThrow('DB update failed')
     expect(authAdapter.updatePassword).not.toHaveBeenCalled()
+  })
+})
+
+describe('deleteUserAccount', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(useAuthStore.getState).mockReturnValue({
+      setLoading: mockSetLoading,
+      setAuth: mockSetAuth,
+      setRestoringSession: mockSetRestoringSession,
+      reset: mockReset,
+      isRestoringSession: false,
+      user: { id: 'user-1', username: 'testuser', createdAt: '2024-01-01' },
+      session: { accessToken: 'tok', expiresAt: 0 },
+      setUser: vi.fn(),
+      setSession: vi.fn(),
+      isLoading: false,
+    })
+  })
+
+  it('fetches salts, derives credentials, verifies password, then deletes account', async () => {
+    vi.mocked(authAdapter.login).mockResolvedValueOnce({
+      user: { id: 'user-1', username: 'testuser', createdAt: '2024-01-01' },
+      session: { accessToken: 'tok', expiresAt: 0 },
+    })
+    vi.mocked(authAdapter.deleteAccount).mockResolvedValueOnce(undefined)
+
+    await deleteUserAccount('testpass123')
+
+    expect(fetchLoginSalts).toHaveBeenCalledWith('testuser')
+    expect(deriveAuthCredentials).toHaveBeenCalledWith('testpass123', expect.any(Uint8Array))
+    expect(authAdapter.login).toHaveBeenCalledWith('testuser', 'a'.repeat(64))
+    expect(authAdapter.deleteAccount).toHaveBeenCalled()
+  })
+
+  it('calls logoutCleanup after successful deletion', async () => {
+    vi.mocked(authAdapter.login).mockResolvedValueOnce({
+      user: { id: 'user-1', username: 'testuser', createdAt: '2024-01-01' },
+      session: { accessToken: 'tok', expiresAt: 0 },
+    })
+    vi.mocked(authAdapter.deleteAccount).mockResolvedValueOnce(undefined)
+
+    await deleteUserAccount('testpass123')
+
+    expect(mockClearVault).toHaveBeenCalled()
+    expect(mockReset).toHaveBeenCalled()
+    expect(terminateWorker).toHaveBeenCalled()
+  })
+
+  it('throws AuthError(INVALID_CREDENTIALS) when password is wrong', async () => {
+    vi.mocked(authAdapter.login).mockRejectedValueOnce(new AuthError(AuthErrorCode.INVALID_CREDENTIALS))
+
+    await expect(deleteUserAccount('wrongpass')).rejects.toThrow()
+
+    expect(authAdapter.deleteAccount).not.toHaveBeenCalled()
+    expect(mockClearVault).not.toHaveBeenCalled()
+  })
+
+  it('re-throws non-INVALID_CREDENTIALS errors from login', async () => {
+    vi.mocked(authAdapter.login).mockRejectedValueOnce(new AuthError(AuthErrorCode.NETWORK_ERROR))
+
+    await expect(deleteUserAccount('testpass123')).rejects.toThrow()
+
+    expect(authAdapter.deleteAccount).not.toHaveBeenCalled()
+  })
+
+  it('throws when no user is authenticated', async () => {
+    vi.mocked(useAuthStore.getState).mockReturnValue({
+      setLoading: mockSetLoading,
+      setAuth: mockSetAuth,
+      setRestoringSession: mockSetRestoringSession,
+      reset: mockReset,
+      isRestoringSession: false,
+      user: null,
+      session: null,
+      isLoading: false,
+      setUser: vi.fn(),
+      setSession: vi.fn(),
+    })
+
+    await expect(deleteUserAccount('testpass123')).rejects.toThrow('No authenticated user')
   })
 })
