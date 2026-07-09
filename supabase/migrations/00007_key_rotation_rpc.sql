@@ -77,4 +77,8 @@ BEGIN
 END;
 $$;
 
+-- Revoke default PUBLIC/anon grants — rotate_field_key is authenticated-only.
+REVOKE ALL ON FUNCTION public.rotate_field_key(JSONB) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.rotate_field_key(JSONB) FROM anon;
+
 GRANT EXECUTE ON FUNCTION public.rotate_field_key(JSONB) TO authenticated;

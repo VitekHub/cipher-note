@@ -186,4 +186,10 @@ BEGIN
 END;
 $$;
 
+-- Revoke default PUBLIC/anon grants — save_recovery_data is authenticated-only.
+-- anon can call get_recovery_data and recover_account (pre-auth flows),
+-- but must not be able to write recovery data directly.
+REVOKE ALL ON FUNCTION public.save_recovery_data(UUID, TEXT, TEXT, TEXT, TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.save_recovery_data(UUID, TEXT, TEXT, TEXT, TEXT) FROM anon;
+
 GRANT EXECUTE ON FUNCTION public.save_recovery_data(UUID, TEXT, TEXT, TEXT, TEXT) TO authenticated;

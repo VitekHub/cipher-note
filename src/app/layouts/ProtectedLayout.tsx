@@ -10,6 +10,7 @@ import { ResizeHandle } from '@/shared/ui/nav/ResizeHandle'
 import { VaultIndicator } from '@/features/vault/ui/VaultIndicator'
 import { VaultUnlockDialog } from '@/features/vault/ui/VaultUnlockDialog'
 import { ChangePasswordDialog } from '@/features/auth/ui/ChangePasswordDialog'
+import { DeleteAccountDialog } from '@/features/auth/ui/DeleteAccountDialog'
 import { RegenerateMnemonicDialog } from '@/features/auth/ui/RegenerateMnemonicDialog'
 import { VerifyMnemonicDialog } from '@/features/auth/ui/VerifyMnemonicDialog'
 import { RotateFieldKeyDialog } from '@/features/fields/ui/RotateFieldKeyDialog'
@@ -110,6 +111,7 @@ function AuthenticatedLayout() {
       {/* Dialogs */}
       <VaultUnlockDialog />
       <ChangePasswordDialog />
+      <DeleteAccountDialog />
       <RegenerateMnemonicDialog />
       <VerifyMnemonicDialog />
       <RotateFieldKeyDialog />

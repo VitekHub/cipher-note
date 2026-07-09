@@ -1,4 +1,5 @@
 import type { User, UserSession } from '@/shared/types/entities/user.types'
+import { deleteAccount as deleteAccountRpc } from '@/shared/api/supabase-account'
 import type {
   AuthResult,
   AuthStateChangeCallback,
@@ -66,6 +67,16 @@ class SupabaseAuthAdapter implements IAuthAdapter {
   async updatePassword(newAuthHash: string): Promise<void> {
     const { error } = await getSupabase().auth.updateUser({ password: newAuthHash })
     if (error) throw wrapSupabaseAuthError(error)
+  }
+
+  async deleteAccount(): Promise<void> {
+    await deleteAccountRpc()
+    // Session is invalidated by the DELETE; signOut clears local state.
+    try {
+      await getSupabase().auth.signOut()
+    } catch {
+      // signOut may fail since the user no longer exists server-side
+    }
   }
 
   onAuthStateChange(callback: AuthStateChangeCallback): AuthUnsubscribe {

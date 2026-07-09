@@ -2,6 +2,7 @@ import { deriveRegistrationKeys } from '@/features/auth/model/registration-crypt
 import { useAuthStore } from '@/features/auth/model/auth-store'
 import { useCryptoStore } from '@/shared/crypto/vault/crypto-store'
 import { authAdapter } from '@/shared/auth/supabase-adapter'
+import { AuthErrorCode, isAuthError } from '@/shared/auth/auth-errors'
 import { uploadRegistrationData } from '@/shared/api/supabase-registration'
 import { fetchLoginSalts, updateMasterKeyEnvelope, fetchFreshEnvelope } from '@/shared/api/supabase-keys'
 import { hexDecode, hexEncode, zeroFill } from '@/shared/crypto/core/crypto-utils'
@@ -190,6 +191,39 @@ export async function restoreSession(): Promise<void> {
     useAuthStore.getState().setRestoringSession(false)
     restoring = false
   }
+}
+
+/**
+ * Deletes the authenticated user's account and all associated data.
+ *
+ * Verifies the password by re-deriving the auth hash and calling login.
+ * If the password is wrong, throws AuthError(INVALID_CREDENTIALS).
+ * If the password is correct, calls the server-side delete_account RPC
+ * (which cascades through all user data), then clears all local state.
+ */
+export async function deleteUserAccount(password: string): Promise<void> {
+  const { user } = useAuthStore.getState()
+  if (!user) throw new Error('No authenticated user')
+
+  // 1. Verify the password by re-deriving authHash and attempting login.
+  //    This prevents accidental deletion from an unlocked session.
+  const { kdfSalt } = await fetchLoginSalts(user.username)
+  const { authHash } = await deriveAuthCredentials(password, hexDecode(kdfSalt))
+
+  try {
+    await authAdapter.login(user.username, authHash)
+  } catch (error) {
+    if (isAuthError(error) && error.code === AuthErrorCode.INVALID_CREDENTIALS) {
+      throw error
+    }
+    throw error
+  }
+
+  // 2. Delete the account (server-side RPC + signOut)
+  await authAdapter.deleteAccount()
+
+  // 3. Clear all local state
+  logoutCleanup()
 }
 
 /**

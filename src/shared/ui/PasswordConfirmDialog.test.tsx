@@ -125,6 +125,11 @@ describe('PasswordConfirmDialog', () => {
     await user.click(screen.getByRole('button', { name: /close/i }))
   })
 
+  it('applies destructive styling when variant is destructive', () => {
+    renderDialog({ variant: 'destructive' })
+    expect(screen.getByText('Confirm Action')).toHaveClass('text-destructive')
+  })
+
   it('hides close button and blocks Escape during submission', async () => {
     let resolve!: () => void
     const onConfirm = vi.fn(() => new Promise<void>((r) => (resolve = r)))

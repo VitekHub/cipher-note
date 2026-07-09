@@ -2,13 +2,14 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen } from '@/test/utils'
 import userEvent from '@testing-library/user-event'
 import { useAuthStore } from '@/features/auth/model/auth-store'
-import { useChangePasswordDialogStore } from '@/shared/stores/dialogs-store'
+import { useChangePasswordDialogStore, useDeleteAccountDialogStore } from '@/shared/stores/dialogs-store'
 
 import { AccountSection } from './AccountSection'
 
 describe('AccountSection', () => {
   beforeEach(() => {
     useChangePasswordDialogStore.setState({ isOpen: false })
+    useDeleteAccountDialogStore.setState({ isOpen: false })
   })
 
   it('renders section title and description', () => {
@@ -43,9 +44,12 @@ describe('AccountSection', () => {
     expect(useChangePasswordDialogStore.getState().isOpen).toBe(true)
   })
 
-  it('renders delete account item as inactive (no onClick handler)', () => {
+  it('opens delete account dialog when clicking "Delete account"', async () => {
+    const user = userEvent.setup()
     render(<AccountSection />)
-    expect(screen.getByText('Delete account')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /delete account/i })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /delete account/i }))
+
+    expect(useDeleteAccountDialogStore.getState().isOpen).toBe(true)
   })
 })

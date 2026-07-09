@@ -24,6 +24,9 @@ export const SAVE_RECOVERY_DATA_RPC = 'save_recovery_data'
 /** RPC function name for atomic field-key rotation (authenticated, SECURITY DEFINER). */
 export const ROTATE_FIELD_KEY_RPC = 'rotate_field_key'
 
+/** RPC function name for account deletion (authenticated, SECURITY DEFINER). */
+export const DELETE_ACCOUNT_RPC = 'delete_account'
+
 /** Snake_case row delivered by Supabase for an `encrypted_fields` change. */
 export interface EncryptedFieldRow {
   entry_id: string
