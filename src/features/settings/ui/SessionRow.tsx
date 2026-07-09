@@ -60,7 +60,9 @@ function SessionRow({
         <DeviceIcon className="text-muted-foreground size-4" />
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">{parsed.browser}</span>
+            <span className="text-sm font-medium" data-testid="session-browser">
+              {parsed.browser}
+            </span>
             {isCurrent && (
               <span className="text-muted-foreground flex items-center gap-1 text-xs">
                 <ShieldCheck className="size-3" />
@@ -69,7 +71,8 @@ function SessionRow({
             )}
           </div>
           <div className="text-muted-foreground text-xs" title={formatFullDate(updatedAt, i18n.language)}>
-            {parsed.os} · {formatIP(ip)} · {t('session.lastActive', { time: formatRelativeTime(updatedAt, i18n.language) })}
+            {parsed.os} · {formatIP(ip)} ·{' '}
+            {t('session.lastActive', { time: formatRelativeTime(updatedAt, i18n.language) })}
           </div>
         </div>
       </div>
