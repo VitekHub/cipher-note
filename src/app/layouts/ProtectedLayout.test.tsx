@@ -41,6 +41,21 @@ vi.mock('@/shared/realtime/supabase-realtime', () => ({
   realtimeAdapter: { subscribe: vi.fn(() => Promise.resolve()), unsubscribe: vi.fn() },
 }))
 
+// Session update broadcast is a network side-effect; stub the channel so
+// rendering the layout in tests never opens a real channel.
+vi.mock('@/shared/realtime/session-update', () => ({
+  sessionUpdateChannel: { subscribe: vi.fn(), unsubscribe: vi.fn(), broadcastUpdate: vi.fn() },
+}))
+
+// The session revocation listener checks session validity on mount; stub it
+// so tests don't make a real RPC call.
+vi.mock('@/shared/api/supabase-session', () => ({
+  getActiveSessions: vi.fn(() => Promise.resolve([])),
+  revokeSession: vi.fn(() => Promise.resolve(true)),
+  revokeOtherSessions: vi.fn(() => Promise.resolve(0)),
+  isSessionValid: vi.fn(() => Promise.resolve(true)),
+}))
+
 import { useNavigationBlocker } from '@/features/fields/model/use-navigation-blocker'
 import { useBlocker } from '@tanstack/react-router'
 import { ProtectedLayout } from './ProtectedLayout'

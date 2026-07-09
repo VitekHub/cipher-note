@@ -34,6 +34,23 @@
     "license": "License",
     "sourceCode": "Source code"
   },
+  "session": {
+    "title": "Sessions",
+    "description": "Manage your active sessions across devices.",
+    "currentDevice": "Current device",
+    "lastActive": "Last active: {{time}}",
+    "noSessions": "No active sessions",
+    "revoke": "Revoke",
+    "revokeAll": "Revoke all others",
+    "revokeSuccess": "Session revoked",
+    "revokeFailed": "Failed to revoke session",
+    "revokeAllSuccess": "Revoked {{count}} session(s)",
+    "revokeAllFailed": "Failed to revoke sessions",
+    "revokeConfirmTitle": "Revoke this session?",
+    "revokeConfirmBody": "This will sign out {{device}}. Any unsaved changes on that device will be lost.",
+    "revokeAllConfirmTitle": "Revoke all other sessions?",
+    "revokeAllConfirmBody": "This will sign out all devices except this one. Any unsaved changes on those devices will be lost."
+  },
   "keyRotation": {
     "field": {
       "title": "Title",

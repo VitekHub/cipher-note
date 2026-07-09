@@ -22,7 +22,7 @@ describe('SettingsPage', () => {
     const { container } = render(<SettingsPage />)
     const sectionTitles = Array.from(container.querySelectorAll('[data-slot="card-title"]'))
     const titleTexts = sectionTitles.map((el) => el.textContent)
-    expect(titleTexts).toEqual(['Account', 'Preferences', 'Security', 'About'])
+    expect(titleTexts).toEqual(['Account', 'Preferences', 'Security', 'Sessions', 'About'])
   })
 
   it('renders username from auth store in account section', () => {

@@ -12,6 +12,21 @@ vi.mock('@/shared/realtime/supabase-realtime', () => ({
   realtimeAdapter: { subscribe: vi.fn(() => Promise.resolve()), unsubscribe: vi.fn() },
 }))
 
+// The authenticated layout subscribes to session update broadcast; stub it
+// so rendering the route tree in tests never opens a real channel.
+vi.mock('@/shared/realtime/session-update', () => ({
+  sessionUpdateChannel: { subscribe: vi.fn(), unsubscribe: vi.fn(), broadcastUpdate: vi.fn() },
+}))
+
+// The session revocation listener checks session validity on mount; stub it
+// so the router tests don't make a real RPC call.
+vi.mock('@/shared/api/supabase-session', () => ({
+  getActiveSessions: vi.fn(() => Promise.resolve([])),
+  revokeSession: vi.fn(() => Promise.resolve(true)),
+  revokeOtherSessions: vi.fn(() => Promise.resolve(0)),
+  isSessionValid: vi.fn(() => Promise.resolve(true)),
+}))
+
 // The entry detail route uses useEntryStatus which depends on useEntries;
 // stub it so the dashboard route renders field cards in tests.
 vi.mock('@/features/fields/model/use-entry-status', () => ({

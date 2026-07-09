@@ -10,6 +10,7 @@ import { deriveAuthCredentials } from '@/shared/crypto/keys/split-kdf'
 import { rewrapMasterKey } from '@/shared/crypto/keys/master-key'
 import { terminateWorker } from '@/shared/crypto/core/argon2id'
 import { keyVault } from '@/shared/crypto/vault/key-vault'
+import { sessionUpdateChannel } from '@/shared/realtime/session-update'
 
 /**
  * Registers a new user: derives keys, signs up on the server, uploads encrypted
@@ -56,6 +57,8 @@ export async function signUpUser(username: string, password: string): Promise<st
       })),
     })
 
+    sessionUpdateChannel.broadcastUpdate(authResult.user.id)
+
     return regResult.recovery.mnemonic
   } finally {
     authStore.setLoading(false)
@@ -80,6 +83,8 @@ export async function loginUser(username: string, password: string) {
     zeroFill(passwordKey)
 
     authStore.setAuth(authResult.user, authResult.session)
+
+    sessionUpdateChannel.broadcastUpdate(authResult.user.id)
   } finally {
     authStore.setLoading(false)
   }

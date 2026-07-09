@@ -41,6 +41,7 @@ function setQueryClient(client: QueryClient) {
 function clearVaultQueries() {
   queryClientRef?.removeQueries({ queryKey: queryKeys.field.all })
   queryClientRef?.removeQueries({ queryKey: queryKeys.entry.all })
+  queryClientRef?.removeQueries({ queryKey: queryKeys.session.all })
 }
 
 const useCryptoStore = create<CryptoState & CryptoActions>()((set) => ({
