@@ -43,7 +43,7 @@ function Sidebar({ onClose, onLogout, className }: SidebarProps) {
   return (
     <div className={cn('flex h-full flex-col', className)}>
       {/* Header */}
-      <div className="flex items-center justify-between p-4">
+      <div className="border-sidebar-border flex min-h-14 items-center justify-between border-b px-4">
         <AppLogo />
         {onClose && (
           <Button
@@ -57,8 +57,6 @@ function Sidebar({ onClose, onLogout, className }: SidebarProps) {
           </Button>
         )}
       </div>
-
-      <Separator />
 
       {/* Entry list */}
       <nav aria-label={t('common:nav.mainNav')} className="flex-1 overflow-y-auto p-2">
@@ -100,7 +98,9 @@ function Sidebar({ onClose, onLogout, className }: SidebarProps) {
           {user && (
             <div className="text-muted-foreground flex min-w-0 flex-1 items-center gap-2 text-sm">
               <User className="size-4" />
-              <span className="min-w-0 truncate">{user.username}</span>
+              <span className="min-w-0 truncate" title={user.username}>
+                {user.username}
+              </span>
             </div>
           )}
 

@@ -4,14 +4,14 @@
 
 Cipher Note is an end-to-end encrypted note-taking app built with Vite + React + TypeScript. Each user has multiple entries, each containing four encrypted fields (title, note, website, email) protected by a layered key hierarchy. The server never sees plaintext data.
 
-## No Backward Compatibility
+## Backward Compatibility
 
-This app will never need backward compatibility with previous versions. The database is always reset on changes. Do not add migration paths, version checks, or compatibility shims for old data formats.
+This app **must maintain backward compatibility** with previous versions. Existing users' data must continue to work after schema or crypto changes. Always add proper migration paths, version checks, and compatibility shims for old data formats. Database changes must be additive (new columns with defaults, new tables) or include migration scripts that transform existing data. Never drop columns or tables that existing users depend on without a migration path.
 
 ## Architecture
 
 ### Tech Stack
-React 19 · TypeScript (strict, `erasableSyntaxOnly`, `verbatimModuleSyntax`) · Vite 8 · Tailwind CSS v4 · shadcn/ui (base-nova) · TanStack Router (file-based) · TanStack Query 5 · Zustand 5 · react-hook-form + Zod 4 · i18next (en + cs) · Supabase (local Docker) · Web Crypto API + argon2-browser
+React 19 · TypeScript (strict, `erasableSyntaxOnly`, `verbatimModuleSyntax`) · Vite 8 · Tailwind CSS v4 · shadcn/ui (base-nova) · TanStack Router (file-based) · TanStack Query 5 · Zustand 5 · react-hook-form + Zod 4 · i18next (en + cs) · Supabase (local Docker) · Web Crypto API + argon2-browser · Playwright (E2E)
 
 ### Auth (Split KDF / Zero-Knowledge)
 - Users log in with a **username** (mapped to `{username}@ciphernote.internal` for Supabase Auth, which requires an email).
@@ -41,7 +41,7 @@ main.tsx → AppErrorBoundary → AppProviders (QueryClientProvider > AuthProvid
     → _authenticated (redirects to /login if not authed — guard in route beforeLoad)
       → /dashboard (shows EmptyState if no entries, or DashboardWelcome)
       → /dashboard/$entryId (entry detail with field editors)
-      → /settings
+      → /settings (PreferencesSection, SecuritySection, AccountSection, AboutSection)
 ```
 
 ### Database (Supabase / Postgres 17)
@@ -54,10 +54,11 @@ main.tsx → AppErrorBoundary → AppProviders (QueryClientProvider > AuthProvid
 - Login salts: `get_login_salts()` RPC, pre-auth, rate-limited (5 req/2 min/IP)
 - Recovery RPCs: `get_recovery_data(p_username)` pre-auth (5 req/2 min/IP), `recover_account(...)` pre-auth (3 req/15 min/IP), `save_recovery_data(...)` authenticated (bcrypt-hashes `recoveryAuthHash`)
 - Key rotation RPC: `rotate_field_key(p_payload)` authenticated SECURITY DEFINER — atomic: insert new wrapped key version, update all ciphertexts for that field, delete old key versions in one transaction
+- Delete account RPC: `delete_account()` authenticated SECURITY DEFINER — deletes from `auth.users`, cascading through all public tables via ON DELETE CASCADE foreign keys. The client must verify the user's password before calling this RPC.
 - `recovery_keys` table has a `recovery_auth_hash` column (bcrypt hash of HKDF-derived proof-of-knowledge)
 
 ### Adapter Pattern
-Backend abstracted behind interfaces: `IAuthAdapter`, `IRealtimeAdapter`. There is no `IApiAdapter` — the data layer uses direct Supabase functions instead. Current implementations: auth in `supabase-adapter.ts`, entry CRUD in `supabase-entries.ts`, field CRUD in `supabase-fields.ts`, key operations in `supabase-keys.ts`, recovery RPCs in `supabase-recovery.ts`, registration upload in `supabase-registration.ts`, realtime in `supabase-realtime.ts`.
+Backend abstracted behind interfaces: `IAuthAdapter`, `IRealtimeAdapter`. There is no `IApiAdapter` — the data layer uses direct Supabase functions instead. Current implementations: auth in `supabase-adapter.ts`, entry CRUD in `supabase-entries.ts`, field CRUD in `supabase-fields.ts`, key operations in `supabase-keys.ts`, recovery RPCs in `supabase-recovery.ts`, registration upload in `supabase-registration.ts`, account deletion in `supabase-account.ts`, realtime in `supabase-realtime.ts`.
 
 ## Key Conventions
 
@@ -66,6 +67,7 @@ Backend abstracted behind interfaces: `IAuthAdapter`, `IRealtimeAdapter`. There 
 - `src/features/` — Feature modules, each with `model/`, `ui/`, and optionally `lib/`
 - `src/shared/` — Shared code (ui components, crypto, api adapters, auth, i18n, types)
 - Dependency direction: `routes -> features -> shared`. NEVER import from features into shared, or from one feature into another.
+- `src/shared/stores/` — Shared Zustand stores: `dialogs-store.ts` (dialog open/close state via `createDialogStore` factory), `vault-settings-store.ts`, `create-dialog-store.ts` (factory with optional payload support).
 
 ### No Barrel Files
 - NEVER create `index.ts` barrel files in any directory.
@@ -81,7 +83,8 @@ Backend abstracted behind interfaces: `IAuthAdapter`, `IRealtimeAdapter`. There 
 - No semicolons, single quotes, trailing commas, 120 print width, tailwindcss plugin.
 
 ### Testing
-- Tests are colocated with source: `aes-gcm.ts` -> `aes-gcm.test.ts` in the same directory.
+- Unit/integration tests are colocated with source: `aes-gcm.ts` -> `aes-gcm.test.ts` in the same directory.
+- E2E tests live in `e2e/` (Playwright). Config in `playwright.config.ts`; runs against a production build on port 4173.
 - No separate `__tests__/` folders.
 - Use the custom `render` from `@/test/utils` which wraps components with ThemeProvider.
 - Use `vitest` globals (`describe`, `it`, `expect`) — enabled in vitest config.
@@ -142,92 +145,38 @@ Backend abstracted behind interfaces: `IAuthAdapter`, `IRealtimeAdapter`. There 
 | `pnpm test` | Vitest in watch mode |
 | `pnpm test:run` | Vitest single run |
 | `pnpm test:ui` | Vitest UI |
+| `pnpm test:e2e` | Playwright E2E tests |
+| `pnpm test:e2e:ui` | Playwright E2E tests with UI |
 | `pnpm coverage` | Vitest with v8 coverage |
-| `pnpm typecheck` | `tsc --noEmit` |
+| `pnpm typecheck` | `tsc --noEmit` for app, node, and e2e configs |
 | `pnpm lint` | ESLint |
 | `pnpm format` | Prettier write |
 | `pnpm format:check` | Prettier check |
+| `pnpm validate` | Format + test:run + lint + typecheck |
 | `pnpm supabase:start` | Start local Supabase (requires Docker) |
 | `pnpm supabase:status` | Show Supabase URLs + keys |
+| `pnpm supabase:stop` | Stop local Supabase |
 | `pnpm supabase:reset` | Reset DB with migrations + seed |
 
 **Run a single test:** `pnpm test:run src/features/auth/model/auth-store.test.ts`
 
 **Setup:** `pnpm install` → `pnpm supabase:start` → copy `.env.local.example` to `.env.local` → fill `VITE_SUPABASE_ANON_KEY` from `pnpm supabase:status` → `pnpm dev`
 
-## Current Progress
-
-See `docs/implementation-plan/README.md` for the full 36-step plan.
-- Step 1 (Project Scaffolding + UI Foundation) — complete
-- Step 2 (i18n Setup) — complete
-- Step 3 (Router + Route Structure + Suspense Boundaries) — complete
-- Step 4 (State Management + Adapter Interfaces) — complete
-- Step 5 (Supabase Local Setup + Database Schema) — complete
-- Step 6 (Supabase Auth Adapter + Username Auth) — complete
-- Step 7 (Auth UI: Register + Login Pages) — complete
-- Step 8 (Auth State + Protected Routes) — complete
-- Step 9 (Dashboard Layout — Responsive) — complete
-- Step 10 (Dashboard Page Shell + Field Components) — complete
-- Step 11 (Settings Page Shell) — complete
-- Step 12 (AES-256-GCM Encrypt/Decrypt) — complete
-- Step 13 (Key Wrapping/Unwrapping) — complete
-- Step 14 (Argon2id Key Derivation) — complete
-- Step 15 (HKDF Key Derivation + Key Hierarchy) — complete
-- Step 16 (Split KDF Module) — complete
-- Step 17 (BIP-39 Mnemonic Module) — complete
-- Step 18 (Crypto Integration Tests) — complete
-- Step 19 (Registration Crypto Flow) — complete
-- Step 20 (Registration UI) — complete
-- Step 21 (Login Crypto Flow) — complete
-- Step 22 (Login UI + Vault Unlock) — complete
-- Step 23 (Non-Extractable Key Vault + Zustand Store Refactor) — complete
-- Step 24 (Supabase API Adapter) — complete
-- Step 25 (Encrypted Field CRUD) — complete
-- Step 26 (Auto-Save + Sync Flow) — complete
-- Step 27 (Supabase Realtime Adapter) — complete
-- Step 28 (Multi-Device Session Handling) — complete
-- Step 29 (Change Password Flow + UI) — complete
-- Step 30 (Regenerate Seed Phrase) — complete
-- Step 31 (Seed Phrase Recovery Flow + UI) — complete
-- Step 32 (Key Rotation + UI) — complete
-- Step 33 (Mobile Responsive Refinements) — complete
-- Step 34 (Loading States, Error Boundaries, Toast Notifications) — complete
-- Step 35 (Security Hardening) — complete
-- Step 36 (E2E Tests - Playwright) — complete
-
 ### Implementation Notes
 
 Non-obvious decisions not visible from code alone:
 
-- **Two error boundaries must stay separate**: `AppErrorBoundary` wraps `<AppProviders>` in `main.tsx` and renders a dependency-free fallback (no i18n, no theme, inline styles, hardcoded English). `RouteErrorBoundary` is the router's error component and uses i18n/theme/`mapErrorToMessage`. They cannot be merged because `AppErrorBoundary` must work when providers themselves are broken.
-- **Field query error display avoids "empty but looks loaded" flash**: `useFieldEditor` returns the full `fieldQuery` (TanStack Query result) instead of picking off `error`/`refetch` separately. When a field errors and the user clicks retry, TanStack Query clears `error` and sets `isFetching: true`. Without checking `isFetching`, the UI would briefly show empty field editors that look correctly loaded. Checking `fieldQuery.isFetching` shows a spinner during refetch instead.
 - **Auth store `isRestoringSession`**: defaults `true`; `reset()` does NOT touch it (logout doesn't re-trigger initialization)
-- **Auto-lock**: `useVaultTimeout` hook in ProtectedLayout resets a 15-minute inactivity timer on user activity (mousemove, keydown, mousedown, touchstart, scroll); calls `lockVault()` on expiry
-- **VaultUnlockDialog**: uses a separate `vault-dialog-store` (in `features/vault/model/vault-dialog-store.ts`) created via `createDialogStore` factory. The dialog can be opened/closed independently of vault lock state. This lets the user dismiss the dialog without unlocking, and lets the sidebar/mobile nav trigger `open()` directly
-- **`keyVault.lockVault()` vs `keyVault.clearVault()`**: `lockVault()` preserves the cached envelope (so re-unlock can skip network calls), while `clearVault()` (called on logout) zeros everything including the cache. `keyVault.unlockVault()` tries the cached envelope first and retries from server on `DecryptionError` (stale cache can happen if the password was changed in another session)
-- **Test file naming**: prefix with `-` in `src/app/routes/` to exclude from TanStack Router route tree generation
-- **Test setup**: shared setup (`src/test/setup.ts`) resets `useAuthStore` (with `isRestoringSession: false`), `useCryptoStore`, and `useLayoutStore` (including `sidebarWidth: 240`) in `afterEach`. Router mocking (`@tanstack/react-router`) is done per-file in each test that needs it, not centralized
-- **Argon2id Web Worker**: `argon2id.ts` delegates all derivation to `argon2id.worker.ts` via `postMessage`. The worker lazy-loads `argon2-browser/dist/argon2-bundled.min.js` (not the default `argon2-browser` import — the default tries to load a `.wasm` file which Vite cannot handle; the bundled build embeds WASM as base64 in JS). Tests mock the Worker constructor; actual Argon2id computation is tested in E2E (Step 36).
+- **VaultUnlockDialog**: uses a separate `vault-dialog-store` (in `features/vault/model/vault-dialog-store.ts`) created via `createDialogStore` factory from `shared/stores/create-dialog-store.ts`. The dialog can be opened/closed independently of vault lock state. This lets the user dismiss the dialog without unlocking, and lets the sidebar/mobile nav trigger `open()` directly. Other dialog stores (`ChangePasswordDialogStore`, `DeleteAccountDialogStore`, `RotateFieldKeyDialogStore`, etc.) are in `shared/stores/dialogs-store.ts` using the same factory.
 - **FieldCard children pattern**: uses render function `() => ReactNode`. Field editors stay mounted (hidden via CSS) when vault is locked so paused mutation observers survive and their callbacks fire on resume. Locked UI is handled by `LockedVaultCard` in the dashboard, not by individual FieldCards.
 - **FieldCard i18n keys**: `FIELD_LABEL_KEYS` is a static record (not template literals) so i18next-parser can discover them. Includes all four fields: title, note, website, email.
 - **`Uint8Array<ArrayBuffer>` for Web Crypto**: TS 6.0 made `Uint8Array` generic; bare `Uint8Array` expands to `Uint8Array<ArrayBufferLike>` which doesn't satisfy `BufferSource`. All `crypto.subtle` function signatures must use `Uint8Array<ArrayBuffer>`.
 - **`copyToUint8Array` only in aes-gcm.ts**: Web Crypto's `encrypt`, `decrypt`, and `exportKey` return `ArrayBuffer`, which can be neutered/transferred. `copyToUint8Array` wraps these calls and provides type narrowing to `Uint8Array<ArrayBuffer>`. Other crypto modules construct `Uint8Array` from scratch (e.g., `new Uint8Array(derivedBits)`) so they already own the buffer.
-- **Multi-entry architecture**: Each user can have multiple entries. An entry is a group of four encrypted fields (title, note, website, email). The `entries` table stores entry metadata; `encrypted_fields` references `entry_id`. Entry CRUD is in `entry-service.ts` + `use-entry.ts` hooks. The sidebar shows the entry list; the dashboard route `/dashboard` shows `EmptyState` (if no entries) or `DashboardWelcome`, while `/dashboard/$entryId` shows the entry detail.
-- **`useField` and `useSaveField` are entry-aware**: Query keys include `entryId` via the centralized `queryKeys` factory (`src/shared/lib/query-keys.ts`). On entry deletion, `useDeleteEntry` removes field queries for that entry from the cache.
-- **Master key wrapping uses AAD constants**: All key wrapping is done directly with `encrypt`/`decrypt` from `aes-gcm.ts` using `{iv, aad}` options. `rewrapMasterKey` in `master-key.ts` uses `MASTER_KEY_PASSWORD_AAD`, recovery wrapping in `mnemonic.ts` uses `MASTER_KEY_RECOVERY_AAD`, field key wrapping uses `encodeAAD(fieldName, version)` from `crypto-utils.ts`.
 - **HKDF uses `deriveBits`, not `deriveKey`**: `hkdfExpand` in `hkdf.ts` returns raw `Uint8Array` bytes because the KEK bytes need to be imported as an AES-GCM CryptoKey via `importKey()` separately. `deriveKEK` and `deriveSigningKeySeed` are convenience wrappers. HKDF uses empty salt since the PRK is already random.
-- **BIP-39 mnemonic functions are async**: `generateMnemonic`, `validateMnemonic`, `mnemonicToSeed` in `mnemonic.ts` must be `async` despite the underlying `@scure/bip39` functions being synchronous, because the lazy-loading pattern (`await loadBip39()`) requires it. Same as how `argon2id.ts` wraps sync Argon2 in async.
-- **`deriveRecoveryKEK` uses mnemonic string directly**: In `mnemonic.ts`, the mnemonic phrase is passed as the Argon2id "password" parameter, not the BIP-39 binary seed. The human-readable phrase is the input because it is what the user supplies and remembers; the binary seed is an internal derivation artifact. `mnemonicToSeed` is a utility function not used in the recovery KEK path. `wrapMasterKeyWithRecovery` and `unwrapMasterKeyWithRecovery` zero-fill the recovery KEK in a `finally` block and also derive `recoveryAuthHash` via `HKDF_INFO.RECOVERY_AUTH`.
-- **Crypto integration tests mock `deriveKey` re-consumption**: In `crypto-integration.test.ts` (in `shared/crypto/`), `unwrapMasterKeyWithRecovery` requires a fresh `deriveKey` mock even after `wrapMasterKeyWithRecovery` consumed one during setup. The `setupRegistration` helper uses `mockResolvedValueOnce` which is consumed, so the test must re-mock before calling unwrap.
-- **`deriveRegistrationKeys` is a pure crypto function**: in `features/auth/model/registration-crypto.ts`, it has no side effects (no auth, no DB, no store writes). The orchestration (signup + upload + store population) lives in `features/auth/model/auth-service.ts` `signUpUser`. Do not add side effects to this function.
-- **`signUpUser` error cleanup**: on any error after `deriveRegistrationKeys` succeeds, attempts `authAdapter.logout()` as best-effort cleanup (harmless if no session exists, since Supabase signOut with no session is a no-op).
 - **`saveRecoveryData` uses RPC**: Registration and regeneration both call `saveRecoveryData()` in `supabase-recovery.ts`, which invokes the `save_recovery_data` SECURITY DEFINER function. This RPC bcrypt-hashes `recoveryAuthHash` before storage, ensuring the raw HKDF-derived value never appears in the DB. Direct table inserts into `recovery_keys` are not used anywhere.
-- **Pre-auth RPCs**: `get_login_salts(p_username)` and `get_recovery_data(p_username)` are SECURITY DEFINER RPCs callable by anonymous users, rate-limited (5 req/2 min/IP). Salts must be fetched before auth to derive `authHash` for Supabase Auth, but the `master_keys` table is RLS-protected. After auth succeeds, `fetchMasterKeyEnvelope` and `fetchFieldKeys` fetch wrapped key material through standard RLS-protected queries. `recover_account` is also pre-auth but more strictly rate-limited (3 req/15 min/IP).
 - **Auth error codes fold username format into invalid credentials**: `AuthErrorCode.INVALID_USERNAME_FORMAT` doesn't exist — `supabase-keys.ts` throws `INVALID_CREDENTIALS` for invalid username format. This is deliberate: showing a different error for "wrong format" vs "wrong password" would leak whether a username exists. Missing key data is `ApiError(NOT_FOUND)`, not an auth error — `KEYS_NOT_FOUND` was removed from `AuthErrorCode` because "data not found" is a data-layer concern, not an auth concern.
-- **`AuthError` vs `ApiError` domain boundary**: `AuthError` (in `shared/auth/auth-errors.ts`) covers authentication errors (`INVALID_CREDENTIALS`, `USERNAME_TAKEN`, `NETWORK_ERROR`, `UNEXPECTED`). `ApiError` (in `shared/api/api-errors.ts`) covers data-layer errors (`NETWORK_ERROR`, `NOT_FOUND`, `UNEXPECTED`). `fetchLoginSalts` throws `AuthError` because it's a pre-auth RPC that's part of the login flow; all other data queries throw `ApiError`. Each domain has its own `wrapXxxError` that classifies raw errors using the shared `isNetworkError` helper.
 - **Network errors can bypass the adapter boundary**: `isNetworkError` (in `shared/lib/network-errors.ts`) is shared by both `wrapAuthError` and `wrapApiError`. Raw `TypeError('Failed to fetch')` from the browser can reach the UI without being wrapped by any adapter, so `getAuthErrorMessage` in `auth-error-messages.ts` also calls `isNetworkError` as a final fallback.
-- **Change password rollback**: `changeUserPassword` in `auth-service.ts` is a 4-step flow (derive → upload envelope → update auth → update store). If step 3 (Supabase Auth update) fails after step 2 (DB envelope upload) succeeds, it attempts to roll back the DB write with the old envelope values. If rollback also fails, it forces logout to prevent inconsistent state.
 - **Stale KEK detection**: Stale KEK from a password change on another device is detected in two places: (1) `use-realtime-sync.ts` `onKeyRotation` — when a key rotation event arrives (from password change or field-key rotation on another session), `syncFieldKeys` tries to unwrap with the current KEK; a `DecryptionError` means the KEK is stale, so `clearVault()` forces re-auth. If the vault is locked, the cached envelope is cleared so the next unlock fetches fresh key material. Local rotations are echo-suppressed via `markLocalKeyRotation`/`isLocalKeyRotationEcho`. (2) `key-vault.ts` `unlockVault` — if the cached envelope is stale, `clearVault` + retry from server. The save path (`useSaveField`) cannot produce a `DecryptionError` — `encryptField` only encrypts, and `getFieldKey` throws a generic `Error` when the vault is locked, not `DecryptionError`.
-- **`recoveryAuthHash` for proof-of-knowledge**: `wrapMasterKeyWithRecovery` and `unwrapMasterKeyWithRecovery` in `mnemonic.ts` derive a `recoveryAuthHash` via `HKDF_INFO.RECOVERY_AUTH` from the recovery KEK, and zero-fill the KEK in a `finally` block. The server stores a bcrypt hash of this value (via `save_recovery_data` RPC — never a direct table insert), so the raw HKDF-derived value never appears in the DB. The `recover_account` RPC verifies this proof before atomically updating auth password, salts, and master key.
 - **Account recovery is a two-step client flow**: `RecoveryFlow` class in `mnemonic-service.ts` holds state (`username`, `masterKey`, `recoveryAuthHash`) between `validateMnemonic()` and `setNewPassword()`. Master key is zero-filled in `clear()` (called on unmount, not in React state — to avoid devtools exposure). `recover_account` RPC is atomic on the server side; if the RPC succeeds but automatic login fails, a `RecoveryLoginError` is thrown and the user is redirected to `/login` with a success toast.
+- **App version is an i18n key, not a build-time constant**: The displayed version (`v1.0.0`) lives in `common.json` as `app.version`, NOT in `package.json` or Vite's `define`. This means it's updated manually on release by editing both locale files (`en/common.json` and `cs/common.json`). The GitHub URL (`app.githubUrl`) and license (`app.license`) follow the same pattern. The About section in Settings (`AboutSection.tsx`) displays these via i18n keys. `package.json` `version` is for npm tooling only (no `v` prefix).
 

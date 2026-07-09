@@ -17,12 +17,7 @@ function PublicHeader() {
           <span className="text-foreground text-lg font-semibold">Cipher Note</span>
         </Link>
         <div className="flex items-center gap-2">
-          <a
-            href="https://github.com/VitekHub/cipher-note/"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="GitHub"
-          >
+          <a href={t('app.githubUrl')} target="_blank" rel="noopener noreferrer" aria-label={t('nav.github')}>
             <GithubIcon className="text-muted-foreground hover:text-foreground transition-colors" />
           </a>
           <LanguageSwitcher />

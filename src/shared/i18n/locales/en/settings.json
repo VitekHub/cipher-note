@@ -27,6 +27,13 @@
     "changePassword": "Change password",
     "deleteAccount": "Delete account"
   },
+  "about": {
+    "title": "About",
+    "description": "App information.",
+    "version": "Version",
+    "license": "License",
+    "sourceCode": "Source code"
+  },
   "keyRotation": {
     "field": {
       "title": "Title",

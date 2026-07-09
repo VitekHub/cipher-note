@@ -62,7 +62,7 @@ function AuthenticatedLayout() {
   useNavigationBlocker()
 
   return (
-    <div className="text-foreground bg-background flex h-[calc(100vh-var(--banner-height))]">
+    <div className="text-foreground bg-background flex h-dvh">
       {/* Desktop sidebar */}
       <aside
         className="bg-sidebar text-sidebar-foreground border-sidebar-border hidden shrink-0 flex-col border-r md:flex"

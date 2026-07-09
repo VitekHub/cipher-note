@@ -10,18 +10,19 @@ describe('SettingsPage', () => {
     expect(screen.getByText('Settings')).toBeInTheDocument()
   })
 
-  it('renders all three section titles', () => {
+  it('renders all section titles', () => {
     render(<SettingsPage />)
     expect(screen.getByText('Account')).toBeInTheDocument()
     expect(screen.getByText('Preferences')).toBeInTheDocument()
     expect(screen.getByText('Security')).toBeInTheDocument()
+    expect(screen.getByText('About')).toBeInTheDocument()
   })
 
-  it('renders sections in Account → Preferences → Security order', () => {
+  it('renders sections in Account → Preferences → Security → About order', () => {
     const { container } = render(<SettingsPage />)
     const sectionTitles = Array.from(container.querySelectorAll('[data-slot="card-title"]'))
     const titleTexts = sectionTitles.map((el) => el.textContent)
-    expect(titleTexts).toEqual(['Account', 'Preferences', 'Security'])
+    expect(titleTexts).toEqual(['Account', 'Preferences', 'Security', 'About'])
   })
 
   it('renders username from auth store in account section', () => {

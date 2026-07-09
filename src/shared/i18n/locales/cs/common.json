@@ -1,7 +1,10 @@
 {
   "app": {
     "name": "Cipher Note",
-    "tagline": "Vaše poznámky. Vaše soukromí. Vaše kontrola."
+    "tagline": "Vaše poznámky. Vaše soukromí. Vaše kontrola.",
+    "version": "v1.0.0",
+    "githubUrl": "https://github.com/VitekHub/cipher-note/",
+    "license": "MIT Licence"
   },
   "actions": {
     "save": "Uložit",
@@ -25,10 +28,6 @@
     "unexpectedError": "Došlo k neočekávané chybě. Zkuste to prosím znovu.",
     "pageNotFound": "Stránka, kterou hledáte, neexistuje."
   },
-  "preAlpha": {
-    "ariaLabel": "Upozornění na předběžnou verzi",
-    "message": "Cipher Note je předběžná alfa verze. Očekávejte zásadní změny a občasné resety dat."
-  },
   "nav": {
     "dashboard": "Nástěnka",
     "settings": "Nastavení",
@@ -43,6 +42,7 @@
     "languageSelection": "Výběr jazyka",
     "switchLanguage": "Přepnout jazyk",
     "themeSelection": "Výběr motivu",
-    "switchTheme": "Přepnout motiv"
+    "switchTheme": "Přepnout motiv",
+    "github": "GitHub"
   }
 }
