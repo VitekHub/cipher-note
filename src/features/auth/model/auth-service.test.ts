@@ -12,6 +12,10 @@ const mockSetRestoringSession = vi.fn<(isRestoringSession: boolean) => void>()
 const mockReset = vi.fn<() => void>()
 const mockSetEnvelope = vi.fn<(envelope: import('@/shared/types/api.types').CachedVaultEnvelope) => void>()
 
+const { mockBroadcastUpdate } = vi.hoisted(() => ({
+  mockBroadcastUpdate: vi.fn<(userId: string) => void>(),
+}))
+
 // Mock registration module
 vi.mock('@/features/auth/model/registration-crypto', () => ({
   deriveRegistrationKeys: vi.fn().mockResolvedValue({
@@ -118,6 +122,15 @@ vi.mock('@/shared/auth/supabase-adapter', () => ({
     onAuthStateChange: vi.fn().mockReturnValue(vi.fn()),
     updatePassword: vi.fn().mockResolvedValue(undefined),
     deleteAccount: vi.fn().mockResolvedValue(undefined),
+  },
+}))
+
+// Mock session update channel
+vi.mock('@/shared/realtime/session-update', () => ({
+  sessionUpdateChannel: {
+    broadcastUpdate: mockBroadcastUpdate,
+    subscribe: vi.fn(),
+    unsubscribe: vi.fn(),
   },
 }))
 
@@ -269,6 +282,11 @@ describe('signUpUser', () => {
     expect(result).toBe('word0 word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11')
   })
 
+  it('broadcasts session update after signup', async () => {
+    await signUpUser('testuser', 'testpass123')
+    expect(mockBroadcastUpdate).toHaveBeenCalledWith('1')
+  })
+
   it('attempts logout cleanup when upload fails after signup succeeds', async () => {
     vi.mocked(uploadRegistrationData).mockRejectedValueOnce(new Error('upload failed'))
 
@@ -336,6 +354,11 @@ describe('loginUser', () => {
     expect(mockSetLoading).toHaveBeenCalledWith(false)
   })
 
+  it('broadcasts session update after login', async () => {
+    await loginUser('testuser', 'testpass123')
+    expect(mockBroadcastUpdate).toHaveBeenCalledWith('1')
+  })
+
   it('does not set auth when initVault fails after auth succeeds', async () => {
     vi.mocked(keyVault.initVault).mockRejectedValueOnce(new Error('Unlock failed'))
 
@@ -368,6 +391,64 @@ describe('logoutUser', () => {
     expect(mockClearVault).toHaveBeenCalled()
     expect(mockReset).toHaveBeenCalled()
     expect(terminateWorker).toHaveBeenCalled()
+  })
+
+  it('broadcasts session update when user is authenticated', async () => {
+    vi.mocked(useAuthStore.getState).mockReturnValue({
+      setLoading: mockSetLoading,
+      setAuth: mockSetAuth,
+      setRestoringSession: mockSetRestoringSession,
+      reset: mockReset,
+      isRestoringSession: false,
+      user: { id: 'user-1', username: 'testuser', createdAt: '2024-01-01' },
+      session: { accessToken: 'tok', expiresAt: 0 },
+      setUser: vi.fn(),
+      setSession: vi.fn(),
+      isLoading: false,
+    })
+
+    await logoutUser()
+
+    expect(mockBroadcastUpdate).toHaveBeenCalledWith('user-1')
+  })
+
+  it('does not broadcast session update when no user is authenticated', async () => {
+    vi.mocked(useAuthStore.getState).mockReturnValue({
+      setLoading: mockSetLoading,
+      setAuth: mockSetAuth,
+      setRestoringSession: mockSetRestoringSession,
+      reset: mockReset,
+      isRestoringSession: false,
+      user: null,
+      session: null,
+      isLoading: false,
+      setUser: vi.fn(),
+      setSession: vi.fn(),
+    })
+
+    await logoutUser()
+
+    expect(mockBroadcastUpdate).not.toHaveBeenCalled()
+  })
+
+  it('broadcasts session update even when adapter logout fails', async () => {
+    vi.mocked(useAuthStore.getState).mockReturnValue({
+      setLoading: mockSetLoading,
+      setAuth: mockSetAuth,
+      setRestoringSession: mockSetRestoringSession,
+      reset: mockReset,
+      isRestoringSession: false,
+      user: { id: 'user-1', username: 'testuser', createdAt: '2024-01-01' },
+      session: { accessToken: 'tok', expiresAt: 0 },
+      setUser: vi.fn(),
+      setSession: vi.fn(),
+      isLoading: false,
+    })
+    vi.mocked(authAdapter.logout).mockRejectedValueOnce(new Error('Network error'))
+
+    await logoutUser()
+
+    expect(mockBroadcastUpdate).toHaveBeenCalledWith('user-1')
   })
 })
 

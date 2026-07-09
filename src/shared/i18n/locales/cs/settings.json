@@ -41,14 +41,16 @@
     "lastActive": "Poslední aktivita: {{time}}",
     "noSessions": "Žádné aktivní relace",
     "revoke": "Odhlásit",
-    "revokeAll": "Odhlásit všechny ostatní",
+    "revokeAll": "Odhlásit všechny",
     "revokeSuccess": "Relace odhlášena",
     "revokeFailed": "Nepodařilo se odhlásit relaci",
     "revokeAllSuccess": "Odhlášeno {{count}} relací",
     "revokeAllFailed": "Nepodařilo se odhlásit relace",
     "revokeConfirmTitle": "Odhlásit tuto relaci?",
+    "device": "{{browser}} na {{os}}",
     "revokeConfirmBody": "Tím se odhlásí {{device}}. Všechny neuložené změny na tomto zařízení budou ztraceny.",
     "revokeAllConfirmTitle": "Odhlásit všechny ostatní relace?",
+    "revokeConfirmBody_unknownDevice": "neznámé zařízení",
     "revokeAllConfirmBody": "Tím se odhlásí všechna zařízení kromě tohoto. Všechny neuložené změny na těchto zařízeních budou ztraceny."
   },
   "keyRotation": {

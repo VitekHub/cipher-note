@@ -64,7 +64,7 @@ function AuthenticatedLayout() {
   useNavigationBlocker()
 
   return (
-    <div className="text-foreground bg-background flex h-dvh">
+    <div className="text-foreground bg-background flex h-dvh overflow-hidden">
       {/* Desktop sidebar */}
       <aside
         className="bg-sidebar text-sidebar-foreground border-sidebar-border hidden shrink-0 flex-col border-r md:flex"
@@ -99,9 +99,9 @@ function AuthenticatedLayout() {
         <OfflineBanner />
 
         {/* Main content area with resize handle */}
-        <div className="relative flex flex-1 flex-col">
+        <div className="relative flex flex-1 flex-col overflow-y-auto">
           <ResizeHandle isDragging={isDragging} handleProps={handleProps} />
-          <main className="mb-10 flex flex-1 flex-col overflow-y-auto p-6 pb-20 md:pb-6">
+          <main className="mb-10 flex flex-1 flex-col p-6 pb-20 md:pb-6">
             <Outlet />
           </main>
         </div>

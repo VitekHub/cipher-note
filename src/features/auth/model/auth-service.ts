@@ -162,12 +162,15 @@ function logoutCleanup() {
 export async function logoutUser() {
   const store = useAuthStore.getState()
   store.setLoading(true)
+  let userId
 
   try {
+    userId = useAuthStore.getState().user?.id
     await authAdapter.logout()
   } catch {
     // Server signOut may fail (no session, network error) - clear local state regardless
   } finally {
+    if (userId) sessionUpdateChannel.broadcastUpdate(userId)
     logoutCleanup()
   }
 }

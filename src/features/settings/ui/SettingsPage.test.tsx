@@ -18,11 +18,13 @@ describe('SettingsPage', () => {
     expect(screen.getByText('About')).toBeInTheDocument()
   })
 
-  it('renders sections in Account → Preferences → Security → About order', () => {
+  it('renders sections in Account → Preferences → Security → About → Sessions order', async () => {
     const { container } = render(<SettingsPage />)
+    // SessionSection is lazy-loaded, wait for it to appear
+    await screen.findByText('Sessions')
     const sectionTitles = Array.from(container.querySelectorAll('[data-slot="card-title"]'))
     const titleTexts = sectionTitles.map((el) => el.textContent)
-    expect(titleTexts).toEqual(['Account', 'Preferences', 'Security', 'Sessions', 'About'])
+    expect(titleTexts).toEqual(['Account', 'Preferences', 'Security', 'About', 'Sessions'])
   })
 
   it('renders username from auth store in account section', () => {

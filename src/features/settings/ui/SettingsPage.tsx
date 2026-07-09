@@ -1,10 +1,15 @@
+import { lazy, Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { CardSkeleton } from '@/shared/ui/CardSkeleton'
 import { AccountSection } from '@/features/settings/ui/AccountSection'
 import { PreferencesSection } from '@/features/settings/ui/PreferencesSection'
 import { SecuritySection } from '@/features/settings/ui/SecuritySection'
-import { SessionSection } from '@/features/settings/ui/SessionSection'
 import { AboutSection } from '@/features/settings/ui/AboutSection'
+
+const SessionSection = lazy(() =>
+  import('@/features/settings/ui/SessionSection').then((m) => ({ default: m.SessionSection })),
+)
 
 function SettingsPage() {
   const { t } = useTranslation('settings')
@@ -16,8 +21,12 @@ function SettingsPage() {
         <AccountSection />
         <PreferencesSection />
         <SecuritySection />
-        <SessionSection />
         <AboutSection />
+      </div>
+      <div className="max-w-3xl">
+        <Suspense fallback={<CardSkeleton />}>
+          <SessionSection />
+        </Suspense>
       </div>
     </div>
   )

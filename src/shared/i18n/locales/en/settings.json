@@ -47,8 +47,10 @@
     "revokeAllSuccess": "Revoked {{count}} session(s)",
     "revokeAllFailed": "Failed to revoke sessions",
     "revokeConfirmTitle": "Revoke this session?",
+    "device": "{{browser}} on {{os}}",
     "revokeConfirmBody": "This will sign out {{device}}. Any unsaved changes on that device will be lost.",
     "revokeAllConfirmTitle": "Revoke all other sessions?",
+    "revokeConfirmBody_unknownDevice": "an unknown device",
     "revokeAllConfirmBody": "This will sign out all devices except this one. Any unsaved changes on those devices will be lost."
   },
   "keyRotation": {
