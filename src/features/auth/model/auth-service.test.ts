@@ -500,7 +500,7 @@ describe('subscribeToAuthChanges', () => {
     const mockUnsubscribe = vi.fn()
     vi.mocked(authAdapter.onAuthStateChange).mockReturnValue(mockUnsubscribe)
 
-    const unsubscribe = subscribeToAuthChanges()
+    const unsubscribe = subscribeToAuthChanges(vi.fn())
     expect(authAdapter.onAuthStateChange).toHaveBeenCalled()
     unsubscribe()
     expect(mockUnsubscribe).toHaveBeenCalled()
@@ -513,7 +513,7 @@ describe('subscribeToAuthChanges', () => {
       return vi.fn()
     })
 
-    subscribeToAuthChanges()
+    subscribeToAuthChanges(vi.fn())
 
     const authResult = {
       user: { id: '2', username: 'callbackuser', createdAt: '' },
@@ -534,12 +534,87 @@ describe('subscribeToAuthChanges', () => {
       return vi.fn()
     })
 
-    subscribeToAuthChanges()
+    subscribeToAuthChanges(vi.fn())
     capturedCallback!(null)
 
     expect(mockClearVault).toHaveBeenCalled()
     expect(mockReset).toHaveBeenCalled()
     expect(terminateWorker).toHaveBeenCalled()
+  })
+
+  it('calls onSignOut callback after clearing state when user was authenticated', () => {
+    let capturedCallback: ((result: unknown) => void) | undefined
+    vi.mocked(authAdapter.onAuthStateChange).mockImplementation((cb) => {
+      capturedCallback = cb as (result: unknown) => void
+      return vi.fn()
+    })
+
+    vi.mocked(useAuthStore.getState).mockReturnValue({
+      user: { id: '1', username: 'test', createdAt: '' },
+      session: { accessToken: 'at', expiresAt: 0 },
+      isLoading: false,
+      setUser: vi.fn(),
+      setSession: vi.fn(),
+      setLoading: mockSetLoading,
+      setAuth: mockSetAuth,
+      setRestoringSession: mockSetRestoringSession,
+      reset: mockReset,
+      isRestoringSession: false,
+    })
+    const onSignOut = vi.fn()
+    subscribeToAuthChanges(onSignOut)
+    capturedCallback!(null)
+
+    expect(mockClearVault).toHaveBeenCalled()
+    expect(mockReset).toHaveBeenCalled()
+    expect(terminateWorker).toHaveBeenCalled()
+    expect(onSignOut).toHaveBeenCalled()
+  })
+
+  it('does not call onSignOut when user was not authenticated', () => {
+    let capturedCallback: ((result: unknown) => void) | undefined
+    vi.mocked(authAdapter.onAuthStateChange).mockImplementation((cb) => {
+      capturedCallback = cb as (result: unknown) => void
+      return vi.fn()
+    })
+
+    vi.mocked(useAuthStore.getState).mockReturnValue({
+      user: null,
+      session: null,
+      isLoading: false,
+      setUser: vi.fn(),
+      setSession: vi.fn(),
+      setLoading: mockSetLoading,
+      setAuth: mockSetAuth,
+      setRestoringSession: mockSetRestoringSession,
+      reset: mockReset,
+      isRestoringSession: false,
+    })
+    const onSignOut = vi.fn()
+    subscribeToAuthChanges(onSignOut)
+    capturedCallback!(null)
+
+    expect(mockClearVault).toHaveBeenCalled()
+    expect(mockReset).toHaveBeenCalled()
+    expect(terminateWorker).toHaveBeenCalled()
+    expect(onSignOut).not.toHaveBeenCalled()
+  })
+
+  it('does not call onSignOut callback on auth result', () => {
+    let capturedCallback: ((result: unknown) => void) | undefined
+    vi.mocked(authAdapter.onAuthStateChange).mockImplementation((cb) => {
+      capturedCallback = cb as (result: unknown) => void
+      return vi.fn()
+    })
+
+    const onSignOut = vi.fn()
+    subscribeToAuthChanges(onSignOut)
+    capturedCallback!({
+      user: { id: '3', username: 'test', createdAt: '' },
+      session: { accessToken: 'tok', expiresAt: 0 },
+    })
+
+    expect(onSignOut).not.toHaveBeenCalled()
   })
 })
 

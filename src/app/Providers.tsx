@@ -28,11 +28,13 @@ function InnerApp() {
 
   useEffect(() => {
     restoreSession()
-    const unsubscribe = subscribeToAuthChanges()
+    const unsubscribe = subscribeToAuthChanges(() => {
+      router.navigate({ to: '/login' })
+    })
     return () => {
       unsubscribe()
     }
-  }, [])
+  }, [router])
 
   if (auth.isRestoringSession) {
     return <PageSkeleton />

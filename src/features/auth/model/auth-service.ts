@@ -233,14 +233,22 @@ export async function deleteUserAccount(password: string): Promise<void> {
  * @remarks The underlying Supabase listener broadcasts auth events across
  * browser tabs, so a logout (or login) in one tab is reflected in all others.
  *
+ * @param onSignOut Callback invoked after local state is cleared on sign-out
+ *   (e.g. to navigate to the login page). Called for both same-tab and
+ *   cross-tab sign-outs.
+ *
  * @returns A function to unsubscribe from auth state changes.
  */
-export function subscribeToAuthChanges(): () => void {
+export function subscribeToAuthChanges(onSignOut: () => void): () => void {
   return authAdapter.onAuthStateChange((result) => {
     if (result) {
       useAuthStore.getState().setAuth(result.user, result.session)
     } else {
+      const wasAuthenticated = useAuthStore.getState().user !== null
       logoutCleanup()
+      if (wasAuthenticated) {
+        onSignOut()
+      }
     }
   })
 }
