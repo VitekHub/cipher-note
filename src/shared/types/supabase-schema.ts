@@ -27,6 +27,18 @@ export const ROTATE_FIELD_KEY_RPC = 'rotate_field_key'
 /** RPC function name for account deletion (authenticated, SECURITY DEFINER). */
 export const DELETE_ACCOUNT_RPC = 'delete_account'
 
+/** RPC function name for listing active sessions (authenticated, SECURITY DEFINER). */
+export const GET_ACTIVE_SESSIONS_RPC = 'get_active_sessions'
+
+/** RPC function name for revoking a specific session (authenticated, SECURITY DEFINER). */
+export const REVOKE_SESSION_RPC = 'revoke_session'
+
+/** RPC function name for revoking all sessions except the current one (authenticated, SECURITY DEFINER). */
+export const REVOKE_OTHER_SESSIONS_RPC = 'revoke_other_sessions'
+
+/** RPC function name for checking whether the current session is still valid (authenticated, SECURITY DEFINER). */
+export const IS_SESSION_VALID_RPC = 'is_session_valid'
+
 /** Snake_case row delivered by Supabase for an `encrypted_fields` change. */
 export interface EncryptedFieldRow {
   entry_id: string

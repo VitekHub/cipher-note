@@ -10,6 +10,7 @@ import { deriveAuthCredentials } from '@/shared/crypto/keys/split-kdf'
 import { rewrapMasterKey } from '@/shared/crypto/keys/master-key'
 import { terminateWorker } from '@/shared/crypto/core/argon2id'
 import { keyVault } from '@/shared/crypto/vault/key-vault'
+import { sessionUpdateChannel } from '@/shared/realtime/session-update'
 
 /**
  * Registers a new user: derives keys, signs up on the server, uploads encrypted
@@ -56,6 +57,8 @@ export async function signUpUser(username: string, password: string): Promise<st
       })),
     })
 
+    sessionUpdateChannel.broadcastUpdate(authResult.user.id)
+
     return regResult.recovery.mnemonic
   } finally {
     authStore.setLoading(false)
@@ -80,6 +83,8 @@ export async function loginUser(username: string, password: string) {
     zeroFill(passwordKey)
 
     authStore.setAuth(authResult.user, authResult.session)
+
+    sessionUpdateChannel.broadcastUpdate(authResult.user.id)
   } finally {
     authStore.setLoading(false)
   }
@@ -157,12 +162,15 @@ function logoutCleanup() {
 export async function logoutUser() {
   const store = useAuthStore.getState()
   store.setLoading(true)
+  let userId
 
   try {
+    userId = useAuthStore.getState().user?.id
     await authAdapter.logout()
   } catch {
     // Server signOut may fail (no session, network error) - clear local state regardless
   } finally {
+    if (userId) sessionUpdateChannel.broadcastUpdate(userId)
     logoutCleanup()
   }
 }
@@ -233,14 +241,22 @@ export async function deleteUserAccount(password: string): Promise<void> {
  * @remarks The underlying Supabase listener broadcasts auth events across
  * browser tabs, so a logout (or login) in one tab is reflected in all others.
  *
+ * @param onSignOut Callback invoked after local state is cleared on sign-out
+ *   (e.g. to navigate to the login page). Called for both same-tab and
+ *   cross-tab sign-outs.
+ *
  * @returns A function to unsubscribe from auth state changes.
  */
-export function subscribeToAuthChanges(): () => void {
+export function subscribeToAuthChanges(onSignOut: () => void): () => void {
   return authAdapter.onAuthStateChange((result) => {
     if (result) {
       useAuthStore.getState().setAuth(result.user, result.session)
     } else {
+      const wasAuthenticated = useAuthStore.getState().user !== null
       logoutCleanup()
+      if (wasAuthenticated) {
+        onSignOut()
+      }
     }
   })
 }

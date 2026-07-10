@@ -15,4 +15,8 @@ export const queryKeys = {
     all: ['entry'] as const,
     list: (userId: string) => [...queryKeys.entry.all, userId] as const,
   },
+  session: {
+    all: ['session'] as const,
+    list: ['session', 'list'] as const,
+  },
 } as const

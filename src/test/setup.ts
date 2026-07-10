@@ -108,3 +108,4 @@ class IntersectionObserverMock {
 globalThis.IntersectionObserver = IntersectionObserverMock as unknown as typeof IntersectionObserver
 
 HTMLElement.prototype.scrollIntoView = vi.fn()
+window.scrollTo = vi.fn()

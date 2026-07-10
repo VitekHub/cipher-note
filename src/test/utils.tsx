@@ -2,6 +2,7 @@ import { render, renderHook } from '@testing-library/react'
 import type { ReactNode, ReactElement } from 'react'
 import { Suspense } from 'react'
 import { afterEach } from 'vitest'
+import { act } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from '@/shared/lib/theme-provider'
 import { AuthProvider } from '@/features/auth/ui/auth-provider'
@@ -15,8 +16,11 @@ const testQueryClient = new QueryClient({
   },
 })
 
-afterEach(() => {
+afterEach(async () => {
   testQueryClient.clear()
+  // Flush pending React state updates from async effects
+  // (subscriptions, promises, timers) to silence "not wrapped in act(...)" warnings
+  await act(async () => {})
 })
 
 function AllProviders({ children }: { children: ReactNode }) {

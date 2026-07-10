@@ -253,6 +253,36 @@ describe('SupabaseAuthAdapter — onAuthStateChange', () => {
   })
 })
 
+describe('SupabaseAuthAdapter — logout', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('calls signOut with local scope', async () => {
+    mockSignOut.mockResolvedValue({ error: null })
+
+    const { authAdapter } = await import('./supabase-adapter')
+    await authAdapter.logout()
+
+    expect(mockSignOut).toHaveBeenCalledWith({ scope: 'local' })
+  })
+
+  it('throws AuthError on signOut failure', async () => {
+    mockSignOut.mockResolvedValue({
+      error: { status: 500, message: 'Internal server error' },
+    })
+
+    const { authAdapter } = await import('./supabase-adapter')
+
+    try {
+      await authAdapter.logout()
+      expect.unreachable('should have thrown')
+    } catch (e) {
+      expect(e).toBeInstanceOf(AuthError)
+    }
+  })
+})
+
 describe('SupabaseAuthAdapter — updatePassword', () => {
   beforeEach(() => {
     vi.clearAllMocks()

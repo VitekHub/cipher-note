@@ -20,6 +20,7 @@ import { useResizable } from '@/shared/lib/use-resizable'
 import { useVaultTimeout } from '@/features/vault/model/use-vault-timeout'
 import { useVaultVisibilityLock } from '@/features/vault/model/use-vault-visibility-lock'
 import { logoutUser } from '@/features/auth/model/auth-service'
+import { useSessionUpdateListener } from '@/features/auth/model/use-session-update-listener'
 import { useRealtimeSync } from '@/features/fields/model/use-realtime-sync'
 import { useNavigationBlocker } from '@/features/fields/model/use-navigation-blocker'
 import { useAuth } from '@/shared/auth/auth-context'
@@ -54,6 +55,7 @@ function AuthenticatedLayout() {
   useVaultTimeout()
   useVaultVisibilityLock()
   useRealtimeSync()
+  useSessionUpdateListener()
   useBlocker({
     shouldBlockFn: () => !navigator.onLine,
     enableBeforeUnload: false,
@@ -62,7 +64,7 @@ function AuthenticatedLayout() {
   useNavigationBlocker()
 
   return (
-    <div className="text-foreground bg-background flex h-dvh">
+    <div className="text-foreground bg-background flex h-dvh overflow-hidden">
       {/* Desktop sidebar */}
       <aside
         className="bg-sidebar text-sidebar-foreground border-sidebar-border hidden shrink-0 flex-col border-r md:flex"
@@ -97,9 +99,9 @@ function AuthenticatedLayout() {
         <OfflineBanner />
 
         {/* Main content area with resize handle */}
-        <div className="relative flex flex-1 flex-col">
+        <div className="relative flex flex-1 flex-col overflow-y-auto">
           <ResizeHandle isDragging={isDragging} handleProps={handleProps} />
-          <main className="mb-10 flex flex-1 flex-col overflow-y-auto p-6 pb-20 md:pb-6">
+          <main className="mb-10 flex flex-1 flex-col p-6 pb-20 md:pb-6">
             <Outlet />
           </main>
         </div>

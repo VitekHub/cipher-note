@@ -48,7 +48,7 @@ class SupabaseAuthAdapter implements IAuthAdapter {
   }
 
   async logout(): Promise<void> {
-    const { error } = await getSupabase().auth.signOut()
+    const { error } = await getSupabase().auth.signOut({ scope: 'local' })
     if (error) throw wrapSupabaseAuthError(error)
   }
 

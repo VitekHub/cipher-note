@@ -33,7 +33,7 @@ describe('i18n configuration', () => {
   it('translates English common strings', () => {
     expect(testI18n.t('app.name')).toBe('Cipher Note')
     expect(testI18n.t('app.tagline')).toBe('Your notes. Your privacy. Your control.')
-    expect(testI18n.t('app.version')).toBe('v1.0.0')
+    expect(testI18n.t('app.version')).toBe('v1.1.0')
     expect(testI18n.t('app.githubUrl')).toBe('https://github.com/VitekHub/cipher-note/')
     expect(testI18n.t('app.license')).toBe('MIT License')
   })
@@ -43,7 +43,7 @@ describe('i18n configuration', () => {
     expect(testI18n.language).toBe('cs')
     expect(testI18n.t('app.name')).toBe('Cipher Note')
     expect(testI18n.t('app.tagline')).toBe('Vaše poznámky. Vaše soukromí. Vaše kontrola.')
-    expect(testI18n.t('app.version')).toBe('v1.0.0')
+    expect(testI18n.t('app.version')).toBe('v1.1.0')
     expect(testI18n.t('app.githubUrl')).toBe('https://github.com/VitekHub/cipher-note/')
     expect(testI18n.t('app.license')).toBe('MIT Licence')
   })
