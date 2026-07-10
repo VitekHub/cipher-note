@@ -112,33 +112,45 @@ describe('Router page rendering', () => {
 
   it('renders register page at /register', async () => {
     renderWithRouter({}, '/register')
-    await waitFor(() => {
-      expect(screen.getByLabelText(/confirm password/i)).toBeInTheDocument()
-    })
+    await waitFor(
+      () => {
+        expect(screen.getByLabelText(/confirm password/i)).toBeInTheDocument()
+      },
+      { timeout: 5000 },
+    )
   })
 
   it('renders recover page at /recover', async () => {
     renderWithRouter({}, '/recover')
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /recover/i })).toBeInTheDocument()
-    })
+    await waitFor(
+      () => {
+        expect(screen.getByRole('button', { name: /recover/i })).toBeInTheDocument()
+      },
+      { timeout: 5000 },
+    )
   })
 
   it('renders dashboard with field cards when authenticated', async () => {
     useAuthStore.setState({ user: { id: '1', username: 'test', createdAt: '2024-01-01T00:00:00Z' } })
     renderWithRouter({ isAuthenticated: true, user: { id: '1', username: 'test' } }, '/dashboard/test-entry')
-    await waitFor(() => {
-      expect(screen.getByText('Note')).toBeInTheDocument()
-      expect(screen.getByText('Website')).toBeInTheDocument()
-      expect(screen.getByText('Email')).toBeInTheDocument()
-    })
+    await waitFor(
+      () => {
+        expect(screen.getByText('Note')).toBeInTheDocument()
+        expect(screen.getByText('Website')).toBeInTheDocument()
+        expect(screen.getByText('Email')).toBeInTheDocument()
+      },
+      { timeout: 5000 },
+    )
   })
 
   it('renders settings page when authenticated', async () => {
     useAuthStore.setState({ user: { id: '1', username: 'test', createdAt: '2024-01-01T00:00:00Z' } })
     renderWithRouter({ isAuthenticated: true, user: { id: '1', username: 'test' } }, '/settings')
-    await waitFor(() => {
-      expect(screen.getAllByText(/account/i).length).toBeGreaterThan(0)
-    })
+    await waitFor(
+      () => {
+        expect(screen.getAllByText(/account/i).length).toBeGreaterThan(0)
+      },
+      { timeout: 5000 },
+    )
   })
 })

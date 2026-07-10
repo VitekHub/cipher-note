@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useRef } from 'react'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -25,11 +25,16 @@ function useSessionUpdateListener(): void {
   const queryClient = useQueryClient()
   const { t } = useTranslation('auth')
 
+  const tRef = useRef(t)
+  useEffect(() => {
+    tRef.current = t
+  }, [t])
+
   const checkSessionValidity = useCallback(async () => {
     try {
       const valid = await isSessionValid()
       if (!valid) {
-        toast.error(t('session.revokedElsewhere'))
+        toast.error(tRef.current('session.revokedElsewhere'))
         void logoutUser()
       } else {
         // Session is valid, but the list may have changed — refresh it
@@ -38,7 +43,7 @@ function useSessionUpdateListener(): void {
     } catch {
       // Network error — don't force-logout; next trigger will retry
     }
-  }, [t, queryClient])
+  }, [queryClient])
 
   useEffect(() => {
     if (!isAuthenticatedSelector(useAuthStore.getState()) || isRestoringSession) return

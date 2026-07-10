@@ -2,7 +2,7 @@
   "app": {
     "name": "Cipher Note",
     "tagline": "Your notes. Your privacy. Your control.",
-    "version": "v1.0.0",
+    "version": "v1.1.0",
     "githubUrl": "https://github.com/VitekHub/cipher-note/",
     "license": "MIT License"
   },

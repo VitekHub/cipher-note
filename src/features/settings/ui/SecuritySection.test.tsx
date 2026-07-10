@@ -72,7 +72,9 @@ describe('SecuritySection', () => {
     expect(select).toHaveTextContent('15 min')
 
     await user.click(select)
-    expect(screen.getAllByRole('option')).toHaveLength(5)
+    // Options are rendered via a portal asynchronously
+    const options = await screen.findAllByRole('option')
+    expect(options).toHaveLength(5)
   })
 
   it('updates vaultTimeoutMs when the auto-lock selection changes', async () => {
@@ -81,7 +83,9 @@ describe('SecuritySection', () => {
 
     const select = screen.getByRole('combobox', { name: 'Auto-lock vault' })
     await user.click(select)
-    await user.click(screen.getByRole('option', { name: '5 min' }))
+    // Options are rendered via a portal asynchronously
+    const fiveMinOption = await screen.findByRole('option', { name: '5 min' })
+    await user.click(fiveMinOption)
 
     expect(useVaultSettingsStore.getState().vaultTimeoutMs).toBe(5 * 60 * 1000)
   })

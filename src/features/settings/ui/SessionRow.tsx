@@ -10,6 +10,39 @@ const DEVICE_ICONS: Record<string, LucideIcon> = {
   tablet: Tablet,
 }
 
+// Module-level caches for Intl formatters, keyed by language.
+// Avoids constructing new formatter objects on every render.
+const relativeTimeFormatters = new Map<string, Intl.RelativeTimeFormat>()
+const dateTimeFormatters = new Map<string, Intl.DateTimeFormat>()
+const fullDateFormatters = new Map<string, Intl.DateTimeFormat>()
+
+function getRelativeTimeFormatter(language: string): Intl.RelativeTimeFormat {
+  let rtf = relativeTimeFormatters.get(language)
+  if (!rtf) {
+    rtf = new Intl.RelativeTimeFormat(language, { numeric: 'auto' })
+    relativeTimeFormatters.set(language, rtf)
+  }
+  return rtf
+}
+
+function getDateTimeFormatter(language: string): Intl.DateTimeFormat {
+  let dtf = dateTimeFormatters.get(language)
+  if (!dtf) {
+    dtf = new Intl.DateTimeFormat(language, { dateStyle: 'medium' })
+    dateTimeFormatters.set(language, dtf)
+  }
+  return dtf
+}
+
+function getFullDateFormatter(language: string): Intl.DateTimeFormat {
+  let fdf = fullDateFormatters.get(language)
+  if (!fdf) {
+    fdf = new Intl.DateTimeFormat(language, { dateStyle: 'medium', timeStyle: 'short' })
+    fullDateFormatters.set(language, fdf)
+  }
+  return fdf
+}
+
 function formatRelativeTime(dateString: string, language: string): string {
   const diffMs = Date.now() - new Date(dateString).getTime()
   const diffSecs = Math.floor(diffMs / 1000)
@@ -17,20 +50,17 @@ function formatRelativeTime(dateString: string, language: string): string {
   const diffHours = Math.floor(diffMins / 60)
   const diffDays = Math.floor(diffHours / 24)
 
-  const rtf = new Intl.RelativeTimeFormat(language, { numeric: 'auto' })
+  const rtf = getRelativeTimeFormatter(language)
 
   if (diffSecs < 60) return rtf.format(-diffSecs, 'second')
   if (diffMins < 60) return rtf.format(-diffMins, 'minute')
   if (diffHours < 24) return rtf.format(-diffHours, 'hour')
   if (diffDays < 7) return rtf.format(-diffDays, 'day')
-  return new Intl.DateTimeFormat(language, { dateStyle: 'medium' }).format(new Date(dateString))
+  return getDateTimeFormatter(language).format(new Date(dateString))
 }
 
 function formatFullDate(dateString: string, language: string): string {
-  return new Intl.DateTimeFormat(language, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(dateString))
+  return getFullDateFormatter(language).format(new Date(dateString))
 }
 
 function SessionRow({
